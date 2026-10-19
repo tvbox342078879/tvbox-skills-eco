@@ -402,9 +402,34 @@ def cmd_stats(a):
         print(f'    {v:4}  {k}')
 
 def probe_one(h):
+    """单 host 存活探测。返回 (host, http_code)；连不上给 '000'，异常给 'ERR'。
+
+    ★ S177 步4 实测修（性能）：**连接与读取必须分开限时**。
+      原写 `-m 8`（总超时 8 秒），实测 145 个整域 host 全量复测要 **47.4 秒**，
+      冒烟限时 15 秒，必然超时。逐条拆开看了 26 个慢 host，全部是这个形态：
+
+        connect=0.000000  total=8.002262  code=000
+        curl: (28) Connection timed out after 8002 milliseconds
+
+      `time_connect=0.000000` 说明**连接阶段一毫秒都没建起来**——一个字节的响应都没收到，
+      8 秒全部烧在"等建连"上。对**已经进了失效库的域名**来说，等 8 秒换回"连不上"，
+      等于花 8 秒证明一件早就知道的事。
+
+      为什么不是"并发不够"：档位 B = 6 并发是 M-R114 定的，26×8/6 ≈ 35 秒，
+      实测 47.4 秒，数字对得上——**瓶颈是每条的等待时长，不是并行度**。
+      加并发反而会打到别人服务器上被判爬虫（B 档注释里写着的理由），不能动。
+
+      改法：`--connect-timeout 2` + `--max-time 8`。
+        · 2 秒建不起连 → 基本就是死（DNS 不通/端口丢弃/防火墙），与 8 秒结论相同
+        · 若真连上了，正文慢是有价值的（可能在吐大数据），仍给 8 秒读完
+      实测效果：145 个从 47.4s 降到 ≈18s，且**结论不变**（慢的 26 个本来全是 000）。
+
+    判据没变：仍然只回 http_code，仍然连不上给 '000'。这是纯延时优化，不改语义。
+    """
     try:
-        r=subprocess.run(['/usr/bin/curl','-sSL','-m','8','-A',UA,'-o','/dev/null',
-                          '-w','%{http_code}',f'https://{h}'],capture_output=True,text=True,timeout=12)
+        r=subprocess.run(['/usr/bin/curl','-sSL','--connect-timeout','2','--max-time','8',
+                          '-A',UA,'-o','/dev/null','-w','%{http_code}',f'https://{h}'],
+                         capture_output=True,text=True,timeout=12)
         return (h,(r.stdout or '000').strip())
     except Exception: return (h,'ERR')
 
