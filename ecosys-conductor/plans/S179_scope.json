@@ -1,6 +1,6 @@
 {
   "board": "/root/.codebuddy/skills/ecosys-conductor/plans/S179_重做生态方案.md",
-  "current_step": "N1",
+  "current_step": "N5",
   "steps": [
     {
       "id": "N0",
@@ -20,7 +20,7 @@
         "skills 根目录"
       ],
       "verify": "git --git-dir=/root/.codebuddy/skills/.git log --oneline -1",
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "N2",
@@ -29,7 +29,7 @@
         "ecosys-conductor"
       ],
       "verify": "tvbox conductor rules check",
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "N3",
@@ -38,7 +38,7 @@
         "ecosys-conductor"
       ],
       "verify": "tvbox conductor issues",
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "N4",
@@ -48,7 +48,7 @@
         "hooks"
       ],
       "verify": "tvbox conductor verify",
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "N5",
