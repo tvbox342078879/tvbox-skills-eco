@@ -6923,11 +6923,14 @@ def cmd_signal_check(args):
         print(f'  {mark} {name}：捕获={"是" if hit else "否"} 清理后清零={"是" if clean else "否"}')
     print()
     # 覆盖对齐审计（S062）：探针数必须 == 注册表条目数，否则新增信号源漏加探针
+    # ★ S177 步3：**只在全量模式判缺口**。单源模式（--source N）本来就只跑一个源，
+    #   原代码无条件判 → 屏幕出现「1/1 逻辑有效」+「❌ 覆盖缺口 1/45」自相矛盾的输出。
     n_reg, n_probe = len(SIGNAL_SOURCES), len(results)
-    if n_probe != n_reg:
+    _cov_gap_shown = (only is None) and (n_probe != n_reg)
+    if _cov_gap_shown:
         print(f'  ❌ 覆盖缺口：探针 {n_probe} 个 ≠ 注册表 {n_reg} 个信号源（新增源须同步加探针）')
     print(f'探针结果: {ok}/{len(results)} 信号源逻辑有效（"依赖可达≠逻辑对"，故需活体证明）'
-          + ('' if n_probe == n_reg else f'  ⚠️ 覆盖缺口 {n_probe}/{n_reg}'))
+          + (f'  ⚠️ 覆盖缺口 {n_probe}/{n_reg}' if _cov_gap_shown else ''))
     # S078：基线缺口计入判据——S075 只打印告警，"知道不完整但不阻断"仍会放行（M-R53②）
     _base_gap = sorted(set(SIGNAL_SOURCES) - _baseline_ids, key=int) if only is None else []
     if _base_gap:
@@ -6950,6 +6953,36 @@ def cmd_signal_check(args):
         print(f'💾 已留痕 signal_proven.json（{len(back)} 期探针记录）——检测器逻辑有效性证明')
     except Exception as e:
         print(f'（留痕失败：{e}）')
+
+    # ★ S177 步3 实测修（T1）：**本函数原来没有 return，末尾隐式返回 None → rc=0**。
+    #   实测：屏幕打两行 ❌（源4、源16 都是「捕获=是 清理后清零=否」），`echo $?` 却是 0。
+    #   后果比"报错"更坏：**所有按退出码判断的检查全部假绿**——CI 看 rc、门禁看 rc、
+    #   我自己写的批量冒烟也看 rc，全都会把"两个检测器坏了"记成"通过"。
+    #   这正是 M-R63 的孪生形态：M-R63 是"坏了还报绿"，这个是"连绿都不报"——
+    #   **不报错的失败，比报错更难发现**。
+    #
+    #   退出码约定（刻意用 3 不用 1，为了和"脚本自身崩了"区分开）：
+    #     0 = 全部探针通过，且覆盖齐、基线齐
+    #     3 = **体检跑完了，但查出问题**（探针有红 / 覆盖缺口 / 基线缺口）
+    #     1 = 脚本自身异常（未捕获异常，由 Python 自己给）
+    #   为什么要区分 3 和 1：`rc=1` 时人第一反应是"命令挂了、去看 traceback"，
+    #   而这里命令是好的、结论是坏的。两者的处置完全不同，不能压成同一个码。
+    #
+    #   ⚠️ **本改动已验证不影响 verify**：verify 的 ① 用 `_parse_probe_ratio` 解析文本，
+    #   而 `_sh` 给非零退出码加的前缀（`⛔命令失败:退出码3｜`）是加在**开头**的，
+    #   `_parse_probe_ratio` 仍能从中捞出 `(43, 45)`——实测确认（/tmp/chk.py）。
+    #   若哪天改了 `_sh` 的前缀格式或 `_parse_probe_ratio` 的正则，**必须重跑这个验证**。
+    _bad = [n for n, h, c in results if not (h and c)]
+    # ★ S177 步3 自查修正：判据里那个「覆盖齐」的条件必须**只在全量模式**下生效。
+    #   第一版我写成无条件 `len(results) != len(SIGNAL_SOURCES)`，
+    #   结果单源模式 `--source 4` 当场 rc=3，理由是「覆盖缺口 1/45」——
+    #   **单源本来就只跑一个源，那叫正常，不叫缺口。**
+    #   （更难看的是：屏幕同时打「1/1 逻辑有效」和「❌ 覆盖缺口」，自相矛盾。）
+    #   教训：给"整体完成任务"加判据时，**先问这个命令有没有"部分完成"的合法形态**。
+    _cov_gap = (only is None) and (len(results) != len(SIGNAL_SOURCES))
+    if _cov_gap or _base_gap or _bad:
+        return 3
+    return 0
 
 
 # ---------- S114：经验预载注入（M-R68 双向闭环·使用面） ----------
