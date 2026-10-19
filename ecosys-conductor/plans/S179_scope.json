@@ -1,0 +1,64 @@
+{
+  "board": "/root/.codebuddy/skills/ecosys-conductor/plans/S179_重做生态方案.md",
+  "current_step": "N1",
+  "steps": [
+    {
+      "id": "N0",
+      "title": "防偏机制：抬头制度 + Stop 第④问 + S179 方案板",
+      "scope": [
+        "ecosys-conductor",
+        "hooks"
+      ],
+      "verify": "python3 /root/.codebuddy/hooks/stop_drift.py",
+      "status": "done"
+    },
+    {
+      "id": "N1",
+      "title": "收拢双 git 为一（skills/.git 为正本）",
+      "scope": [
+        "ecosys-conductor",
+        "skills 根目录"
+      ],
+      "verify": "git --git-dir=/root/.codebuddy/skills/.git log --oneline -1",
+      "status": "pending"
+    },
+    {
+      "id": "N2",
+      "title": "规则圈收口：三分级 + owner str→list + registry 对齐 134",
+      "scope": [
+        "ecosys-conductor"
+      ],
+      "verify": "tvbox conductor rules check",
+      "status": "pending"
+    },
+    {
+      "id": "N3",
+      "title": "项目圈补建：projects 段 + 状态机 + close --zombie",
+      "scope": [
+        "ecosys-conductor"
+      ],
+      "verify": "tvbox conductor issues",
+      "status": "pending"
+    },
+    {
+      "id": "N4",
+      "title": "规则起作用：gate + probe + stop 三问（第④问已含）",
+      "scope": [
+        "ecosys-conductor",
+        "hooks"
+      ],
+      "verify": "tvbox conductor verify",
+      "status": "pending"
+    },
+    {
+      "id": "N5",
+      "title": "欠账止血（37 open 分诊）+ eco check 自转终验",
+      "scope": [
+        "unfinished-audit",
+        "ecosys-conductor"
+      ],
+      "verify": "tvbox close audit",
+      "status": "pending"
+    }
+  ]
+}

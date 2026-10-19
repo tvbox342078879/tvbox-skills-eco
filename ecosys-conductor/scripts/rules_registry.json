@@ -3789,6 +3789,40 @@
    "ask": "又卡了 / 切不进话 / 你在干嘛 / 回应我",
    "status": "已固化",
    "source": "S177 用户令 2026-10-20 三次截图取证"
+  },
+  {
+   "id": "M-R123",
+   "summary": "防偏三件套：每步抬头（current step + verify + 偏离项）·越界先报批·Stop 第④问自动比对本轮改动是否落在当前步 scope 内",
+   "chapter": "会话纪律",
+   "master_line": "执行层闭环",
+   "owner": [
+    "ecosys-conductor"
+   ],
+   "landing": "/root/.codebuddy/skills/ecosys-conductor/plans/S179_scope.json 的 current_step + steps[].scope；钩子 /root/.codebuddy/hooks/stop_drift.py",
+   "status": "已固化",
+   "probe": {
+    "skill": "ecosys-conductor",
+    "command": "python3 /root/.codebuddy/hooks/stop_drift.py",
+    "expect": "pass"
+   },
+   "note": "用户于 2026-10-20 03:00 提出「如何保证你不再跑偏」；当天三次偏航（探源司起跑/自创业务闭环解读/脱离清单干细活）同一根因：动手前不对照当前步"
+  },
+  {
+   "id": "M-R124",
+   "summary": "单一版本仓：跟踪 skills 工作区的 git 仓只能有一个（正本 skills/.git），旧外置仓降级为 bare 只读快照，出现第二个立即报红",
+   "chapter": "会话纪律",
+   "master_line": "执行层闭环",
+   "owner": [
+    "ecosys-conductor"
+   ],
+   "landing": "/root/.codebuddy/hooks/git_singleton.py · 快照仓 /root/.codebuddy/eco_git_snapshot_READONLY（core.bare=true）",
+   "status": "已固化",
+   "probe": {
+    "skill": "ecosys-conductor",
+    "command": "python3 /root/.codebuddy/hooks/git_singleton.py",
+    "expect": "pass"
+   },
+   "note": "2026-10-20 N1：实测双仓并存（eco_git bd3b289 + skills/.git ccdc6a0）两条独立提交链；保留含原始基线 0cdc61b 的 eco_git 为 bare 快照（M-R29 只增不撤），正本归 skills/.git"
   }
  ],
  "freeze": {
