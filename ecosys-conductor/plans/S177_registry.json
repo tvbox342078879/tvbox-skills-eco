@@ -9,7 +9,7 @@
  },
  "counts": {
   "skills": 13,
-  "rules": 127,
+  "rules": 132,
   "signals": 45,
   "monitors": 45,
   "commands": 109
@@ -41,8 +41,14 @@
    ]
   },
   "eco-ledger": {
-   "rules_owned": [],
-   "rules_touched": [],
+   "rules_owned": [
+    "M-L04",
+    "M-L05"
+   ],
+   "rules_touched": [
+    "M-L04",
+    "M-L05"
+   ],
    "signals": [],
    "monitors": [],
    "commands": [
@@ -241,8 +247,16 @@
    ]
   },
   "learn-hub": {
-   "rules_owned": [],
-   "rules_touched": [],
+   "rules_owned": [
+    "M-L01",
+    "M-L02",
+    "M-L03"
+   ],
+   "rules_touched": [
+    "M-L01",
+    "M-L02",
+    "M-L03"
+   ],
    "signals": [],
    "monitors": [],
    "commands": [
@@ -701,20 +715,10 @@
     "touched_rules": 0,
     "has_skill_md": true,
     "has_flow": true,
-    "note": "三零：不守规则 / 无监测项 / 无 tvbox 入口"
+    "declared_alternative": "优先用 MCP 工具 automation_update（server=scheduler-assistant）",
+    "note": "有显式替代路径，**不是孤儿**，应走下线流程"
    }
   ],
-  "skills_without_any_rule": [
-   {
-    "skill": "eco-ledger",
-    "commands": 14,
-    "monitors": 0
-   },
-   {
-    "skill": "learn-hub",
-    "commands": 6,
-    "monitors": 0
-   }
-  ]
+  "skills_without_any_rule": []
  }
 }

@@ -163,7 +163,9 @@
   "[已清零 S027] 11 类检查器全部落地（M01-M11）；report --upload 云端直传 + node id 锚点回写已实测（node Va06sS0Wp9kduRoNHqydhX）",
   "[已清零 S084] 检测器自身折叠=假绿修复（M-R32/M-R60⑨系统性排查）：静态扫描全生态抓出 S082/S083 漏网的 4 处折叠——_gain_rows 快照损坏折叠、check_route_calib SOP 损坏折叠（假绿!）、check_flow_ref_integrity 时间戳解析失败折叠、check_revive_eval 失效库读失败折叠；全部改为报真阳性或显式告警；受控单测 4/4",
   "[已清零 S091] M18 分级口径校准：活跃度「停滞」（90~365 天）由「轻微」改为不产遗留（值得关注≠需要处置，防噪声淹没 M-R53；停滞仍在探源司监测台可见）；monitors.json threshold 同步、信号源19 断言同步、受控单测改两档分级",
-  "[已清零 2026-10-18]（sid=becf9081fdbc）并入 tvbox-interface/scripts/flow.json「[遗留 S110·正本] 采集缺包级字段」（用 ‖ 原条目：[清账司派单 2026-10-25] [jar地址结构性缺口] 全生态 4 个库均无 jar 下载地址字段：原作者包的 spider/jar 在抽取阶段即被丢弃，导致 508 条 jar系 源无法溯源到 jar 下载地址。修复需在 tvb ｜ sid=becf9081fdbc ｜ 下一步 tvbox watchdog scan"
+  "[已清零 2026-10-18]（sid=becf9081fdbc）并入 tvbox-interface/scripts/flow.json「[遗留 S110·正本] 采集缺包级字段」（用 ‖ 原条目：[清账司派单 2026-10-25] [jar地址结构性缺口] 全生态 4 个库均无 jar 下载地址字段：原作者包的 spider/jar 在抽取阶段即被丢弃，导致 508 条 jar系 源无法溯源到 jar 下载地址。修复需在 tvb ｜ sid=becf9081fdbc ｜ 下一步 tvbox watchdog scan",
+  "[清账司派单 2026-10-27] [扩展点] 长期方向：MCP automation_update 完全替代脚本后，本技能的脚本通道可降级为兜底 ｜ sid=094c512907c0 ｜ 下一步 tvbox watchdog scan",
+  "[清账司派单 2026-10-27] [本期不处理·S176b] 需接入 wechat-article-scraper（外部技能），属跨技能对接，非本轮规则修复范围 ｜ 原条目：[待办] intake url 的正文抽取：目前是去标签 + ｜ sid=08d3ca536f43 ｜ 下一步 tvbox watchdog scan"
  ],
  "sop_binding": {
   "authority": "云 RULES 规则 47/48/52/54 + hub SKILL.md §8.15-8.17",

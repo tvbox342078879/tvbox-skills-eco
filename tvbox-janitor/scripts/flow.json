@@ -99,6 +99,7 @@
   "state_corrupt_guard": "janitor_state.json 损坏→报错退出，不当空收件箱（M-R60）"
  },
  "backlog": [
-  "[清账司派单 2026-10-26] 云端第 ⑤ 源目前只扫本地缓存 `core_db_rows.json`；真实云端读失败由信号源 17/23 兜。 若要让清账司自己直连云端扫「待跟进」，需先解决 DB_LIB 失效问题（已登记 C00 ｜ sid=19ceb5857c46 ｜ 下一步 tvbox janitor scan"
+  "[清账司派单 2026-10-26] 云端第 ⑤ 源目前只扫本地缓存 `core_db_rows.json`；真实云端读失败由信号源 17/23 兜。 若要让清账司自己直连云端扫「待跟进」，需先解决 DB_LIB 失效问题（已登记 C00 ｜ sid=19ceb5857c46 ｜ 下一步 tvbox janitor scan",
+  "[清账司派单 2026-11-03] [本期不处理·S176b] 需接资料库（library）云端 API，涉及外部依赖与授权 ｜ 原条目：[待办] store 索引目前是本地 index.json，未上云（library）；跨设备共享待 ｜ sid=2009bf50299a ｜ 下一步 tvbox janitor scan"
  ]
 }

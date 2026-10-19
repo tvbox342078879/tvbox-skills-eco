@@ -6134,6 +6134,20 @@ def cmd_signal_check(args):
     if only in (None, '16'):
         # 注入：在某技能 scripts 下临时放一个含「except→return []」的新文件，
         # 驱动 _sig_fold_scan → 应扫出该未登记候选；删除后应清零。
+        #
+        # ★ S177 步3→步7 实测修（T2，与源4 同型）：
+        #   原判据 `clean = not _sig_fold_scan()` 要求「**整个生态**没有未登记折叠候选」。
+        #   但 `_sig_fold_scan` 扫的是**全生态真实代码**，生态里只要有一处真实折叠
+        #   （历史遗留、新写的代码），clean 就恒为 False——
+        #   于是信号源16 长期红着，而它的红**既不代表探针坏了，也不代表新缺陷**，
+        #   只代表"生态里还有该审计的点"。**长期红 = 长期被忽略**（M-R63 的另一面）。
+        #
+        #   正确语义：本探针要证明的是「**扫描器能扫出我注入的东西**」，
+        #   不是「生态此刻是干净的」。所以 clean 应判：
+        #     ① 注入期能扫出注入文件（hit）
+        #     ② 删除后**同一个注入文件**不再被扫出（clean）
+        #   生态自身的真实候选，由 `_sig_fold_scan` 的**输出**（信号源16 的报警）负责，
+        #   不借探针通道冒充。
         import tempfile as _tf
         _probe_dir = os.path.join(SKILL_ROOT, 'tvbox-source-blacklist', 'scripts')
         hit = False
@@ -6154,7 +6168,8 @@ def cmd_signal_check(args):
         finally:
             if _created and os.path.exists(_fpath):
                 os.remove(_fpath)
-        clean = not _sig_fold_scan()   # 删除注入文件后应无未登记候选
+        # clean：**只对注入文件判定**（与源5/源6 同一原则）
+        clean = not any(_fname in x.get('evidence', '') for x in _sig_fold_scan())
         results.append(('信号源16 基座折叠扫描', hit, clean))
     # --- 信号源17 云端读取语义自检（S086·M-R60）---
     if only in (None, '17'):

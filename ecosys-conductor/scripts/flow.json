@@ -160,6 +160,11 @@
   "[本期不处理·S176b] 已由 slim 总册 --diagnose 给出方案；当前实测仍在缓冲线内（体积判据⑦已绿），破线再动 ｜ 原条目：[清账司派单 2026-10-26] **总册 34.7KB 贴近缓冲线（余量 288 字节）**：§七之二「监测器设计铁律」16KB／83 条可分批外置。 现无需动（仍在缓冲线内），方案已由 `slim 总册 --diagnose` 给 ｜ sid=7c1c2474837d ｜ 下一步 tvbox conductor slim <技能名> --diagnose",
   "[本期不处理·S176b] 体积判据⑦实测全部达标（余量 3968B），预警已消解，属旧观测 ｜ 原条目：[清账司派单 2026-11-02] `tvbox-source-hub` SKILL 余量 0.4KB（同上，贴近未超）。 ｜ sid=7a3890b77899 ｜ 下一步 tvbox conductor issues",
   "[本期不处理·S176b] 需真实跑满几轮后统计误派率，当前样本不足 5 条，改了无法验证 ｜ 原条目：[清账司派单 2026-11-02] 分诊表目前是「关键词 + 性质」两段判定，压测样本只有 5 条。真实跑满几轮后应统计 误派率（派给 A 实际该由 B 处理），再决定是否引入「按技能自述职责」的兜底匹配。 ｜ sid=54fb80efa837 ｜ 下一步 tvbox conductor issues",
-  "[本期不处理·S176b] 措辞修正属小改，但涉及 whoami 输出契约，须与 manifest 联合改并回归 ｜ 原条目：[清账司派单 2026-10-26] whoami 无命中措辞误导：打印「意图X 无 manifest 命中」，读者当成「没这个技能」，实为「只查了manifest没查触发词」（P021·open） ｜ sid=3396ddda88ac ｜ 下一步 tvbox conductor onboard <技能名>"
+  "[本期不处理·S176b] 措辞修正属小改，但涉及 whoami 输出契约，须与 manifest 联合改并回归 ｜ 原条目：[清账司派单 2026-10-26] whoami 无命中措辞误导：打印「意图X 无 manifest 命中」，读者当成「没这个技能」，实为「只查了manifest没查触发词」（P021·open） ｜ sid=3396ddda88ac ｜ 下一步 tvbox conductor onboard <技能名>",
+  "[清账司派单 2026-11-03] [本期不处理·S176b] 需 probe pan pull 链路真实可用，依赖探源司接口稳定后再串 ｜ 原条目：[待办] intake pan：目前只做委托提示，未真正串起 probe pan pu ｜ sid=fbfe1805f955 ｜ 下一步 tvbox conductor issues",
+  "[清账司派单 2026-11-03] [本期不处理·S176b] 需真实教材样本才能验证切分质量，当前无真实语料，改了也验不了 ｜ 原条目：[待办] sort auto 的自动切分质量偏低（只认 # 标题与『第X章』），接入真实教材后会漏 ｜ sid=25fa69fdf371 ｜ 下一步 tvbox conductor issues",
+  "[清账司派单 2026-11-03] [本期不处理·S176b] 语义校验需大模型推理层，与当前确定性判据架构不同，须单独立项 ｜ 原条目：[待办] gate 答案自洽目前只查『答案行有没有出处』，没有真正做『从原文能否推出答案』的语义校 ｜ sid=11ab20e27b8b ｜ 下一步 tvbox conductor issues",
+  "[清账司派单 2026-11-03] [本期不处理·S176b] 需外部教材版本源（课标/改版信息），暂无可用数据源 ｜ 原条目：[待办] watch refresh 未实现（教材改版/课标变动需外部版本源），已在命令里如实标注 ｜ sid=a6868d75f974 ｜ 下一步 tvbox conductor issues",
+  "[清账司派单 2026-11-03] [本期不处理·S176b] 跨技能端到端联调，需 exam-generator / knowledge-framework-builder 两边同时在线 ｜ 原条目：[待办] 与 exam-gener ｜ sid=c48689a7851e ｜ 下一步 tvbox conductor issues"
  ]
 }

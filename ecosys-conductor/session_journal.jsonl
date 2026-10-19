@@ -7476,3 +7476,312 @@
 {"ts": "2026-10-20T00:49:55", "verb": "janitor", "arg": "scan", "ok": false, "exit": 2}
 {"ts": "2026-10-20T00:50:01", "verb": "watchdog", "arg": "expand", "ok": true, "exit": 0}
 {"ts": "2026-10-20T00:50:02", "verb": "evolve", "arg": "scan", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:50:17", "verb": "watchdog", "arg": "expand", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:50:17", "verb": "evolve", "arg": "scan", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:50:26", "verb": "inspect", "arg": "scan", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:50:32", "verb": "watchdog", "arg": "expand", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:50:32", "verb": "evolve", "arg": "scan", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:50:41", "verb": "conductor", "arg": "signal-check", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:50:41", "verb": "watchdog", "arg": "expand", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:50:42", "verb": "evolve", "arg": "scan", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:50:47", "verb": "watchdog", "arg": "expand", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:50:47", "verb": "evolve", "arg": "scan", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:50:56", "verb": "watchdog", "arg": "expand", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:50:56", "verb": "conductor", "arg": "signal-check", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:50:57", "verb": "evolve", "arg": "scan", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:50:58", "verb": "conductor", "arg": "rules", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:51:01", "verb": "conductor", "arg": "rules", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:51:01", "verb": "watchdog", "arg": "gain", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:51:01", "verb": "watchdog", "arg": "noise", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:51:02", "verb": "evolve", "arg": "scan", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:51:02", "verb": "sizes", "arg": "", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:51:04", "verb": "conductor", "arg": "registry", "ok": false, "exit": 0, "err": "dispatch 返回 3（int 非0，命令自报失败）"}
+{"ts": "2026-10-20T00:51:11", "verb": "watchdog", "arg": "expand", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:51:12", "verb": "conductor", "arg": "signal-check", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:51:12", "verb": "evolve", "arg": "scan", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:51:16", "verb": "watchdog", "arg": "noise", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:51:16", "verb": "watchdog", "arg": "gain", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:51:17", "verb": "evolve", "arg": "scan", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:51:17", "verb": "sizes", "arg": "", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:51:21", "verb": "watchdog", "arg": "scan", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:51:21", "verb": "watchdog", "arg": "health", "ok": false, "exit": 0, "err": "BrokenPipeError: [Errno 32] Broken pipe"}
+{"ts": "2026-10-20T00:51:26", "verb": "watchdog", "arg": "expand", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:51:27", "verb": "evolve", "arg": "scan", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:51:31", "verb": "watchdog", "arg": "noise", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:51:31", "verb": "watchdog", "arg": "gain", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:51:32", "verb": "evolve", "arg": "scan", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:51:32", "verb": "sizes", "arg": "", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:51:35", "verb": "watchdog", "arg": "scan", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:51:35", "verb": "watchdog", "arg": "health", "ok": false, "exit": 0, "err": "BrokenPipeError: [Errno 32] Broken pipe"}
+{"ts": "2026-10-20T00:51:41", "verb": "watchdog", "arg": "expand", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:51:42", "verb": "evolve", "arg": "scan", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:51:46", "verb": "inspect", "arg": "coverage", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:51:46", "verb": "inspect", "arg": "coverage", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:51:46", "verb": "inspect", "arg": "coverage", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:51:47", "verb": "inspect", "arg": "balance", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:51:47", "verb": "inspect", "arg": "balance", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:51:49", "verb": "inspect", "arg": "balance", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:51:49", "verb": "inspect", "arg": "expand", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:51:49", "verb": "inspect", "arg": "expand", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:51:49", "verb": "inspect", "arg": "expand", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:51:50", "verb": "inspect", "arg": "add-monitor", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:51:50", "verb": "inspect", "arg": "add-monitor", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:51:50", "verb": "inspect", "arg": "add-monitor", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:51:50", "verb": "watchdog", "arg": "scan", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:51:50", "verb": "watchdog", "arg": "health", "ok": false, "exit": 0, "err": "BrokenPipeError: [Errno 32] Broken pipe"}
+{"ts": "2026-10-20T00:51:50", "verb": "conductor", "arg": "signal-check", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:51:56", "verb": "watchdog", "arg": "expand", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:51:57", "verb": "evolve", "arg": "scan", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:52:05", "verb": "conductor", "arg": "signal-check", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:52:11", "verb": "watchdog", "arg": "noise", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:52:11", "verb": "watchdog", "arg": "gain", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:52:11", "verb": "evolve", "arg": "scan", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:52:11", "verb": "sizes", "arg": "", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:52:21", "verb": "conductor", "arg": "signal-check", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:52:26", "verb": "watchdog", "arg": "noise", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:52:26", "verb": "watchdog", "arg": "gain", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:52:26", "verb": "evolve", "arg": "scan", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:52:27", "verb": "sizes", "arg": "", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:52:29", "verb": "conductor", "arg": "rules", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:52:29", "verb": "conductor", "arg": "registry", "ok": false, "exit": 0, "err": "dispatch 返回 3（int 非0，命令自报失败）"}
+{"ts": "2026-10-20T00:52:31", "verb": "watchdog", "arg": "scan", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:52:31", "verb": "watchdog", "arg": "health", "ok": false, "exit": 0, "err": "BrokenPipeError: [Errno 32] Broken pipe"}
+{"ts": "2026-10-20T00:52:39", "verb": "conductor", "arg": "restore", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:52:41", "verb": "watchdog", "arg": "gain", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:52:41", "verb": "watchdog", "arg": "noise", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:52:41", "verb": "evolve", "arg": "scan", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:52:42", "verb": "sizes", "arg": "", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:52:43", "verb": "conductor", "arg": "restore", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:52:45", "verb": "watchdog", "arg": "scan", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:52:45", "verb": "watchdog", "arg": "health", "ok": false, "exit": 0, "err": "BrokenPipeError: [Errno 32] Broken pipe"}
+{"ts": "2026-10-20T00:52:47", "verb": "conductor", "arg": "restore", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:52:49", "verb": "conductor", "arg": "linkmap", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:52:51", "verb": "conductor", "arg": "linkmap", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:52:53", "verb": "conductor", "arg": "linkmap", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:52:53", "verb": "conductor", "arg": "waste", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:52:54", "verb": "conductor", "arg": "waste", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:52:54", "verb": "conductor", "arg": "waste", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:52:55", "verb": "close", "arg": "", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:52:55", "verb": "close", "arg": "__nosuch_smoke_xyz__", "ok": false, "exit": 0, "err": "dispatch 返回 1（int 非0，命令自报失败）"}
+{"ts": "2026-10-20T00:52:55", "verb": "close", "arg": "", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:52:55", "verb": "close", "arg": "status", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:52:55", "verb": "close", "arg": "status", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:52:56", "verb": "close", "arg": "status", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:52:56", "verb": "close", "arg": "done", "ok": false, "exit": 0, "err": "dispatch 返回 1（int 非0，命令自报失败）"}
+{"ts": "2026-10-20T00:52:56", "verb": "close", "arg": "done", "ok": false, "exit": 0, "err": "dispatch 返回 1（int 非0，命令自报失败）"}
+{"ts": "2026-10-20T00:52:56", "verb": "close", "arg": "done", "ok": false, "exit": 0, "err": "dispatch 返回 1（int 非0，命令自报失败）"}
+{"ts": "2026-10-20T00:52:56", "verb": "close", "arg": "mine", "ok": false, "exit": 0, "err": "dispatch 返回 1（int 非0，命令自报失败）"}
+{"ts": "2026-10-20T00:52:56", "verb": "inspect", "arg": "coverage", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:52:56", "verb": "close", "arg": "mine", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:52:56", "verb": "inspect", "arg": "coverage", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:52:56", "verb": "close", "arg": "mine", "ok": false, "exit": 0, "err": "dispatch 返回 1（int 非0，命令自报失败）"}
+{"ts": "2026-10-20T00:52:56", "verb": "inspect", "arg": "coverage", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:52:56", "verb": "close", "arg": "verify", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:52:56", "verb": "close", "arg": "verify", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:52:56", "verb": "close", "arg": "verify", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:52:56", "verb": "close", "arg": "report", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:52:56", "verb": "close", "arg": "report", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:52:56", "verb": "close", "arg": "report", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:52:57", "verb": "ledger", "arg": "status", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:52:57", "verb": "ledger", "arg": "status", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:52:57", "verb": "inspect", "arg": "balance", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:52:57", "verb": "inspect", "arg": "balance", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:52:57", "verb": "ledger", "arg": "status", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:52:58", "verb": "inspect", "arg": "balance", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:52:58", "verb": "ledger", "arg": "balance", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:52:58", "verb": "inspect", "arg": "expand", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:52:58", "verb": "ledger", "arg": "balance", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:52:58", "verb": "inspect", "arg": "expand", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:52:59", "verb": "inspect", "arg": "expand", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:52:59", "verb": "inspect", "arg": "add-monitor", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:52:59", "verb": "inspect", "arg": "add-monitor", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:52:59", "verb": "inspect", "arg": "add-monitor", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:53:00", "verb": "ledger", "arg": "balance", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:53:00", "verb": "watchdog", "arg": "scan", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:53:00", "verb": "watchdog", "arg": "health", "ok": false, "exit": 0, "err": "BrokenPipeError: [Errno 32] Broken pipe"}
+{"ts": "2026-10-20T00:53:07", "verb": "ledger", "arg": "reconcile", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:53:07", "verb": "ledger", "arg": "reconcile", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:53:14", "verb": "ledger", "arg": "reconcile", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:53:18", "verb": "ledger", "arg": "settle", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:53:18", "verb": "ledger", "arg": "settle", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:53:22", "verb": "ledger", "arg": "settle", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:53:30", "verb": "watchdog", "arg": "expand", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:53:30", "verb": "evolve", "arg": "scan", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:53:37", "verb": "ledger", "arg": "finalcheck", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:53:39", "verb": "conductor", "arg": "rules", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:53:45", "verb": "watchdog", "arg": "expand", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:53:45", "verb": "evolve", "arg": "scan", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:53:48", "verb": "conductor", "arg": "restore", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:53:52", "verb": "ledger", "arg": "post", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:53:52", "verb": "ledger", "arg": "post", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:53:52", "verb": "ledger", "arg": "post", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:53:52", "verb": "ledger", "arg": "writeoff", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:53:52", "verb": "conductor", "arg": "restore", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:53:52", "verb": "ledger", "arg": "writeoff", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:53:52", "verb": "ledger", "arg": "writeoff", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:53:56", "verb": "conductor", "arg": "restore", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:53:58", "verb": "conductor", "arg": "linkmap", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:54:00", "verb": "conductor", "arg": "linkmap", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:54:03", "verb": "conductor", "arg": "linkmap", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:54:03", "verb": "conductor", "arg": "waste", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:54:04", "verb": "conductor", "arg": "waste", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:54:04", "verb": "conductor", "arg": "waste", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:54:05", "verb": "close", "arg": "", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:54:05", "verb": "close", "arg": "__nosuch_smoke_xyz__", "ok": false, "exit": 0, "err": "dispatch 返回 1（int 非0，命令自报失败）"}
+{"ts": "2026-10-20T00:54:06", "verb": "close", "arg": "", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:54:06", "verb": "close", "arg": "status", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:54:06", "verb": "close", "arg": "status", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:54:06", "verb": "close", "arg": "status", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:54:06", "verb": "close", "arg": "done", "ok": false, "exit": 0, "err": "dispatch 返回 1（int 非0，命令自报失败）"}
+{"ts": "2026-10-20T00:54:06", "verb": "close", "arg": "done", "ok": false, "exit": 0, "err": "dispatch 返回 1（int 非0，命令自报失败）"}
+{"ts": "2026-10-20T00:54:06", "verb": "close", "arg": "done", "ok": false, "exit": 0, "err": "dispatch 返回 1（int 非0，命令自报失败）"}
+{"ts": "2026-10-20T00:54:06", "verb": "close", "arg": "mine", "ok": false, "exit": 0, "err": "dispatch 返回 1（int 非0，命令自报失败）"}
+{"ts": "2026-10-20T00:54:06", "verb": "close", "arg": "mine", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:54:06", "verb": "close", "arg": "mine", "ok": false, "exit": 0, "err": "dispatch 返回 1（int 非0，命令自报失败）"}
+{"ts": "2026-10-20T00:54:06", "verb": "close", "arg": "verify", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:54:06", "verb": "close", "arg": "verify", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:54:06", "verb": "close", "arg": "verify", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:54:06", "verb": "close", "arg": "report", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:54:06", "verb": "close", "arg": "report", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:54:06", "verb": "close", "arg": "report", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:54:07", "verb": "ledger", "arg": "status", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:54:07", "verb": "ledger", "arg": "status", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:54:07", "verb": "ledger", "arg": "status", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:54:07", "verb": "ledger", "arg": "selftest", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:54:09", "verb": "ledger", "arg": "balance", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:54:09", "verb": "ledger", "arg": "balance", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:54:10", "verb": "ledger", "arg": "balance", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:54:17", "verb": "ledger", "arg": "reconcile", "ok": false, "exit": 1}
+{"ts": "2026-10-20T00:54:17", "verb": "ledger", "arg": "reconcile", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:54:22", "verb": "ledger", "arg": "call", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:54:22", "verb": "ledger", "arg": "call", "ok": false, "exit": 0, "err": "dispatch 返回 2（int 非0，命令自报失败）"}
+{"ts": "2026-10-20T00:54:22", "verb": "ledger", "arg": "call", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:54:22", "verb": "ledger", "arg": "verbs", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:54:22", "verb": "ledger", "arg": "verbs", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:54:22", "verb": "ledger", "arg": "verbs", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:54:23", "verb": "ledger", "arg": "relay", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:54:23", "verb": "ledger", "arg": "relay", "ok": false, "exit": 0, "err": "dispatch 返回 2（int 非0，命令自报失败）"}
+{"ts": "2026-10-20T00:54:23", "verb": "ledger", "arg": "relay", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:54:23", "verb": "ledger", "arg": "map", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:54:23", "verb": "ledger", "arg": "map", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:54:23", "verb": "ledger", "arg": "map", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:54:24", "verb": "ledger", "arg": "reconcile", "ok": false, "exit": 1}
+{"ts": "2026-10-20T00:54:25", "verb": "ledger", "arg": "audit-call", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:54:25", "verb": "ledger", "arg": "audit-call", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:54:27", "verb": "ledger", "arg": "audit-call", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:54:28", "verb": "ledger", "arg": "metrics", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:54:28", "verb": "ledger", "arg": "metrics", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:54:28", "verb": "ledger", "arg": "settle", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:54:28", "verb": "ledger", "arg": "settle", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:54:29", "verb": "ledger", "arg": "metrics", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:54:29", "verb": "study", "arg": "intake", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:54:29", "verb": "study", "arg": "intake", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:54:29", "verb": "study", "arg": "intake", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:54:29", "verb": "study", "arg": "sort", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:54:29", "verb": "study", "arg": "sort", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:54:29", "verb": "study", "arg": "sort", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:54:29", "verb": "study", "arg": "gate", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:54:29", "verb": "study", "arg": "gate", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:54:29", "verb": "study", "arg": "gate", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:54:30", "verb": "study", "arg": "forge", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:54:30", "verb": "study", "arg": "forge", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:54:30", "verb": "study", "arg": "forge", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:54:30", "verb": "study", "arg": "store", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:54:30", "verb": "study", "arg": "store", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:54:30", "verb": "study", "arg": "store", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:54:30", "verb": "study", "arg": "self-check", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:54:30", "verb": "study", "arg": "self-check", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:54:30", "verb": "study", "arg": "self-check", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:54:31", "verb": "ledger", "arg": "settle", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:54:40", "verb": "watchdog", "arg": "expand", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:54:40", "verb": "evolve", "arg": "scan", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:54:47", "verb": "ledger", "arg": "finalcheck", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:54:54", "verb": "watchdog", "arg": "expand", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:54:55", "verb": "evolve", "arg": "scan", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:55:02", "verb": "ledger", "arg": "post", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:55:02", "verb": "ledger", "arg": "post", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:55:02", "verb": "ledger", "arg": "post", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:55:02", "verb": "ledger", "arg": "writeoff", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:55:02", "verb": "ledger", "arg": "writeoff", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:55:02", "verb": "ledger", "arg": "writeoff", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:55:17", "verb": "ledger", "arg": "selftest", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:55:32", "verb": "ledger", "arg": "call", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:55:32", "verb": "ledger", "arg": "call", "ok": false, "exit": 0, "err": "dispatch 返回 2（int 非0，命令自报失败）"}
+{"ts": "2026-10-20T00:55:32", "verb": "ledger", "arg": "call", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:55:32", "verb": "ledger", "arg": "verbs", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:55:32", "verb": "ledger", "arg": "verbs", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:55:32", "verb": "ledger", "arg": "verbs", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:55:32", "verb": "ledger", "arg": "relay", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:55:32", "verb": "ledger", "arg": "relay", "ok": false, "exit": 0, "err": "dispatch 返回 2（int 非0，命令自报失败）"}
+{"ts": "2026-10-20T00:55:33", "verb": "ledger", "arg": "relay", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:55:33", "verb": "ledger", "arg": "map", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:55:33", "verb": "ledger", "arg": "map", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:55:33", "verb": "ledger", "arg": "map", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:55:35", "verb": "ledger", "arg": "audit-call", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:55:35", "verb": "ledger", "arg": "audit-call", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:55:37", "verb": "ledger", "arg": "audit-call", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:55:38", "verb": "ledger", "arg": "metrics", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:55:38", "verb": "ledger", "arg": "metrics", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:55:39", "verb": "ledger", "arg": "metrics", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:55:39", "verb": "study", "arg": "intake", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:55:39", "verb": "study", "arg": "intake", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:55:39", "verb": "study", "arg": "intake", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:55:39", "verb": "study", "arg": "sort", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:55:39", "verb": "study", "arg": "sort", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:55:40", "verb": "study", "arg": "sort", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:55:40", "verb": "study", "arg": "gate", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:55:40", "verb": "study", "arg": "gate", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:55:40", "verb": "study", "arg": "gate", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:55:40", "verb": "study", "arg": "forge", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:55:40", "verb": "study", "arg": "forge", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:55:40", "verb": "study", "arg": "forge", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:55:40", "verb": "study", "arg": "store", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:55:40", "verb": "study", "arg": "store", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:55:40", "verb": "study", "arg": "store", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:55:40", "verb": "study", "arg": "self-check", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:55:40", "verb": "study", "arg": "self-check", "ok": false, "exit": 2}
+{"ts": "2026-10-20T00:55:40", "verb": "study", "arg": "self-check", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:56:15", "verb": "close", "arg": "status", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:56:16", "verb": "close", "arg": "__zzz_nosuch__", "ok": false, "exit": 0, "err": "dispatch 返回 1（int 非0，命令自报失败）"}
+{"ts": "2026-10-20T00:56:28", "verb": "watchdog", "arg": "expand", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:56:29", "verb": "evolve", "arg": "scan", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:56:53", "verb": "conductor", "arg": "signal-check", "ok": false, "exit": 0, "err": "dispatch 返回 3（int 非0，命令自报失败）"}
+{"ts": "2026-10-20T00:56:53", "verb": "watchdog", "arg": "noise", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:56:53", "verb": "watchdog", "arg": "gain", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:56:53", "verb": "evolve", "arg": "scan", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:56:53", "verb": "evolve", "arg": "scan", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:56:54", "verb": "sizes", "arg": "", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:57:13", "verb": "watchdog", "arg": "scan", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:57:13", "verb": "watchdog", "arg": "health", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:57:14", "verb": "conductor", "arg": "assess", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:57:15", "verb": "conductor", "arg": "verify", "ok": false, "exit": 0, "err": "dispatch 返回 1（int 非0，命令自报失败）"}
+{"ts": "2026-10-20T00:57:15", "verb": "close", "arg": "status", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:57:35", "verb": "close", "arg": "__zzz_nosuch__", "ok": false, "exit": 0, "err": "dispatch 返回 1（int 非0，命令自报失败）"}
+{"ts": "2026-10-20T00:57:35", "verb": "close", "arg": "__zzz__", "ok": false, "exit": 0, "err": "dispatch 返回 1（int 非0，命令自报失败）"}
+{"ts": "2026-10-20T00:58:45", "verb": "watchdog", "arg": "expand", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:58:46", "verb": "evolve", "arg": "scan", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:59:17", "verb": "conductor", "arg": "signal-check", "ok": false, "exit": 0, "err": "dispatch 返回 3（int 非0，命令自报失败）"}
+{"ts": "2026-10-20T00:59:17", "verb": "watchdog", "arg": "noise", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:59:17", "verb": "watchdog", "arg": "gain", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:59:18", "verb": "evolve", "arg": "scan", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:59:18", "verb": "evolve", "arg": "scan", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:59:18", "verb": "sizes", "arg": "", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:59:39", "verb": "watchdog", "arg": "scan", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:59:39", "verb": "watchdog", "arg": "health", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:59:40", "verb": "conductor", "arg": "assess", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:59:52", "verb": "conductor", "arg": "rules", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:59:57", "verb": "watchdog", "arg": "expand", "ok": true, "exit": 0}
+{"ts": "2026-10-20T00:59:58", "verb": "evolve", "arg": "scan", "ok": true, "exit": 0}
+{"ts": "2026-10-20T01:00:22", "verb": "conductor", "arg": "signal-check", "ok": false, "exit": 0, "err": "dispatch 返回 3（int 非0，命令自报失败）"}
+{"ts": "2026-10-20T01:01:46", "verb": "watchdog", "arg": "expand", "ok": true, "exit": 0}
+{"ts": "2026-10-20T01:01:47", "verb": "evolve", "arg": "scan", "ok": true, "exit": 0}
+{"ts": "2026-10-20T01:02:11", "verb": "watchdog", "arg": "expand", "ok": true, "exit": 0}
+{"ts": "2026-10-20T01:02:11", "verb": "evolve", "arg": "scan", "ok": true, "exit": 0}
+{"ts": "2026-10-20T01:02:21", "verb": "conductor", "arg": "rules", "ok": true, "exit": 0}
+{"ts": "2026-10-20T01:02:21", "verb": "conductor", "arg": "rules", "ok": true, "exit": 0}
+{"ts": "2026-10-20T01:02:35", "verb": "conductor", "arg": "signal-check", "ok": true, "exit": 0}
+{"ts": "2026-10-20T01:02:36", "verb": "watchdog", "arg": "gain", "ok": true, "exit": 0}
+{"ts": "2026-10-20T01:02:36", "verb": "watchdog", "arg": "noise", "ok": true, "exit": 0}
+{"ts": "2026-10-20T01:02:36", "verb": "evolve", "arg": "scan", "ok": true, "exit": 0}
+{"ts": "2026-10-20T01:02:36", "verb": "evolve", "arg": "scan", "ok": true, "exit": 0}
+{"ts": "2026-10-20T01:02:37", "verb": "sizes", "arg": "", "ok": true, "exit": 0}

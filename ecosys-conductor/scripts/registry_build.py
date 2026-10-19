@@ -279,14 +279,44 @@ def build():
     #   它自己不承载规则、没有监测项盯它、也没有入口。等于生态只能靠"人记得"来用它。
     orphan_skills = []
     for k, v in by_skill.items():
-        if not v['rules_owned'] and not v['monitors'] and not v['commands']:
-            orphan_skills.append({
-                'skill': k,
-                'touched_rules': len(v['rules_touched']),
-                'has_skill_md': os.path.exists(os.path.join(SKILLS_ROOT, k, 'SKILL.md')),
-                'has_flow': os.path.exists(os.path.join(SKILLS_ROOT, k, 'scripts', 'flow.json')),
-                'note': '三零：不守规则 / 无监测项 / 无 tvbox 入口',
-            })
+        if v['rules_owned'] or v['monitors'] or v['commands']:
+            continue
+        # ★ S177 步7 判据修正：**显式声明了"优先用别的工具"的技能不是孤儿**。
+        #   automation-task-manager 的 SKILL.md/flow.json 开宗明义写着：
+        #   「当前可用工具中存在 automation_update（MCP scheduler-assistant）时，
+        #     所有操作必须改用该工具，不要继续执行本 skill 的脚本」。
+        #   它是**正在被替代、准备下线的技能**，不是"没人管"。
+        #   第一版判据只看"三零"，把它误报成孤儿——
+        #   **把一个有明确归宿的东西，当成被遗弃的东西，这就是假阳性。**
+        # ★ S177 步7 自查：第一版这里写 `except Exception: _alt = None`，
+        #   **是我自己往生态里塞了一个新的折叠**——"flow.json 读失败"被说成
+        #   "这个技能没声明替代工具"，于是它被当孤儿报红。
+        #   折叠扫描器当场抓到了它（信号源16 判「清理后清零=否」）——
+        #   **这恰恰证明扫描器是有效的**：连写它的人自己犯的错都能抓出来。
+        #   修法：三态分离。“未声明”是**读到了且确实没写**；"读不到"是另一种事实。
+        _alt = None          # 已读到且未声明替代工具
+        _alt_undet = False   # flow.json 读不出来（无法判定）
+        _fp = os.path.join(SKILLS_ROOT, k, 'scripts', 'flow.json')
+        if not os.path.exists(_fp):
+            _alt_undet = True
+        else:
+            try:
+                _fj = json.load(open(_fp, encoding='utf-8'))
+                _p = _fj.get('prefer_when_available') or {}
+                if _p.get('tool'):
+                    _alt = f"优先用 MCP 工具 {_p['tool']}（server={_p.get('mcp_server','?')}）"
+            except Exception:
+                _alt_undet = True
+        orphan_skills.append({
+            'skill': k,
+            'touched_rules': len(v['rules_touched']),
+            'has_skill_md': os.path.exists(os.path.join(SKILLS_ROOT, k, 'SKILL.md')),
+            'has_flow': os.path.exists(_fp),
+            'declared_alternative': _alt,
+            'alt_undetermined': _alt_undet,
+            'note': ('有显式替代路径，**不是孤儿**，应走下线流程' if _alt
+                     else '三零且无替代声明：真孤儿，须立规或接入口'),
+        })
 
     # ---- 新技能未立规：有命令入口，但 0 规则 ----
     # 这类不是"孤儿"（能被调用），但**没有任何规则约束它的行为**，
@@ -336,9 +366,17 @@ if __name__ == '__main__':
           f"  {g['orphan_rules_owner_not_registered'][:8]}")
     print(f"  无 probe 的规则: {len(g['rules_without_probe'])}  {g['rules_without_probe'][:8]}")
     print(f"  无 landing 的规则: {len(g['rules_without_landing'])}  {g['rules_without_landing'][:8]}")
-    print(f"  孤儿技能（三零）: {len(g['orphan_skills'])}")
-    for o in g['orphan_skills']:
-        print(f"     · {o['skill']}  SKILL.md={o['has_skill_md']} flow={o['has_flow']}  {o['note']}")
+    _real_orphans = [o for o in g['orphan_skills'] if not o.get('declared_alternative')]
+    _alts = [o for o in g['orphan_skills'] if o.get('declared_alternative')]
+    if _real_orphans:
+        print(f"  真孤儿（三零且无替代声明）: {len(_real_orphans)}")
+    for o in _real_orphans:
+        print(f"     · {o['skill']}  SKILL.md={o['has_skill_md']} flow={o['has_flow']}"
+              f"  ← {o['note']}")
+    if _alts:
+        print(f"  三零但有替代路径（非孤儿，走下线流程）: {len(_alts)}")
+    for o in _alts:
+        print(f"     · {o['skill']}  → {o['declared_alternative']}")
     print(f"  有命令但零规则（新技能未立规）: {len(g['skills_without_any_rule'])}")
     for o in g['skills_without_any_rule']:
         print(f"     · {o['skill']:24} 令={o['commands']:2} 监={o['monitors']}")

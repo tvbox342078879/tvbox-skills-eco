@@ -3,7 +3,7 @@
  "updated": "2026-10-19",
  "source_master": "/workspace/生态1015_TVBox生态全局规则.md",
  "stats": {
-  "total": 122,
+  "total": 130,
   "solidified": 115,
   "orphan": 0,
   "dup_candidates": 71,
@@ -3629,6 +3629,146 @@
    "primary_owner": "ecosys-conductor",
    "status": "solidified",
    "chapter": "§后台执行门禁"
+  },
+  {
+   "id": "M-L01",
+   "summary": "不许凭空生成\"资料\"：每一条产出都必须能指回原文的具体位置（文件+段落/页/时间戳）。指不回去的不许写成正文，只能写\"⚠️ 无出处（推测）\"并单列。交付时报「N 条有出处 / M 条无出处」，不许只报总数；无出处条目在成品里必须可见，不许静默删掉——删掉是另一种骗人。",
+   "chapter": "§二之一、学习工坊铁律",
+   "master_line": null,
+   "owner": [
+    "learn-hub"
+   ],
+   "primary_owner": "learn-hub",
+   "landing": [
+    {
+     "skill": "learn-hub",
+     "anchor": "SKILL.md §2.1",
+     "type": "reference"
+    }
+   ],
+   "status": "solidified",
+   "dedup_decision": "keep_in_master",
+   "probe": {
+    "skill": "learn-hub",
+    "command": "",
+    "expect": "pass",
+    "carrier": "设计原则型·文档锚点",
+    "verify_via": "人工审查（当前无自动探针；有探针前不得声称已守住）"
+   },
+   "note": "S177 步7 登记：此前仅存在于 learn-hub/SKILL.md §2.1，rules_registry 里 M-L* 为 0 条，规则纳管完全看不见它。病根原文：\"学习资料最容易出的错不是生成不了，是生成了看起来很像的东西——讲义里有这段话，但原文没有；用户拿去背，背的是错的。\"",
+   "ask": "这条资料有出处吗 / 这些内容哪来的 / 怎么保证不是编的 / 无出处的怎么标"
+  },
+  {
+   "id": "M-L02",
+   "summary": "覆盖率是分母问题，不是分子问题：分母必须来自外部——教材目录/考纲/用户给的框架/已入库的 outline。没有外部分母时，覆盖率这个数不许报，只能报\"生成了 N 条内容，未做覆盖评估\"。自动切分的树不能当作覆盖率分母，只能当\"素材里都有什么\"的概览。",
+   "chapter": "§二之一、学习工坊铁律",
+   "master_line": null,
+   "owner": [
+    "learn-hub"
+   ],
+   "primary_owner": "learn-hub",
+   "landing": [
+    {
+     "skill": "learn-hub",
+     "anchor": "SKILL.md §2.2",
+     "type": "reference"
+    }
+   ],
+   "status": "solidified",
+   "dedup_decision": "keep_in_master",
+   "probe": {
+    "skill": "learn-hub",
+    "command": "",
+    "expect": "pass",
+    "carrier": "设计原则型·文档锚点",
+    "verify_via": "人工审查（当前无自动探针）"
+   },
+   "note": "S177 步7 登记。病根原文：\"说覆盖了 90%，但没人知道分母是哪来的；分母若是模型自己编的知识点表，90% 就是自说自话。\"",
+   "ask": "覆盖率怎么算的 / 分母是哪来的 / 凭什么说覆盖了 / 资料全不全怎么判断"
+  },
+  {
+   "id": "M-L03",
+   "summary": "采集失败三态不许折叠：① 取到了（拿到且可解析）② 确定取不到（404/已删/明确拒绝）③ 无法判定（超时/412/登录墙/编码异常）。「无法判定」不许当失败，须重试或标注待人工。继承 M-R60。",
+   "chapter": "§二之一、学习工坊铁律",
+   "master_line": null,
+   "owner": [
+    "learn-hub"
+   ],
+   "primary_owner": "learn-hub",
+   "landing": [
+    {
+     "skill": "learn-hub",
+     "anchor": "SKILL.md §2.3",
+     "type": "reference"
+    }
+   ],
+   "status": "solidified",
+   "dedup_decision": "keep_in_master",
+   "probe": {
+    "skill": "learn-hub",
+    "command": "tvbox study self-check",
+    "expect": "pass",
+    "carrier": "可执行探针",
+    "verify_via": "tvbox study self-check（覆盖 404→miss / 412→unknown / 超时→unknown）"
+   },
+   "note": "S177 步7 登记。实例（S171 实测）：网盘 412 不是\"文件坏了\"，是机房 IP 被 CDN 拒——归因错，处置就全错。本条的自动探针已存在（study self-check 三态用例），故 probe 填真命令。",
+   "ask": "采集失败怎么处理 / 超时算不算失败 / 412是什么情况 / 失败了还是不知道"
+  },
+  {
+   "id": "M-L04",
+   "summary": "复式记账守恒律：任何时刻 Σ所有账户余额 按币种 = 0。不平 = 账本自身损坏，是最高优先级告警，不得当成\"某笔记错了\"轻描淡写。账户余额 = Σ借 − Σ贷（按币种分组）。冲销不改写历史：冲销 = 交换借贷方向 + 正额，原分录永不动——**改历史 = 毁账**。",
+   "chapter": "§二之二、账房司记账语义",
+   "master_line": null,
+   "owner": [
+    "eco-ledger"
+   ],
+   "primary_owner": "eco-ledger",
+   "landing": [
+    {
+     "skill": "eco-ledger",
+     "anchor": "SKILL.md §记账语义",
+     "type": "reference"
+    }
+   ],
+   "status": "solidified",
+   "dedup_decision": "keep_in_master",
+   "probe": {
+    "skill": "eco-ledger",
+    "command": "tvbox ledger reconcile",
+    "expect": "pass",
+    "carrier": "可执行探针",
+    "verify_via": "tvbox ledger reconcile（S177 步3 实测：打坏 _live_count → rc=1 报 6 项差额；恢复 → rc=0；读失败 → 「无法判定」不折 0）"
+   },
+   "note": "S177 步7 登记。此前 eco-ledger 在 rules_registry 里被提及 0 次，尽管它有 14 条命令和完整记账语义。本条是账房之所以是账房的根本——不守恒就不是账本，是流水账。",
+   "ask": "账平不平 / 余额对得上吗 / 冲销怎么做 / 为什么不能改原分录 / 账本坏了怎么发现"
+  },
+  {
+   "id": "M-L05",
+   "summary": "凭证必须在闸门关闭前落账：settle → post → close 顺序不可颠倒。close 之后再写库会被**静默拒绝**（不报错、不落库、回读为空）——这类\"写了但没写进去\"必须靠顺序保证，不能靠写后回读兜底。终验相关分录未平 → finalcheck 直接拦截。",
+   "chapter": "§二之二、账房司纪律",
+   "master_line": null,
+   "owner": [
+    "eco-ledger"
+   ],
+   "primary_owner": "eco-ledger",
+   "landing": [
+    {
+     "skill": "eco-ledger",
+     "anchor": "SKILL.md §纪律 第1条",
+     "type": "reference"
+    }
+   ],
+   "status": "solidified",
+   "dedup_decision": "keep_in_master",
+   "probe": {
+    "skill": "eco-ledger",
+    "command": "",
+    "expect": "pass",
+    "carrier": "设计原则型·文档锚点",
+    "verify_via": "人工审查（当前无自动探针；顺序错不会报错，只会静默丢账）"
+   },
+   "note": "S177 步7 登记，证据来源：eco-ledger/SKILL.md §纪律 第1条引用「L160 教训」。★ 诚实标注：**L160 的原始记录已查明不存在**（全生态 grep 只找到这一处引用，rules_registry 里也没有 L160）。故本条规则内容依据的是这一句转述，**细节无法还原**。若日后找到 L160 原始记录，须回来补齐并核对此条措辞。",
+   "ask": "凭证什么时候记 / close 之后还能写吗 / 为什么账没记上 / 顺序能不能换"
   }
  ],
  "freeze": {
