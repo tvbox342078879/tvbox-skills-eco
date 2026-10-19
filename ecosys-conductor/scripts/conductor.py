@@ -519,22 +519,64 @@ def cmd_whoami(args):
         print('用法: tvbox conductor whoami "<用户意图>"')
         return 2
     hits = []
+    # ★ S177 步5 实测修（T3）：**原实现只读 MANIFEST['commands']，完全不读技能触发词**。
+    #   实测：`whoami 做学习资料` → 「无 manifest 命中」，但 learn-hub 的 SKILL.md
+    #   description 里明写着「做学习资料」就是触发词。
+    #   根因不是"没登记"，而是**查错了地方**：manifest 的 intent 是"采集学习素材"这类
+    #   书面词，用户口语从来不这么说。用户说得出技能自己的触发词，路由却认不出——
+    #   这是路由层最刺眼的一种失效：**技能声明过的话，路由器当没听见**。
+    _man_ok = True
     try:
         d = json.load(open(MANIFEST, encoding='utf-8'))
         for c in d.get('commands', []):
             blob = c.get('intent', '') + ' ' + c.get('cmd', '')
             ov = _route_score(intent, blob)
             if ov >= ROUTE_HIT_MIN:   # 二元组重叠 + 整词包含，滤单字巧合（S135 M-R76）
-                hits.append((c.get('skill', '?'), c.get('cmd', ''), c.get('intent', ''), ov))
+                hits.append((c.get('skill', '?'), c.get('cmd', ''), c.get('intent', ''), ov, 'cmd'))
     except Exception as e:
-        print(f'（manifest 读取失败：{e}）')
+        # M-R60 三态：manifest 读失败 ≠ 命令表为空。前者输出必须显式区别于后者，
+        # 否则用户会照着"无命中"去 expand-eco 登记，而真正的原因是文件读不了。
+        _man_ok = False
+        print(f'（manifest 读取失败：{type(e).__name__}: {e}——本结果**仅含技能级触发词**，命令级一列未能核验）')
+
+    # 技能级：description 触发词（真源，与 _intents_view 同口径）
+    _skill_undet = []
+    for sk in ECO_SKILLS:
+        try:
+            terms = _skill_desc_terms(sk)
+        except Exception as e:
+            _skill_undet.append(f'{sk}({type(e).__name__})')
+            continue
+        if not terms:
+            continue          # 该技能未用显式句式声明触发词，不是"读失败"
+        blob = ' '.join(terms)
+        ov = _route_score(intent, blob)
+        if ov >= ROUTE_HIT_MIN:
+            _hit = next((t for t in terms if t and t in intent), '')
+            hits.append((sk, '', (f'触发词命中「{_hit}」' if _hit else f'触发词近义：{blob[:40]}'), ov, 'skill'))
+
+    if _skill_undet:
+        print(f'   ⚠️ {len(_skill_undet)} 个技能触发词无法核验：{", ".join(_skill_undet)}')
+
     if not hits:
-        print(f'❓ 意图「{intent}」无 manifest 命中——考虑 tvbox conductor expand-eco 登记生态空白')
-        return
+        if not _man_ok:
+            print(f'❓ 意图「{intent}」未命中——但 command manifest 读取失败，**此结论不完整**，'
+                  f'请先修 manifest 再判"生态空白"')
+            return 1
+        print(f'❓ 意图「{intent}」无命中——考虑 tvbox conductor expand-eco 登记生态空白')
+        # ★ S177 步5：原来裸 `return` → None → rc=0。这是 T1 同型第三次
+        #   （signal-check、tvbox 入口层、这里）。"没找到"不是"跑成功"：
+        #   调用方拿 rc=0 会当成"路由已经给出答案"，于是不再兜底。
+        return 2
     hits.sort(key=lambda x: -x[3])
     print(f'🎯 意图「{intent}」→ 路由建议:')
-    for s, c, it, ov in hits[:5]:
-        print(f'   [{s}] {c}   （{it}｜相关度{ov}）')
+    for s, c, it, ov, kind in hits[:5]:
+        tag = '技能级' if kind == 'skill' else '命令级'
+        if c:
+            print(f'   [{s}] {c}   （{it}｜{tag}｜相关度{ov}）')
+        else:
+            print(f'   [{s}] {it}   （{tag}｜相关度{ov}）')
+    return 0
 
 
 # ============ 需求管家层（S096）============

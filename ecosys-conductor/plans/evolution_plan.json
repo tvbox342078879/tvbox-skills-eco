@@ -223,6 +223,31 @@
         "skill": "ecosys-conductor",
         "type": "会话经验留痕缺口",
         "evidence": "④资料库经验库最新条目（2026-10-19 01:30）落后最近工作锚点（2026-10-19 16:41）**15.2 小时**（阈值 4h）——规则58：每次会话须沉淀，疑似本轮工作未进池（漏项=遗留）"
+      },
+      {
+        "skill": "legacy-watchdog",
+        "type": "backlog兑现",
+        "evidence": "[清账司派单 2026-10-27] [扩展点] 长期方向：MCP automation_update 完全替代脚本后，本技能的脚本通道可降级为兜底 ｜ sid"
+      },
+      {
+        "skill": "ecosys-conductor",
+        "type": "文档-实现漂移",
+        "evidence": "已实现 registry 但设计文档命令表未登记"
+      },
+      {
+        "skill": "ecosys-conductor",
+        "type": "会话经验留痕缺口",
+        "evidence": "③会话台账最新条目（2026-10-19 12:05）落后最近工作锚点（2026-10-19 17:02）**5.0 小时**（阈值 4h）——规则58：每次会话须沉淀，疑似本轮工作未进池（漏项=遗留）"
+      },
+      {
+        "skill": "ecosys-conductor",
+        "type": "会话经验留痕缺口",
+        "evidence": "④资料库经验库最新条目（2026-10-19 01:30）落后最近工作锚点（2026-10-19 17:02）**15.5 小时**（阈值 4h）——规则58：每次会话须沉淀，疑似本轮工作未进池（漏项=遗留）"
+      },
+      {
+        "skill": "ecosys-conductor",
+        "type": "基座折叠扫描",
+        "evidence": "未登记的折叠候选 ecosys-conductor/scripts/conductor.py:1e24dfd695（原 ecosys-conductor/scripts/conductor.py:539）：_man_ok = False——except 后 return/赋值 空态（M-R60：读失败被折叠成空态），请审计：真缺陷须修，合理折叠须登记白名单"
       }
     ]
   }
