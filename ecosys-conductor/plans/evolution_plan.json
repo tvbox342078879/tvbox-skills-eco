@@ -248,6 +248,31 @@
         "skill": "ecosys-conductor",
         "type": "基座折叠扫描",
         "evidence": "未登记的折叠候选 ecosys-conductor/scripts/conductor.py:1e24dfd695（原 ecosys-conductor/scripts/conductor.py:539）：_man_ok = False——except 后 return/赋值 空态（M-R60：读失败被折叠成空态），请审计：真缺陷须修，合理折叠须登记白名单"
+      },
+      {
+        "skill": "ecosys-conductor",
+        "type": "基座折叠扫描",
+        "evidence": "未登记的折叠候选 ecosys-conductor/scripts/conductor.py:1e24dfd695（原 ecosys-conductor/scripts/conductor.py:564）：_man_ok = False——except 后 return/赋值 空态（M-R60：读失败被折叠成空态），请审计：真缺陷须修，合理折叠须登记白名单"
+      },
+      {
+        "skill": "ecosys-conductor",
+        "type": "会话经验留痕缺口",
+        "evidence": "③会话台账最新条目（2026-10-19 12:05）落后最近工作锚点（2026-10-19 17:10）**5.1 小时**（阈值 4h）——规则58：每次会话须沉淀，疑似本轮工作未进池（漏项=遗留）"
+      },
+      {
+        "skill": "ecosys-conductor",
+        "type": "会话经验留痕缺口",
+        "evidence": "④资料库经验库最新条目（2026-10-19 01:30）落后最近工作锚点（2026-10-19 17:10）**15.7 小时**（阈值 4h）——规则58：每次会话须沉淀，疑似本轮工作未进池（漏项=遗留）"
+      },
+      {
+        "skill": "ecosys-conductor",
+        "type": "会话经验留痕缺口",
+        "evidence": "③会话台账最新条目（2026-10-19 12:05）落后最近工作锚点（2026-10-19 17:16）**5.2 小时**（阈值 4h）——规则58：每次会话须沉淀，疑似本轮工作未进池（漏项=遗留）"
+      },
+      {
+        "skill": "ecosys-conductor",
+        "type": "会话经验留痕缺口",
+        "evidence": "④资料库经验库最新条目（2026-10-19 01:30）落后最近工作锚点（2026-10-19 17:16）**15.8 小时**（阈值 4h）——规则58：每次会话须沉淀，疑似本轮工作未进池（漏项=遗留）"
       }
     ]
   }

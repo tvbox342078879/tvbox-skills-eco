@@ -106,14 +106,14 @@
       "ver_ok": 13,
       "ver_total": 13,
       "cat_biz": 100,
-      "cat_radar": 76
+      "cat_radar": 71
     },
     "metrics": {
       "ready": "13/13",
       "watchdog_ok": true,
-      "adopted": "25/33",
+      "adopted": "27/38",
       "retracted": 6,
-      "pending": 8,
+      "pending": 11,
       "decided": 2
     }
   }

@@ -515,7 +515,7 @@ def register_eco(name,trigger,desc,version='1.0.0',state='活跃',upgrade='是',
             else:
                 print(f'   ↪ 生态库更新 {name} **未确认**：{_uinfo[:120]}')
                 print(f'      台账可能已滞后（M-R40）——下次 sync-version 会重试，但本次不算完成')
-        return
+        return 1      # S177：原裸 return→rc0。语义「本次不算完成」，须显式非零
     full={'技能名':{'text':name},'路径':{'text':os.path.join(SKILLS,name)},
           '输入':{'text':'见 SKILL.md'},'输出':{'text':'见 SKILL.md'},'依赖':{'text':'library'}}
     full.update(rec)
@@ -747,7 +747,7 @@ def cmd_mine(a):
 
     if a.dry:
         print(f'\n🧪 --dry：仅审计，未落库（{len(univ)} 条可入库）')
-        return
+        return 0      # S177：--dry 仅审计，是成功的正常结束（显式 0，不靠隐式 None 偶然成立）
     # ── 落库（类型包装 + 三态）──
     db=_move_db()
     if not db:
@@ -756,7 +756,7 @@ def cmd_mine(a):
     _ex_ok, exist = _move_rows_with_id(db)   # 三态：ok=False 时**不得当空库**（否则全判新增→重复插入）
     if not _ex_ok and exist == {}:
         print('  ⛔ 招式库读取失败（无法判定既有记录）——**中止落库**防重复插入（M-R60/S088 教训）')
-        return
+        return 3      # S177：原裸 return→rc0。读库失败=无法判定(M-R60)，不是成功也不是没有数据
     recs=[]
     for tid in sorted(univ):
         d=univ[tid]; n=len(d['skills'])
@@ -942,7 +942,7 @@ def cmd_review_lend(a):
     if not gaps:
         tail = '（首轮立规：存量段全部豁免，已落基线）' if first else '——近期升级均有对照留痕'
         print(f'  ✅ 无缺口{tail}')
-        return
+        return 0      # S177：无缺口=全绿，显式 0
     for sk,head in gaps:
         print(f'  ⚠️ {sk} 升了版但无经验对照留痕：{head}')
     print(f'\n  共 {len(gaps)} 处缺口（规则57：升级前须跑 lend，升级后须回写"借鉴 T-X/不适用"）')
@@ -1200,7 +1200,11 @@ def cmd_upgrade(a):
     d=os.path.join(SKILLS,a.name)
     sk=os.path.join(d,'SKILL.md'); cl=os.path.join(d,'CHANGELOG.md')
     if not os.path.exists(sk):
-        print(f'⚠️ 技能不存在：{d}'); return
+        # ★ S177：原来写在同行 `print(...); return` —— 裸 return 隐式 rc0，
+        #   于是「技能不存在」这种明确错误被记成成功。且同行写法逃过了逐行扫，
+        #   说明"扫一遍就以为没有"本身不可靠（扫的规则漏了形态）。
+        print(f'⚠️ 技能不存在：{d}')
+        return 2      # 用法错：用户给的名字不存在（与 conductor 未知命令同口径）
     # ★ 规则57 前置：升级前经验对照（软阻断；--strict 硬阻断；--force 绕过）
     n_app=_lend_precheck(a)
     if n_app is None:
@@ -1208,7 +1212,7 @@ def cmd_upgrade(a):
     elif n_app>0 and getattr(a,'strict',False) and not getattr(a,'force',False):
         print(f'⛔ --strict：{a.name} 有 {n_app} 条可借鉴招式未确认，禁止升级。')
         print(f'   确认借鉴请加 --force；不适用请先在 CHANGELOG 声明「不适用 T-X（原因）」。')
-        return
+        return 1     # S177：原裸 return→rc0。--strict 门禁拦下，属「跑了但不通过」
     fm=parse_fm(sk)
     old=fm.get('version','1.0.0'); new=bump(old)
     # 更新 frontmatter version
@@ -1297,8 +1301,18 @@ DISPATCH={'recurring':cmd_recurring,'solved':cmd_solved,'create':cmd_create,'rev
 def dispatch(argv=None):
     """供调度器 tvbox 在同进程内直接调用，共享 core 缓存与并行池。"""
     a=AP.parse_args(argv)
-    DISPATCH[a.cmd](a)
+    # ★ S177：原来不接返回值 → 上面所有命令的 return 1/2/3 **全被丢进垃圾桶**，
+    #   入口一律 exit=0。这是「判定算对了却没交到下游」的同族错误里最典型的一处：
+    #   link.py 早修成了 `return DISPATCH[...](a)` 并写注释"一句 return 就够"，
+    #   而这里同一个位置一直是裸调用——**同类缺陷补了一处漏了另一处**。
+    #   入口 `_as_exit_code` 已能处理 bool/int，这里只负责把值送出去。
+    return DISPATCH[a.cmd](a)
 
-def main(): dispatch()
+def main():
+    # ★ S177：`dispatch()` 的返回值原来被丢弃 → 直接 `python3 xxx.py` 跑时恒 rc=0。
+    #   同一处病在 dispatch 里修过，但**出口这一层没修，等于白修**——
+    #   经 `tvbox` 入口调用时值能传出去，直接跑脚本时不能，两条路径行为不一致。
+    #   M-R63 的变体：修了上游、漏了下游，检测时只看上游就会以为已经好了。
+    return dispatch()
 
-if __name__=='__main__': main()
+if __name__=='__main__': sys.exit(main() or 0)

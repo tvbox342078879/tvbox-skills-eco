@@ -466,6 +466,17 @@ def _route_score(user_input, blob):
     # 否则"监测"会让 probe-hub（"上游监测"里的子串）与 tvbox-inspect（独立词项）同分，
     # 排序退化成字典序把用户推给错误技能。
     ui = re.sub(r'[^\u4e00-\u9fffA-Za-z0-9]', '', user_input)
+    # ★ S177 步5 实测修（假阳性）：**bigram 通路对 ASCII 乱码有天然噪声**。
+    #   实测：`whoami __nosuch_smoke_xyz__` → 命中 5 个技能，rc=0。
+    #   拆开看是 `sm/mo/ok/ke`、`no/os/su` 这些跨词边界碎片与词表撞上了：
+    #     「tvbox watchdog monitors / add-monitor」里的 `mo`、`on`、`it` 全在。
+    #   中文 bigram 有边界约束（2 字≈1 词素），ASCII 没有——`smoke` 的 `sm`
+    #   和 `monitor` 的 `mo` 毫无关系，却能凑够 ROUTE_HIT_MIN=2。
+    #
+    #   判据：**必须至少有一个「≥2 字的真实词项」整词出现在输入里**，才允许计分。
+    #   纯 bigram 重叠不足以单独构成命中。这条不是调阈值（调 3 只会抬高噪音线，
+    #   长乱码照样过），而是把「碎片重合」和「词项命中」区分开——
+    #   前者是巧合，后者才是用户真的说了这个词。
     # ★ S157 动作归一：先在**归一化副本**上做同义动词替换（挖→采集、查查→检查、
     #   治→处置…），让用户口语能撞上词表里已有的标准动作词。原文不改，故
     #   `_is_adopted` 等造脏面不受影响（M-R35）。
@@ -519,19 +530,33 @@ def cmd_whoami(args):
         print('用法: tvbox conductor whoami "<用户意图>"')
         return 2
     hits = []
-    # ★ S177 步5 实测修（T3）：**原实现只读 MANIFEST['commands']，完全不读技能触发词**。
-    #   实测：`whoami 做学习资料` → 「无 manifest 命中」，但 learn-hub 的 SKILL.md
-    #   description 里明写着「做学习资料」就是触发词。
-    #   根因不是"没登记"，而是**查错了地方**：manifest 的 intent 是"采集学习素材"这类
-    #   书面词，用户口语从来不这么说。用户说得出技能自己的触发词，路由却认不出——
-    #   这是路由层最刺眼的一种失效：**技能声明过的话，路由器当没听见**。
+    # ★ S177 步5 实测修（假阳性）：`whoami __nosuch_smoke_xyz__` 原来命中 5 个技能 rc=0。
+    #   bigram 通路把 `smoke` 的 `sm` 和 `monitor` 的 `mo` 算成一回事，凑够 2 分就「命中」。
+    #   中文 bigram 有词素边界，ASCII 没有——所以必须**要求至少一个真实词项整词命中**，
+    #   这是「碎片巧合」与「用户真说了这个词」的分界，不是抬高阈值。
+    #   只在本函数加闸，不动 _route_score：那个函数服务全局排序，改它会连带影响已调好的推举结果。
+    def _real_hit(blob):
+        """blob 里是否有 ≥2 字的词项（中文）或 ≥4 字符的词（ASCII）整词出现在意图里。
+
+        中文 2 字起（`监测` 是有效词）；ASCII 4 字符起（`tv`/`api` 这种太短，噪音大）。
+        """
+        u = re.sub(r'[^\u4e00-\u9fffA-Za-z0-9]', '', intent)
+        for t in blob.split():
+            t = re.sub(r'[^\u4e00-\u9fffA-Za-z0-9]', '', t)
+            if not t:
+                continue
+            need = 4 if t.isascii() else 2
+            if len(t) >= need and t in u:
+                return True
+        return False
+
     _man_ok = True
     try:
         d = json.load(open(MANIFEST, encoding='utf-8'))
         for c in d.get('commands', []):
             blob = c.get('intent', '') + ' ' + c.get('cmd', '')
             ov = _route_score(intent, blob)
-            if ov >= ROUTE_HIT_MIN:   # 二元组重叠 + 整词包含，滤单字巧合（S135 M-R76）
+            if ov >= ROUTE_HIT_MIN and _real_hit(blob):
                 hits.append((c.get('skill', '?'), c.get('cmd', ''), c.get('intent', ''), ov, 'cmd'))
     except Exception as e:
         # M-R60 三态：manifest 读失败 ≠ 命令表为空。前者输出必须显式区别于后者，
@@ -551,7 +576,7 @@ def cmd_whoami(args):
             continue          # 该技能未用显式句式声明触发词，不是"读失败"
         blob = ' '.join(terms)
         ov = _route_score(intent, blob)
-        if ov >= ROUTE_HIT_MIN:
+        if ov >= ROUTE_HIT_MIN and _real_hit(blob):
             _hit = next((t for t in terms if t and t in intent), '')
             hits.append((sk, '', (f'触发词命中「{_hit}」' if _hit else f'触发词近义：{blob[:40]}'), ov, 'skill'))
 
@@ -8670,16 +8695,25 @@ DISPATCH = {'plan': cmd_plan, 'sprint': cmd_sprint, 'speed': cmd_speed,
 
 
 def _rules_fn():
-    """规则纳管命令（S109）——独立模块 rules_cmd.py，惰性加载（M-R46）。"""
+    """规则纳管命令（S109）——独立模块 rules_cmd.py，惰性加载（M-R46）。
+
+    ★ S177：原来 `rules_cmd.main(rest)` **不接返回值**，且 except 分支也只打印。
+      后果：rules_cmd 内部把「注册表不可用」改成 return 3 了，走到这里又被丢掉，
+      conductor 拿到 None → rc=0。**上游修好了、这一层没修，等于没修**——
+      这正是今天反复出现的同一个模式（evolve.dispatch / link.dispatch / 本处）。
+      另一面：except 只 print 不返回 → 模块连导入都失败（真严重故障），对外仍是"成功"。
+      两处都补齐，口径与 conductor 其余命令一致：True/None→0、False→1、int 原样。
+    """
     def _run(rest):
         try:
             import sys as _sys
             if os.path.dirname(os.path.abspath(__file__)) not in _sys.path:
                 _sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
             import rules_cmd
-            rules_cmd.main(rest)
+            return rules_cmd.main(rest)
         except Exception as e:
             print(f'❌ rules 模块加载/执行失败：{type(e).__name__}: {e}')
+            return 1      # 脚本自身异常，与「命令跑了但不通过」区分：这里是根本没跑起来
     return _run
 
 

@@ -1316,6 +1316,11 @@ def dispatch(argv=None):
     #   一句 `return` 就够，别在别处再加一层归一（入口 `_as_exit_code` 已经处理 bool/int）。
     return DISPATCH[a.cmd](a)
 
-def main(): dispatch()
+def main():
+    # ★ S177：`dispatch()` 的返回值原来被丢弃 → 直接 `python3 xxx.py` 跑时恒 rc=0。
+    #   同一处病在 dispatch 里修过，但**出口这一层没修，等于白修**——
+    #   经 `tvbox` 入口调用时值能传出去，直接跑脚本时不能，两条路径行为不一致。
+    #   M-R63 的变体：修了上游、漏了下游，检测时只看上游就会以为已经好了。
+    return dispatch()
 
-if __name__=='__main__': main()
+if __name__=='__main__': sys.exit(main() or 0)

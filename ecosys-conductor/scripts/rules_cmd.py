@@ -97,7 +97,7 @@ def cmd_overview():
     st, reg = _load()
     if st != 'ok':
         print(f"❌ 规则注册表不可用（状态={st}）——无法判定（勿当'无规则'，M-R60）")
-        return
+        return 3     # S177：读不出=无法判定，不是成功也不是「没有规则」
     s = _live_stats(reg)
     print(f"📋 规则纳管总览  v{reg['version']} · {reg['updated']}")
     print(f"   总数 {s['total']} ｜ 已固化 {s['solidified']} ｜ 孤岛 {s['orphan']} ｜ 去重候选 {s['dup_candidates']}")
@@ -114,7 +114,7 @@ def cmd_overview():
 def cmd_detail(ids):
     st, reg = _load()
     if st != 'ok':
-        print(f"❌ 规则注册表不可用（状态={st}）——无法判定"); return
+        print(f"❌ 规则注册表不可用（状态={st}）——无法判定"); return 3   # S177：读不出=无法判定(M-R60)，不是成功也不是「没有」
     idx = {r["id"]: r for r in reg["rules"]}
     for rid in ids:
         r = idx.get(rid)
@@ -147,7 +147,7 @@ def cmd_detail(ids):
 def cmd_orphan():
     st, reg = _load()
     if st != 'ok':
-        print(f"❌ 规则注册表不可用（状态={st}）"); return
+        print(f"❌ 规则注册表不可用（状态={st}）"); return 3   # S177：读不出=无法判定(M-R60)，不是成功也不是「没有」
     orph = [r for r in reg["rules"] if r["status"] == "orphan"]
     if not orph:
         print("✅ 无孤岛规则"); return
@@ -159,7 +159,7 @@ def cmd_orphan():
 def cmd_owner(skill):
     st, reg = _load()
     if st != 'ok':
-        print(f"❌ 规则注册表不可用（状态={st}）"); return
+        print(f"❌ 规则注册表不可用（状态={st}）"); return 3   # S177：读不出=无法判定(M-R60)，不是成功也不是「没有」
     rs = [r for r in reg["rules"] if r["primary_owner"] == skill]
     if not rs:
         print(f"「{skill}」名下无规则（或技能名拼写有误）"); return
@@ -171,7 +171,7 @@ def cmd_owner(skill):
 def cmd_dup():
     st, reg = _load()
     if st != 'ok':
-        print(f"❌ 规则注册表不可用（状态={st}）"); return
+        print(f"❌ 规则注册表不可用（状态={st}）"); return 3   # S177：读不出=无法判定(M-R60)，不是成功也不是「没有」
     ds = [r for r in reg["rules"] if r.get("dedup_decision") == "keep_in_skill"]
     print(f"📦 去重候选 {len(ds)} 条（技能已逐字固化 → 总册可精简）：")
     for r in ds:
@@ -182,7 +182,7 @@ def cmd_scene():
     """--scene：按使用场景编组（S128 P004——消除"69 条挤一章"假分类，按"什么时候用"取规则）。"""
     st, reg = _load()
     if st != 'ok':
-        print(f"❌ 注册表不可用（{st}）"); return
+        print(f"❌ 注册表不可用（{st}）"); return 3   # S177：读不出=无法判定(M-R60)，不是成功也不是「没有」
     scenes = {
         '开工前':      lambda r: any(k in r['summary'] for k in ('预载','经验','开工','术语','路由','触发','意图','黑话','需求')),
         '写库/留痕':   lambda r: any(k in r['summary'] for k in ('写库','留痕','append','账本','回读','merge','PropertyValue','批次','写入')),
@@ -232,7 +232,7 @@ def cmd_check():
     """三方一致性：注册表 vs 总册 vs 技能实况。"""
     st, reg = _load()
     if st != 'ok':
-        print(f"❌ 规则注册表不可用（状态={st}）"); return
+        print(f"❌ 规则注册表不可用（状态={st}）"); return 3   # S177：读不出=无法判定(M-R60)，不是成功也不是「没有」
     issues = []
     # 1) 总册编号集 vs 注册表
     #    **S148 修**：本册自 S109 起已降级为**索引**——§七之二 明确写了「逐条索引不再手抄」，
@@ -325,6 +325,12 @@ def cmd_check():
         print(f"  💾 已留痕 plans/rules_check_log.json")
     except Exception as e:
         print(f"  （留痕失败：{e}）")
+
+    # ★ S177：本函数原来**结尾没有 return** —— 全绿时靠"隐式 None 被入口归一成 0"偶然正确，
+    #   但查出 issues 时同样落到函数末尾，也是 0。等于**校验说有问题，退出码说没问题**。
+    #   这正是 verify 门禁最怕的那种：门上的红灯不接到电闸上。
+    # 口径：0 全过 / 3 跑完了但查出问题（与 signal-check 一致，刻意区别于 1=脚本自身崩）
+    return 3 if issues else 0
 
 
 def cmd_scope():
@@ -450,7 +456,7 @@ def cmd_ask(query):
     st, reg = _load()
     if st != 'ok':
         print(f"❌ 规则注册表不可用（状态={st}）——**无法判定**，不代表没有相关规则")
-        return 1
+        return 3     # S177：与其它「注册表不可用」统一（无法判定≠不通过）
     q = (query or '').strip()
     if not q:
         print("用法: rules --ask \"<你的问题>\"")
@@ -538,7 +544,7 @@ def cmd_ask_coverage():
     """
     st, reg = _load()
     if st != 'ok':
-        print(f"❌ 规则注册表不可用（状态={st}）"); return 1
+        print(f"❌ 规则注册表不可用（状态={st}）"); return 3   # S177：无法判定统一为 3
     rs = reg['rules']
     tot = len(rs)
     miss = [r['id'] for r in rs if not (r.get('ask') or '').strip()]
@@ -611,7 +617,7 @@ def cmd_ask_golden():
     """
     st, reg = _load()
     if st != 'ok':
-        print(f"❌ 规则注册表不可用（状态={st}）"); return 1
+        print(f"❌ 规则注册表不可用（状态={st}）"); return 3   # S177：无法判定统一为 3
     idx = {r['id']: r for r in reg['rules']}
     score, MIN = _score_fn()
     if score is None:
@@ -762,19 +768,30 @@ def cmd_relapse():
 
 
 def main(argv):
+    """规则纳管命令入口。
+
+    ★ S177 批量修（同一模式扫出）：**原实现绝大多数分支是裸调用 `cmd_xxx()`，
+    返回值全被丢弃** → 无论命令内部怎么 `return 3`，出口一律 rc=0。
+    只有 relapse/scope 两个分支恰好写了 return，于是同一个文件里
+    「有的命令退出码可信、有的不可信」，比全都没修更难排查。
+
+    这与 `evolve.dispatch`、`link.dispatch` 是同一处病：**判定算对了，没交到下游**。
+    本文件内 6 处「规则注册表不可用」尤其危险——注册表坏了，命令却说"成功"，
+    任何按 rc 判断的门禁都会把它记成通过。
+    """
     if not argv:
-        cmd_overview(); return
+        return cmd_overview()
     a = argv[0]
     if a == "check":
-        cmd_check()
+        return cmd_check()
     elif a == "relapse":
         return cmd_relapse()
     elif a == "--scope":
         return cmd_scope()
     elif a == "--orphan":
-        cmd_orphan()
+        return cmd_orphan()
     elif a == "--scene":
-        cmd_scene()
+        return cmd_scene()
     elif a == "--ask":
         if len(argv) < 2:
             print("用法: rules --ask \"<你的问题>\"（按用户的话找规则）"); return 1
@@ -784,17 +801,19 @@ def main(argv):
     elif a == "--ask-golden":
         return cmd_ask_golden()
     elif a == "--dup":
-        cmd_dup()
+        return cmd_dup()
     elif a == "--owner":
         if len(argv) < 2:
-            print("用法: rules --owner <技能名>"); return
-        cmd_owner(argv[1])
+            print("用法: rules --owner <技能名>"); return 1
+        return cmd_owner(argv[1])
     elif a.startswith("-"):
         print(f"未知选项 {a}｜可用: --ask \"<问题>\" / --ask-coverage / --orphan / "
               f"--dup / --owner <skill> / --scope / check / relapse")
+        return 2      # 用法错，与 conductor 未知命令同口径
     else:
-        cmd_detail(argv)          # 其余当规则编号
+        return cmd_detail(argv)          # 其余当规则编号
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    # 原写 `main(sys.argv[1:])`，返回值同样被丢 → 直接跑本文件恒 rc=0
+    sys.exit(main(sys.argv[1:]) or 0)
