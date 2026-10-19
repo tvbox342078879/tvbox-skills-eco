@@ -1,0 +1,272 @@
+{
+  "issues": [
+    {
+      "id": "P001",
+      "title": "73条名义承载规则三选一分类（挂audit承载/标注间接/清理池）",
+      "from": "S121首次大复盘",
+      "next": "下一环节D+7规则承载面",
+      "status": "done",
+      "opened": "2026-10-17",
+      "closed": "2026-10-17",
+      "note": "S130施工:80条规则11场景分桶全覆盖(其他归零)+30条显式分桶note记S130+总册补M-R73索引行+三方check一致"
+    },
+    {
+      "id": "P002",
+      "title": "sync-version 工具化 M-R71 四面一键同步",
+      "from": "S121施工图v2",
+      "next": "下一环节工具施工",
+      "status": "done",
+      "opened": "2026-10-17",
+      "closed": "2026-10-17",
+      "note": "S127施工完成:sync-version四面一键(CHANGELOG缺条目拒升),1.51.0版本即由工具实测同步"
+    },
+    {
+      "id": "P003",
+      "title": "立法冻结线（registry 条目冻结+变更须retract）",
+      "from": "S121施工图v2",
+      "next": "下一环节立法",
+      "status": "done",
+      "opened": "2026-10-17",
+      "closed": "2026-10-17",
+      "note": "S128施工:registry加freeze声明(frozen since 2026-10-17;变更须note记会话号,撤回走M-R29)"
+    },
+    {
+      "id": "P004",
+      "title": "rules --scene 场景编组（78条挤一章假分类）",
+      "from": "S121施工图v2",
+      "next": "下一环节规则面",
+      "status": "done",
+      "opened": "2026-10-17",
+      "closed": "2026-10-17",
+      "note": "S128施工:rules --scene 九场景编组(开工前/写库/匹配/检测/联动/复盘/评估/技能治理/云端容错),50/80已入桶,余30条随P001批量分类细化"
+    },
+    {
+      "id": "P005",
+      "title": "watchdog 20命令收敛4入口（SKILL 19KB→12KB）",
+      "from": "S121施工图v2",
+      "next": "下一环节技能瘦身",
+      "status": "done",
+      "opened": "2026-10-17",
+      "closed": "2026-10-17",
+      "note": "S133施工:watchdog 27命令收敛为4入口(scan巡检/report报告/trend趋势/admin运维)，旧27名全保留为别名零破坏；清掉dispatch表20个指向不存在函数的死键；元能力链5.5KB外置docs/manual_元能力链.md；SKILL 19.0→12.0KB；27/27全量回归通过+tvbox run组合链实测正常"
+    },
+    {
+      "id": "P006",
+      "title": "ECO_SKILLS 双定义归一（conductor list vs inspect set）",
+      "from": "S123双副本盘点",
+      "next": "下一环节单一事实源",
+      "status": "done",
+      "opened": "2026-10-17",
+      "closed": "2026-10-17",
+      "note": "S127归一:唯一正本eco_skills.json(conductor list+inspect set共读,双定义各自演化风险消除,路径修复后双端9技能一致)"
+    },
+    {
+      "id": "P007",
+      "title": "monitors.json 双副本归一（watchdog版 vs 监察司版三方消费）",
+      "from": "S122收口连锁",
+      "next": "下一环节单一事实源",
+      "status": "done",
+      "opened": "2026-10-17",
+      "closed": "2026-10-17",
+      "note": "S132施工:watchdog版降级为指针(superseded_by+monitors空,原18条为inspect 28条真子集且零代码读取)；立M-R74登记册唯一正本(第81条)+信号源26副本复活(探针26/26)+入技能治理桶+总册索引；三方check一致"
+    },
+    {
+      "id": "P008",
+      "title": "hub(52.1KB)/interface(57.0KB) SKILL 瘦身至≤40KB",
+      "from": "S121体积盲区",
+      "next": "下一环节瘦身",
+      "status": "done",
+      "opened": "2026-10-17",
+      "closed": "2026-10-17",
+      "note": "S130施工:hub 52.3→39.8KB(8.10/8.13/8.15/8.17/6.5/8.3c/8.6改索引制+铁律抄本删+命令表去重)；interface 57.0→37.3KB(6.5改索引+8节操作手册外置docs/)；生态9技能9/9全部≤40KB"
+    },
+    {
+      "id": "P009",
+      "title": "闭环类规则补用量验收判据",
+      "from": "S123第四层",
+      "next": "下一环节规则面",
+      "status": "done",
+      "opened": "2026-10-17",
+      "closed": "2026-10-17",
+      "note": "S128施工:M-R67/68/72/73补usage_verdict用量验收判据(行数单调/命中≥1条每意图/备份<24h/open下降)"
+    },
+    {
+      "id": "P010",
+      "title": "bak-sync：SRC→BAK备用库540行补同步+入库自动钩子",
+      "from": "S125联动复盘",
+      "next": "待用户拍板批量写",
+      "status": "done",
+      "opened": "2026-10-17",
+      "closed": "2026-10-17",
+      "note": "S129施工:540行补写0失败BAK537→1077+BAK补内容分级/分类两字段同构+ingest自动钩子+link.py baksync独立入口(幂等实测)+SKILL.md登记"
+    },
+    {
+      "id": "P011",
+      "title": "SRC 状态终态化（待查/有效/失效枚举+测活回写）",
+      "from": "S125联动复盘",
+      "next": "下一环节业务面",
+      "status": "done",
+      "opened": "2026-10-17",
+      "closed": "2026-10-17",
+      "note": "S134施工:源库844条终态化(测活479条→正常433/停用46，csp类名365条→新增不适用选项归终态)，悬空归零；probe_src.py加--write回写(测活即落库)；立M-R75状态终态化(第82条)+信号源27未终态报警(探针27/27)；补watchdog 6条铁律行；三方check一致"
+    },
+    {
+      "id": "P012",
+      "title": "ingest 自动回写 ECO（去掉暂不自动）",
+      "from": "S125联动复盘",
+      "next": "下一环节业务面",
+      "status": "done",
+      "opened": "2026-10-17",
+      "closed": "2026-10-17",
+      "note": "处置澄清:ECO库定位=技能登记非动作日志(10行技能档案);ingest后已有规则47自动刷快照+台账会话层登记,动作日志职责由③台账承担——非缺失,重新定义后 wontfix"
+    },
+    {
+      "id": "P013",
+      "title": "快照BAK行降权标注（停更于10-13）",
+      "from": "S125联动复盘",
+      "next": "当场",
+      "status": "done",
+      "opened": "2026-10-17",
+      "closed": "2026-10-17",
+      "note": "快照BAK行加'同步未接线(停更风险,P010待bak-sync),非实时备份'标注"
+    },
+    {
+      "id": "P014",
+      "title": "闭环判据实测达成（预载2.0条/意图≥1）",
+      "from": "S123/S124",
+      "next": "已达成",
+      "status": "done",
+      "opened": "2026-10-17",
+      "closed": "2026-10-17",
+      "note": "S123 bigram化后实测2.0条/意图≥1判据,S124入waste④面板常设盯防"
+    },
+    {
+      "id": "P015",
+      "title": "probe/evolve/blk/core/link 注释收窄",
+      "from": "S123/S124",
+      "next": "已完成",
+      "status": "done",
+      "opened": "2026-10-17",
+      "closed": "2026-10-17",
+      "note": "S124五处注释收窄(probe/evolve/blk/core/link):仅同进程共享,跨技能CLI独立实例"
+    },
+    {
+      "id": "P016",
+      "title": "M-R114 判据3 空转：probe.py 五处 ThreadPoolExecutor 直收 --workers（默认12/兜底12/min16），未经 resolve_workers；传30就真开30线程打公网站点",
+      "from": "S111 用户指令「查看py写源，看看能不能触发并发」",
+      "next": "逐处改 resolve_workers('B')（上限6）或整体换 run_bounded；改完用 audit_concurrency 复核",
+      "status": "done",
+      "opened": "2026-10-18",
+      "owner": "probe-hub",
+      "due": "2026-10-25",
+      "note": "S163 已修：probe.py 9 处裸池全部改走 run_bounded，_mk_pool 函数整体删除。实测 grep 'ThreadPoolExecutor(' probe.py = 0 处；audit_concurrency 全库 86 个 .py 违规 0 处",
+      "closed": "2026-10-19"
+    },
+    {
+      "id": "P017",
+      "title": "audit_concurrency.py 整文件放行：:69 以「文件内出现过 from concurrency import」判 uses_unified，probe.py 因顶部一句只用于 _mk_pool 的 import 被判 0 违规",
+      "from": "S111 同上",
+      "next": "放行判据下沉到调用点：逐个 ThreadPoolExecutor 检查其 max_workers 实参来源，取消文件级白名单",
+      "status": "done",
+      "opened": "2026-10-18",
+      "owner": "tvbox-source-hub",
+      "due": "2026-10-25",
+      "note": "S163 已修：废除整文件放行，改 AST 逐处查（_pool_ctor_lines 找真正构造 ThreadPoolExecutor/ProcessPoolExecutor 的 Call 节点）。实测 audit_concurrency 扫描 86 个 .py：违规 0 / 待确认 0 / 涉及 0 文件；受控单测含「引了 concurrency 仍报」真阳性",
+      "closed": "2026-10-19"
+    },
+    {
+      "id": "P018",
+      "title": "写源线开通：源无处落脚——①spider_verify 产物只落 /tmp（关机即失）②源库无真 py 源存放格式（12 条『py 形态』实为 drpy2.min.js 的 js 源）③probe-hub 有触发词「帮我写个源」但无写源命令入口",
+      "from": "S161 用户指令「开」（承接 S148 写源线首次跑通 + 用户问『昨天遮天法有啥借鉴』）",
+      "next": "①定存放目录（建议 probe-hub/sources/ 或成品库单列，须与 §可进包 口径对齐）②定 py 源在源库的字段落法（体系/可进包/源类型 取值）③加 `tvbox probe forge` 或等价入口，把 forge→verify 串成一条命令",
+      "status": "open",
+      "opened": "2026-10-19",
+      "owner": "probe-hub",
+      "due": "2026-10-26",
+      "note": "S148 已实测跑通（api.yyzy-tv.vip → spider.py → livecheck --spider 7/7 全过：58分类/翻页无重叠/84集明细一致/播放 HTTP 206 m3u8/搜索 20 条），但产物在 /tmp/forge/spider.py，未入任何库。今天 grep 全账（flow.json + issues_ledger）搜 写源/spider/遮天/破甲 = 0 命中，说明这条线一直是『有动作、无账目、无落点』。另记：S161 复测确认遮天法 v3.1 框架本体不可用（10 项宣称能力 7 项无调用点、23 个配置段 4 段从未被读），故本账只承接『写源能力』，不承接『引进框架』。"
+    },
+    {
+      "id": "P019",
+      "title": "台账回写线的三个未收尾缺口：①`sync-version` 硬编码 ecosys-conductor 自己的 record_id，其余 10 个技能只能走批量入口 ②插件市场技能（library 等无 CHANGELOG）在 `collect()` 里被过滤，其云端版本**从未被任何工具核对** ③★S169 实测：`tvbox log` 写台账后**不自动过账**，必须人工 `ledger post` 补分录——两步之间台账实际数必然比账房总账多 1，于是 `finalcheck` 卡口② 在正常操作顺序下**每次都会报「不符 1 户」**。本轮连着撞了两次（先补 WO-S169b-台账1，记完 S131 又冒 WO-S169c-台账1），说明这不是偶发时差，是**结构性的两处记同一件事**（M-R38 单一事实源的反例）。",
+      "from": "S162 用户指令「还在？」续跑收尾（承接 P018 写源线，本条为 S162 实测撞出的边界）",
+      "status": "done",
+      "owner": "ecosys-conductor",
+      "due": "2026-10-26",
+      "note": "S169 追加缺口③的实测证据：本会话 `tvbox ledger finalcheck` 连续两轮 🚫②账实差额 不符 1 户，每次成因都是「刚记的台账还没过账」。可用 writeoff/post 人工抹平，但只要还允许 `tvbox log` 与 `ledger post` 各写各的，这个差额就会无限复现。建议方向：让 `tvbox log` 落台账时同笔自动生成总账分录（一次操作、两处一致），或让 `reconcile` 把「台账条目尚无对应凭证」单列成**待过账**而不是「账实不符」。\n\n★ S175 已闭环缺口③（B 法）：`tvbox log` 落台账后**同笔投递** `eco-ledger/scripts/pending_post.json`，账房 `reconcile` 开头自动消费（`_drain_pending_post`）。实测端到端：log 写 S134 → 投递 LOG-S134 → reconcile 打印「📮 待过账消费：入账 1 笔」，且**「会话台账 账实不符」不再出现**（原文每轮必报）。另改 reconcile 口径：账账线（环比）不再写「确认有凭证支撑」而是「仅供参考·非结论」，账实线才是结论——原来同一份输出两套标准。\n投递用「投递而非直调」：源枢库不硬依赖账房，账房挂了台账照写；队列损坏时不覆盖（防吞待办）；post 本身幂等，重放不记双账。注入回归 3/3 真抓住（基线真入账 / post空操作被抓 / 队列不清被抓）。\n仍未做：①②（sync-version 硬编码 record_id、插件市场技能版本无人核对）。",
+      "closed": "2026-10-19"
+    },
+    {
+      "id": "P020",
+      "title": "成品源库 1 条源类型无法判定：🌻全民视界🌻（www.cmov.cn）HTTP 301→HTTPS 后 502 Bad Gateway。按 M-R60 保持空值不猜填，待服务恢复后实测补录",
+      "from": "S162 用户指令「还有没分类的线路？」→「3」→「好」（94 条实测归类收尾，99/100 已补，仅此 1 条留白）",
+      "status": "done",
+      "owner": "probe-hub",
+      "due": "2026-11-02",
+      "closed": "2026-10-19",
+      "note": "S164 实测根因非服务挂：库坐标协议陈旧。原 api接口=http://www.cmov.cn/api.php/provide/vod/ 已 301 永久重定向到 https。实测 https 三次均 200（1.9/1.0/1.6s）、ac=videolist&pg=1 返 260KB·89832条·4492页、首集 m3u8 200 → 已改云端成品源库 record_id=TiJLBoyeeRBJ5EMruzrwno 的 api接口为 https 并写入测活证据，写后回读确认。归类按 classify_site: provide/vod → 采集系"
+    },
+    {
+      "id": "P021",
+      "title": "whoami 无命中措辞误导：打印「意图X 无 manifest 命中」，读者当成「没这个技能」，实为「只查了manifest没查触发词」",
+      "from": "S175 用户指令「单独提的这个事放进历史遗留」",
+      "status": "open",
+      "owner": "ecosys-conductor",
+      "due": "2026-11-02",
+      "note": "属三态折叠 M-R60 轻量版：把「我查的东西里没有」写成了「没有这个技能」。实测『帮我做个学习资料』时 learn-hub 有79个触发词且逐字包含『做学习资料』，whoami 却报无manifest命中。改法：措辞分三态——①查了哪些源 ②在各源查到什么 ③没查到≠不存在。同时 whoami 应改为读 _intents_view() 而非只读 manifest"
+    },
+    {
+      "id": "P022",
+      "title": "回写账户库有三份实现只写了一份：sync-versions / reconcile 记完分录不回写，balance 每次都报「账册不符」",
+      "from": "S176 账本自净暴露（5 处账册不符逐笔追查）",
+      "status": "done",
+      "owner": "eco-ledger",
+      "due": "2026-10-19",
+      "note": "实证：AUTO-VER-10192007 把 版本·eco-ledger 从 10202 推到 10203，分录记了、账面涨了，账户库那行没人改。三条写记账结果的路径（settle/sync-versions/reconcile）只有 settle 回写。已提成 sync_registered_balances() 三处共用（M-R38：回写只许一个实现）。修复后 sync-versions 实测打印「登记回写 版本·eco-ledger: 10203 → 10204」。"
+    },
+    {
+      "id": "P023",
+      "title": "make_entry 只校验币种名合法，不校验账户自身币种：错币种分录能写进去且不报错",
+      "from": "S176 账册不符追查（产能·治理会话 记录数-1 / 事项数+2）",
+      "status": "done",
+      "owner": "eco-ledger",
+      "due": "2026-10-19",
+      "note": "S165-LOG-119-CLAIM 拿「记录数」借记「产能·治理会话」（该户是事项数）。写进去了、试算还平（记录数整体归零），该户从此挂记录数-1，全程无报错。已把校验放 post()（唯一入口，绕开 make_entry 也拦得住）。★ 顺带踩到死锁：加校验后连冲销该错账也被拒，M-R29 的纠错路径被堵死——故 post 对「冲销」放行币种校验但强制告警。"
+    },
+    {
+      "id": "P024",
+      "title": "多币种对价户被 sum() 压成一个假数：balance 显示 -125730（四币种硬加），且这个假数被回写进账户库，永远显示对得上",
+      "from": "S176 平衡表核查",
+      "status": "done",
+      "owner": "eco-ledger",
+      "due": "2026-10-19",
+      "note": "期初·建账基准 是每笔分录的对手方，必然装记录数/版本号/事项数/分数四种币种。原 balance 与 settle 一律 sum(b.values())。这是 M-R38 最隐蔽的一种：不是两份实现，是一处实现本身不成立。已引入 COUNTERPARTY='*' 声明，balance 按币种分行、sync_registered_balances 不对多币种户回写。"
+    },
+    {
+      "id": "P025",
+      "title": "科目表漏 10 个版本户：INITIAL_ACCOUNTS 只硬编码 1 个，version_accounts() 动态生成 11 个，币种校验对 10/11 空转",
+      "from": "S176 币种校验上线后自查",
+      "status": "done",
+      "owner": "eco-ledger",
+      "due": "2026-10-19",
+      "note": "acct_currency_map() 原只读 INITIAL_ACCOUNTS，于是那 10 个版本户被当 ghost 放行——校验看着生效，实际对 10/11 什么都没管。已合并两处声明，以 version_accounts() 为版本户唯一来源。"
+    },
+    {
+      "id": "P026",
+      "title": "version_guard 把「生态库未登记」当「一致」：status 停在初值 ok，结论行还说「13 个全部一致」",
+      "from": "S176 finalcheck ③ 分母漂移追查",
+      "status": "done",
+      "owner": "ecosys-conductor",
+      "due": "2026-10-19",
+      "note": "collect() 里 `elif v_eco and ...`——v_eco 为 None 时整条短路，status 停在 'ok'。automation-task-manager 云端压根没这一行却算 ✅。这是 M-R60「读不到/没有 ≠ 对」的第三次同形复发。已单列 unregistered 状态、计入分母、计为不过，且未登记时不打印「全部一致」。顺带：ledger 侧 finalcheck ③ 的原正则也漏了 `-` 行，导致分母悄悄少 1，一并修。"
+    },
+    {
+      "id": "P027",
+      "title": "既有真缺陷：conductor 分层判定里 EI 作用域错误，import 失败即 UnboundLocalError，被外层 except 包装成「降级跳过」——双重折叠",
+      "from": "S176 verify ⑦→ 探针静默异常追查",
+      "status": "done",
+      "owner": "ecosys-conductor",
+      "due": "2026-10-19",
+      "note": "`import eco_inventory as EI` 在 try 内，`if layer == EI.PLATFORM` 在 try 外。import 一失败 EI 未定义即抛 UnboundLocalError，再被外层 `except: 该技能脚本缺失（降级跳过）` 包一层。实证：signal-check 报「信号源5 路由盲区 抛 UnboundLocalError」。即那个「降级」从来没生效过，一直是崩溃。已把 import 提出 try、分支加 EI is not None 前置。★ 教训：我曾把这段登记进折叠扫描白名单并注释「后续 if 会走老逻辑」——那是错的，白名单让我以为它是对的。"
+    }
+  ]
+}

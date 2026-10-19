@@ -1,0 +1,10 @@
+{
+ "name": "gongfeng-connector",
+ "version": "1.0.0",
+ "source": "S177 步9 补登（原缺 flow.json，技能有可执行脚本却无人监察）",
+ "self_check": [
+  "token 缺失或过期时明确报鉴权问题，不得把 401 折叠成「仓库不存在」",
+  "写操作（push/MR/comment）前先回显目标 owner/repo/branch，防误写到别的仓库",
+  "分页接口必须翻到底或明确声明「只取了前 N 条」，不得把首页当全量"
+ ]
+}

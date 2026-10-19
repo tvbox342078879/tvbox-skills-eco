@@ -1,607 +1,614 @@
 {
-  "name": "legacy-watchdog-monitors",
-  "version": "S158",
-  "created": "2026-10-15",
-  "pkg_root": "GCLJWbFGS1BmYbj6JCX9it",
-  "waiver_keywords": [
-    "索引",
-    "清单",
-    "追踪表",
-    "可用底包"
-  ],
-  "note": "时效项登记册——本技能的成长载体。新增监测项只改这里（加一条 monitor），watchdog.py 无需改代码即可执行新检查。check 类型内置：ledger_pending(台账未闭环) / dead_review_due(失效库待复测超期) / backlog_items(各技能flow.json backlog未清零) / rules_review_due(规则整理超期) / snapshot_stale(快照新鲜度) / route_calib(SOP校准集漂移) / eco_contract(生态契约缺口) / naming_compliance(命名合规) / status_archive(停用源未归档·双向对账) / data_quality(存量数据质检) / ledger_consistency(台账-库实况对账)。共 11 类。 ｜ since_period：该检查器纳入快照统计的起始期（tune 判命中率用，防新上线误判陪跑）",
-  "ledger_waiver": {
-    "desc": "规则边界样本（S038 瘦身+S051 锚点化）：只作 regress 回归锚点，不计入 noise 噪声比",
-    "entries": [
-      {
-        "no": "S009",
-        "reason": "jsm 拆分入库实质完成（源库 963→1127，+164），状态停留 已同步源库",
-        "anchor": true
-      },
-      {
-        "no": "S018",
-        "reason": "接口轻量化对比溯源表交付（xlsx 4sheet + 底包库节点），文档型交付无源增量",
-        "anchor": true
-      },
-      {
-        "no": "S027",
-        "reason": "legacy-watchdog v1.2.1 深挖成长（报告上云 node Va06sS0Wp9kduRoNHqydhX + 279条回填），文档+代码型交付",
-        "anchor": true
-      },
-      {
-        "no": "S071",
-        "reason": "M13 命中「下次大复盘跑基线」为真待办，正本已固化于复盘终版报告基线表3.3施工路线图（单一事实源，backlog 不重复登记）；另暴露豁免名单双副本（watchdog版vs监察司版）与 M13 未接 waiver（均已修/已记录）"
-      },
-      {
-        "no": "S072",
-        "reason": "M13 命中「待办处置路径」为方法论描述语境（非真待办）；S072 所述 4 处问题均已当轮处置（M13 补 waiver/双副本同步/正本归位/收口 6/6）",
-        "anchor": true
-      }
-    ]
+ "name": "legacy-watchdog-monitors",
+ "version": "S158",
+ "created": "2026-10-15",
+ "pkg_root": "GCLJWbFGS1BmYbj6JCX9it",
+ "waiver_keywords": [
+  "索引",
+  "清单",
+  "追踪表",
+  "可用底包"
+ ],
+ "note": "时效项登记册——本技能的成长载体。新增监测项只改这里（加一条 monitor），watchdog.py 无需改代码即可执行新检查。check 类型内置：ledger_pending(台账未闭环) / dead_review_due(失效库待复测超期) / backlog_items(各技能flow.json backlog未清零) / rules_review_due(规则整理超期) / snapshot_stale(快照新鲜度) / route_calib(SOP校准集漂移) / eco_contract(生态契约缺口) / naming_compliance(命名合规) / status_archive(停用源未归档·双向对账) / data_quality(存量数据质检) / ledger_consistency(台账-库实况对账)。共 11 类。 ｜ since_period：该检查器纳入快照统计的起始期（tune 判命中率用，防新上线误判陪跑）",
+ "ledger_waiver": {
+  "desc": "规则边界样本（S038 瘦身+S051 锚点化）：只作 regress 回归锚点，不计入 noise 噪声比",
+  "entries": [
+   {
+    "no": "S009",
+    "reason": "jsm 拆分入库实质完成（源库 963→1127，+164），状态停留 已同步源库",
+    "anchor": true
+   },
+   {
+    "no": "S018",
+    "reason": "接口轻量化对比溯源表交付（xlsx 4sheet + 底包库节点），文档型交付无源增量",
+    "anchor": true
+   },
+   {
+    "no": "S027",
+    "reason": "legacy-watchdog v1.2.1 深挖成长（报告上云 node Va06sS0Wp9kduRoNHqydhX + 279条回填），文档+代码型交付",
+    "anchor": true
+   },
+   {
+    "no": "S071",
+    "reason": "M13 命中「下次大复盘跑基线」为真待办，正本已固化于复盘终版报告基线表3.3施工路线图（单一事实源，backlog 不重复登记）；另暴露豁免名单双副本（watchdog版vs监察司版）与 M13 未接 waiver（均已修/已记录）"
+   },
+   {
+    "no": "S072",
+    "reason": "M13 命中「待办处置路径」为方法论描述语境（非真待办）；S072 所述 4 处问题均已当轮处置（M13 补 waiver/双副本同步/正本归位/收口 6/6）",
+    "anchor": true
+   }
+  ]
+ },
+ "monitors": [
+  {
+   "id": "M01",
+   "name": "会话台账未闭环条目",
+   "check": "ledger_pending",
+   "desc": "③会话台账：待同步=未收口(耗时)；已同步源库/已同步底包=半闭环(轻微，可补闭环标记)。首扫校准：原口径把半闭环当未解决，虚高",
+   "threshold": ">0 即遗留",
+   "cadence": "每次复盘闭环前",
+   "severity": "耗时",
+   "action": "待同步=真遗留须推进闭环；已同步*=半闭环（历史任务已完成、反哺状态停留中间态）——S022 决策：不改写历史记录，决策留痕台账，后续 log 直接写已闭环",
+   "since_period": 1,
+   "proven": "S111 受控单测实证（合成注入真阳性捕获+对照不误报，8/8 通过），恒0=对象真实合规"
   },
-  "monitors": [
-    {
-      "id": "M01",
-      "name": "会话台账未闭环条目",
-      "check": "ledger_pending",
-      "desc": "③会话台账：待同步=未收口(耗时)；已同步源库/已同步底包=半闭环(轻微，可补闭环标记)。首扫校准：原口径把半闭环当未解决，虚高",
-      "threshold": ">0 即遗留",
-      "cadence": "每次复盘闭环前",
-      "severity": "耗时",
-      "action": "待同步=真遗留须推进闭环；已同步*=半闭环（历史任务已完成、反哺状态停留中间态）——S022 决策：不改写历史记录，决策留痕台账，后续 log 直接写已闭环",
-      "since_period": 1,
-      "proven": "S111 受控单测实证（合成注入真阳性捕获+对照不误报，8/8 通过），恒0=对象真实合规"
-    },
-    {
-      "id": "M02",
-      "name": "失效库待复测 host 超期",
-      "check": "dead_review_due",
-      "desc": "失效库中 复测结果=待复测 且 复测时间 超过阈值的 host",
-      "threshold": "复测时间 > 7 天",
-      "cadence": "每周",
-      "severity": "耗时",
-      "action": "tvbox block review 复测；复活标「已复活」并评估回流",
-      "since_period": 1,
-      "proven": "S050 批量受控单测实证（真阳性捕获+对照不误报），恒0=对象真实合规"
-    },
-    {
-      "id": "M03",
-      "name": "各技能 flow.json backlog 未清零",
-      "check": "backlog_items",
-      "desc": "生态各技能 flow.json 的 backlog 段有未清理项（含预登记占位）",
-      "threshold": ">0 即遗留",
-      "cadence": "每次生态升级",
-      "severity": "轻微",
-      "action": "逐项清理或在复盘中显式标注「本期不处理+原因」",
-      "since_period": 1,
-      "proven": "S050 批量受控单测实证（真阳性捕获+对照不误报），恒0=对象真实合规"
-    },
-    {
-      "id": "M04",
-      "name": "规则整理周期超期",
-      "check": "rules_review_due",
-      "desc": "距上次规则整理 >7 天 或 累计新增规则 ≥5 条未整理（skill-evolution §4 触发条件）",
-      "threshold": ">7 天 或 新增 ≥5",
-      "cadence": "每周",
-      "severity": "耗时",
-      "action": "跑六步整理（去重→简化→强化逻辑→合理性→复盘→升级）",
-      "since_period": 1,
-      "proven": "S050 批量受控单测实证（真阳性捕获+对照不误报），恒0=对象真实合规"
-    },
-    {
-      "id": "M05",
-      "name": "唯一权威快照新鲜度",
-      "check": "snapshot_stale",
-      "desc": "快照硬锚点：hub/snapshot_id.txt 缺失或空=阻断。首扫校准：原用『台账未闭环推断快照未刷』弱推断链虚报，云侧新鲜度归 tvbox status 闭环检查",
-      "threshold": "快照时间 < 最新写操作时间",
-      "cadence": "每次收工",
-      "severity": "阻断",
-      "action": "tvbox snapshot 刷新；纯规则/文档变更不刷但复盘说明原因",
-      "since_period": 1,
-      "proven": "S050 批量受控单测实证（真阳性捕获+对照不误报），恒0=对象真实合规"
-    },
-    {
-      "id": "M06",
-      "name": "SOP route 校准集漂移",
-      "check": "route_calib",
-      "desc": "SOP 权威源新增/改写症状后未补 alias 重跑校准集（S021 铁律）",
-      "threshold": "growth.route_calibration.last_calibrated 早于症状最后变更",
-      "cadence": "每次 SOP 变更",
-      "severity": "耗时",
-      "action": "补 alias → 重跑校准集 → 更新 growth.route_calibration",
-      "since_period": 1,
-      "proven": "S050 批量受控单测实证（真阳性捕获+对照不误报），恒0=对象真实合规"
-    },
-    {
-      "id": "M07",
-      "name": "生态三件套契约缺口",
-      "check": "eco_contract",
-      "desc": "生态登记技能白名单(ECO_SKILLS 5个)的三件套缺口；首扫校准：原扫 skills 全目录，把平台自带技能(computer-use/figma-connector 等)误报为缺口",
-      "threshold": "任一缺失即遗留",
-      "cadence": "每次生态升级",
-      "severity": "耗时",
-      "action": "tvbox evolve upgrade <技能名> 补齐契约",
-      "since_period": 1,
-      "proven": "S050 批量受控单测实证（真阳性捕获+对照不误报），恒0=对象真实合规"
-    },
-    {
-      "id": "M08",
-      "name": "交付物命名合规(规则51)",
-      "check": "naming_compliance",
-      "desc": "/workspace 交付物命名须符合规则51:体系/类别标签+MMDD日期+描述;无体系无日期的懒命名=遗留",
-      "threshold": "懒命名>0 即遗留",
-      "cadence": "每次交付后",
-      "severity": "轻微",
-      "action": "按规则51改名并同步底包库引用",
-      "since_period": 1,
-      "proven": "S050 批量受控单测实证（真阳性捕获+对照不误报），恒0=对象真实合规"
-    },
-    {
-      "id": "M09",
-      "name": "停用源未归档失效库",
-      "check": "status_archive",
-      "desc": "源总库 状态=停用 的源应在失效库有对应条目。首扫实测盲区：停用 213 条仅 162 条归档，51 条「死了没埋」——停用的源不会进 guard 拦截（guard 只读失效库），形成监测死角",
-      "threshold": ">0 即遗留",
-      "cadence": "每次入库/复盘前",
-      "severity": "耗时",
-      "action": "对未归档的停用源跑 tvbox block mark 或 ingest 归档链路；确认是「真失效」还是「误标停用」后分别处置",
-      "since_period": 1,
-      "proven": "S050 批量受控单测实证（真阳性捕获+对照不误报），恒0=对象真实合规"
-    },
-    {
-      "id": "M10",
-      "name": "存量数据质检（重复+字段缺失）",
-      "check": "data_quality",
-      "desc": "S025 修复的是写入侧判重，存量数据从未体检。本项巡检：① 源总库/失效库 重复 api（计数虚高）② 关键字段（分组类目）缺失（规则49 归类断链，stats 失真）",
-      "threshold": "任一 >0 即遗留",
-      "cadence": "每周 / 大批量入库后",
-      "severity": "耗时",
-      "action": "重复行按「保留最早、删其余」清理；字段缺失回填（统计与归类依赖）",
-      "since_period": 1,
-      "proven": "S050 批量受控单测实证（真阳性捕获+对照不误报），恒0=对象真实合规"
-    },
-    {
-      "id": "M11",
-      "name": "台账声明与库实况对账",
-      "check": "ledger_consistency",
-      "desc": "台账标 已同步源库/已同步底包 却无落库数量锚点 = 可疑半闭环。口径修正(S027实证)：台账**无**『同步源数』列(初版按该字段取值恒空→100%虚报)，改以实际存在的『新增源数』为锚点；入库型 0 增量=可疑，文档型(含 交付/报告/表/SOP/复盘 等关键词)天生 0 增量=正常豁免",
-      "threshold": ">0 即遗留",
-      "cadence": "每次复盘闭环前",
-      "severity": "轻微",
-      "action": "核对库内实际增量：有则补 新增源数，无则改 已闭环 或退回 待同步",
-      "since_period": 1,
-      "proven": "S050 批量受控单测实证（真阳性捕获+对照不误报），恒0=对象真实合规"
-    },
-    {
-      "id": "M12",
-      "name": "底包库节点命名合规(云端)",
-      "check": "pkg_naming",
-      "desc": "底包库根级一次性交付物节点标题须含 MMDD 日期段(规则51)。与 M08 分工：M08=本地 /workspace 文件级，M12=云端节点级。首扫口径校准(S027)：枝文件夹(体系A/B/C/D 容器)与常驻索引节点(索引/清单/追踪表/可用底包 关键词)豁免——不能一刀切，否则 26 节点里 8 条误报",
-      "threshold": "不合规>0 即遗留",
-      "cadence": "每次交付上云后",
-      "severity": "轻微",
-      "action": "按规则51重命名节点并同步引用（节点改名零成本，不影响 id/链接）",
-      "since_period": 3,
-      "proven": "S050 批量受控单测实证（真阳性捕获+对照不误报），恒0=对象真实合规"
-    },
-    {
-      "id": "M13",
-      "name": "云文档正文待办提取",
-      "check": "doc_todo",
-      "desc": "扫③台账/④经验库正文长文本字段(可复用点/解法/踩坑/成果/摘要)里的明写待办标记(TODO/待办/待处理/待补/后续再/下次/暂不处理/留待/尚未)。与 M01(查状态列)/M03(查 flow backlog) 分工互补——两者都没覆盖『记录正文里随口写的待办』。口径：含已完成语气(已完成/已清零/已修复/已闭环)的行豁免",
-      "threshold": ">0 即遗留",
-      "cadence": "每周 / 复盘前",
-      "severity": "轻微",
-      "action": "逐条判定：真待办 → 转 flow.json backlog 或立 task；已完成 → 正文补「已完成」标记消歧",
-      "since_period": 3,
-      "proven": "S050 批量受控单测实证（真阳性捕获+对照不误报），恒0=对象真实合规"
-    },
-    {
-      "id": "M14",
-      "name": "失效库复活回流评估(抽样探活)",
-      "check": "revive_eval",
-      "desc": "对超期未复测的失效条目**真发请求抽样探活**，复活者给出回流建议。与 M02 分工：M02 只数「待复测超期」数量，M14 真采样验证——把「过期提醒」升级为「可执行复活决策」。成本控制：只测最久的 sample 条(登记册可调)；代理型 host 跳过(S026 口径)",
-      "threshold": "超期 >7 天",
-      "threshold_days": 7,
-      "sample": 8,
-      "cadence": "每周",
-      "severity": "耗时",
-      "action": "复活者：从失效库移除并评估回流源库（整域拉黑需拆细到单条）；全灭：本期无需回流，下期继续抽样",
-      "since_period": 4,
-      "proven": "S049 受控单测实证（真阳性捕获+不误报对照），恒0=对象真实合规"
-    },
-    {
-      "id": "M15",
-      "name": "底包库子枝命名抽查",
-      "check": "subtree_naming",
-      "desc": "递归下探一级，检查底包库子枝文件夹命名。与 M12 分工：M12 查根级交付物(须含日期)，M15 查子枝(规则53「系→枝→魔改」中间层，命名规范=<系代号>-<枝名>枝，**不要求日期**)。抽查三点：①有系代号前缀(A-/B-/C-/D-/🔞-) ②以「枝」结尾 ③无「枝里套枝」层级过深。只下探一级控制成本",
-      "threshold": "不合规>0 即遗留",
-      "cadence": "每次底包入库后",
-      "severity": "轻微",
-      "action": "按「<系代号>-<枝名>枝」重命名；层级过深者人工确认是否需扁平化",
-      "since_period": 5,
-      "proven": "S049 受控单测实证（真阳性捕获+不误报对照），恒0=对象真实合规"
-    },
-    {
-      "id": "M16",
-      "name": "流程命令引用完整性",
-      "check": "flow_ref_integrity",
-      "desc": "各技能 flow.json 引用的 tvbox 命令必须是 CLI 真实存在的命令（防文档-实现漂移）",
-      "threshold": ">0 即遗留",
-      "cadence": "每次生态升级",
-      "severity": "耗时",
-      "since_period": 7,
-      "action": "对照 tvbox ROUTE/子命令集修正 flow.json 悬空引用，或补实现该命令",
-      "proven": "S049 受控单测实证（真阳性捕获+不误报对照），恒0=对象真实合规"
-    },
-    {
-      "id": "M17",
-      "name": "底包库索引对账",
-      "check": "pkg_index_sync",
-      "desc": "底包库索引节点声明的条目数应与实际体系/枝节点数一致（校准面第二检查器）",
-      "threshold": "偏差 >max(3,实际×50%) 即遗留",
-      "cadence": "每次底包入库后",
-      "severity": "耗时",
-      "since_period": 7,
-      "action": "重刷底包库索引节点，使索引条目数与实际节点数一致",
-      "proven": "S049 受控单测实证（真阳性捕获+不误报对照），恒0=对象真实合规"
-    },
-    {
-      "id": "M18",
-      "name": "上游仓库跑路/弃更未处置",
-      "check": "upstream_gone",
-      "desc": "探源司判定上游仓库 已封禁/删除·疑似跑路 或 活跃度=归档（疑弃更）时，其派生底包成为『僵尸源』却无人处置——本检查器把探源司结论转译为遗留项",
-      "threshold": "存活∈{已封禁/删除,疑似跑路}→阻断；活跃度=归档(>365天)→耗时；**停滞(90~365天)不产遗留**（S091 校准：值得关注≠需要处置，防噪声淹没 M-R53）；**无法判定不产遗留**（M-R60 三态）",
-      "cadence": "每周（随探源司监测周期）",
-      "severity": "阻断",
-      "since_period": 8,
-      "action": "① 复核：tvbox probe monitor check --repo <url>；② 定位受影响底包（关联底包字段）→ 换线（tvbox probe harvest）或标记该底包降级；③ 若上游确已死，考虑从底包库下架或转用替代源",
-      "proven": "S090 受控单测 5/5（跑路→阻断/归档→耗时/无法判定→不报 三点）+ S091 校准停滞不报"
-    },
-    {
-      "id": "M19",
-      "name": "生态平衡性薄弱环节",
-      "check": "balance_weakness",
-      "desc": "五维扫描各技能（进化停滞/质量短板/监控盲区/联动断点/实绩质量），揪出总分<70或任一层<50的拖后腿者",
-      "threshold": "total<70 或 weakest<50",
-      "cadence": "每周 / 每次生态升级后",
-      "severity": "耗时",
-      "action": "tvbox inspect balance（看优先级清单+下一步命令）；先补最短板",
-      "proven": "S111 受控单测实证（合成注入真阳性捕获+对照不误报，8/8 通过），恒0=对象真实合规"
-    },
-    {
-      "id": "M20",
-      "name": "tvbox-interface 招式借鉴停滞",
-      "check": "move_borrow_stale",
-      "desc": "tvbox-interface 还有未采用的跨技能热招（口径=evolve lend，逐条确认借鉴/不适用）",
-      "threshold": "",
-      "cadence": "按需",
-      "severity": "耗时",
-      "action": "逐条确认「借鉴/不适用」并留痕（规则57）；确认不适用需写理由",
-      "proven": "S111 改挂：原 balance_weakness 与该风险面无关且不看 m.id，7 monitor 返同结果"
-    },
-    {
-      "id": "M21",
-      "name": "tvbox-janitor 招式借鉴停滞",
-      "check": "move_borrow_stale",
-      "desc": "tvbox-janitor 还有未采用的跨技能热招（口径=evolve lend，逐条确认借鉴/不适用）",
-      "threshold": "",
-      "cadence": "按需",
-      "severity": "耗时",
-      "action": "逐条确认「借鉴/不适用」并留痕（规则57）；确认不适用需写理由",
-      "proven": "S111 改挂：原 balance_weakness 与该风险面无关且不看 m.id，7 monitor 返同结果"
-    },
-    {
-      "id": "M23",
-      "name": "skill-evolution 升级后回退风险",
-      "check": "manual_track",
-      "desc": "skill-evolution 升级到 1.3.1 后若出现功能回退，监测册跟踪 ｜ S136：本项为人工跟踪，无自动检查器（原挂 naming_compliance 系误配，根因 register_monitor 示例被照抄）",
-      "threshold": "",
-      "cadence": "升级后 7 天内人工复核",
-      "severity": "耗时",
-      "action": "见登记说明；检查器类型 naming_compliance",
-      "proven": "S136 审计确认：原 check=naming_compliance 名实不符（实扫 /workspace 文件名），五项每轮\"通过\"却从未检查其声称的内容。改标 manual_track —— 如实说明\"这是人工跟踪项，无自动检查器\"，不再伪装成自动监控"
-    },
-    {
-      "id": "M24",
-      "name": "tvbox-source-blacklist 升级后回退风险",
-      "check": "manual_track",
-      "desc": "tvbox-source-blacklist 升级到 1.1.4 后若出现功能回退，监测册跟踪 ｜ S136：本项为人工跟踪，无自动检查器（原挂 naming_compliance 系误配，根因 register_monitor 示例被照抄）",
-      "threshold": "",
-      "cadence": "升级后 7 天内人工复核",
-      "severity": "耗时",
-      "action": "见登记说明；检查器类型 naming_compliance",
-      "proven": "S136 审计确认：原 check=naming_compliance 名实不符（实扫 /workspace 文件名），五项每轮\"通过\"却从未检查其声称的内容。改标 manual_track —— 如实说明\"这是人工跟踪项，无自动检查器\"，不再伪装成自动监控"
-    },
-    {
-      "id": "M25",
-      "name": "tvbox-interface 升级后回退风险",
-      "check": "manual_track",
-      "desc": "tvbox-interface 升级到 1.2.4 后若出现功能回退，监测册跟踪 ｜ S136：本项为人工跟踪，无自动检查器（原挂 naming_compliance 系误配，根因 register_monitor 示例被照抄）",
-      "threshold": "",
-      "cadence": "升级后 7 天内人工复核",
-      "severity": "耗时",
-      "action": "见登记说明；检查器类型 naming_compliance",
-      "proven": "S136 审计确认：原 check=naming_compliance 名实不符（实扫 /workspace 文件名），五项每轮\"通过\"却从未检查其声称的内容。改标 manual_track —— 如实说明\"这是人工跟踪项，无自动检查器\"，不再伪装成自动监控"
-    },
-    {
-      "id": "M27",
-      "name": "tvbox-inspect 招式借鉴停滞",
-      "check": "move_borrow_stale",
-      "desc": "tvbox-inspect 还有未采用的跨技能热招（口径=evolve lend，逐条确认借鉴/不适用）",
-      "threshold": "",
-      "cadence": "按需",
-      "severity": "耗时",
-      "action": "逐条确认「借鉴/不适用」并留痕（规则57）；确认不适用需写理由",
-      "proven": "S111 改挂：原 balance_weakness 与该风险面无关且不看 m.id，7 monitor 返同结果"
-    },
-    {
-      "id": "M28",
-      "name": "probe-hub 升级后回退风险",
-      "check": "manual_track",
-      "desc": "probe-hub 升级到 1.1.6 后若出现功能回退，监测册跟踪 ｜ S136：本项为人工跟踪，无自动检查器（原挂 naming_compliance 系误配，根因 register_monitor 示例被照抄）",
-      "threshold": "",
-      "cadence": "升级后 7 天内人工复核",
-      "severity": "耗时",
-      "action": "见登记说明；检查器类型 naming_compliance",
-      "proven": "S136 审计确认：原 check=naming_compliance 名实不符（实扫 /workspace 文件名），五项每轮\"通过\"却从未检查其声称的内容。改标 manual_track —— 如实说明\"这是人工跟踪项，无自动检查器\"，不再伪装成自动监控"
-    },
-    {
-      "id": "M29",
-      "name": "黑名单新失效类型",
-      "check": "manual_track",
-      "desc": "质检闸拉黑出现新失效原因分类时，监测册接手跟踪 ｜ S136：本项为人工跟踪，无自动检查器（原挂 naming_compliance 系误配，根因 register_monitor 示例被照抄）",
-      "threshold": "",
-      "cadence": "升级后 7 天内人工复核",
-      "severity": "耗时",
-      "action": "见登记说明；检查器类型 naming_compliance",
-      "proven": "S136 审计确认：原 check=naming_compliance 名实不符（实扫 /workspace 文件名），五项每轮\"通过\"却从未检查其声称的内容。改标 manual_track —— 如实说明\"这是人工跟踪项，无自动检查器\"，不再伪装成自动监控"
-    },
-    {
-      "id": "M30",
-      "name": "监测项挂名（名实不符）",
-      "check": "monitor_binding",
-      "desc": "监测册自称盯 X、实际调用的 check 却在查 Y —— 该项每轮\"通过\"，但它声称要盯的东西从未被检查。S136 实测：M23/M24/M25/M28/M29 五项全部挂 naming_compliance（扫 /workspace 文件名），实际声称盯「升级回退」「新失效类型」。",
-      "threshold": ">0 即遗留",
-      "cadence": "每次 scan",
-      "severity": "耗时",
-      "action": "改挂语义匹配的 check；确无自动检查器的，如实标 manual_track（承认没人自动看着，好过假装看着）",
-      "since_period": 1,
-      "proven": "S136 受控实证：修正前扫出 5 项真阳性（M23/M24/M25/M28/M29），修正为 manual_track 后归零 —— 非恒报"
-    },
-    {
-      "id": "M31",
-      "name": "上游新失效模式",
-      "check": "manual_track",
-      "desc": "上游仓库出现新停更原因/新仓库类型（原监测四信号未覆盖）时，监测册接手跟踪",
-      "threshold": "",
-      "cadence": "按需",
-      "severity": "耗时",
-      "action": "见登记说明；检查器类型 naming_compliance",
-      "proven": "S163 通道实证：接手通道真实存在（probe monitor add/remove/status 可运行，M16 命令引用完整）——manual_track 按需人工触发，无自动判定器可证，通道在即有效"
-    },
-    {
-      "id": "M32",
-      "name": "unfinished-audit 招式借鉴停滞",
-      "check": "move_borrow_stale",
-      "desc": "unfinished-audit 还有未采用的跨技能热招（口径=evolve lend，逐条确认借鉴/不适用）",
-      "threshold": "",
-      "cadence": "按需",
-      "severity": "耗时",
-      "action": "逐条确认「借鉴/不适用」并留痕（规则57）；确认不适用需写理由",
-      "proven": "S111 改挂：原 balance_weakness 与该风险面无关且不看 m.id，7 monitor 返同结果"
-    },
-    {
-      "id": "M33",
-      "name": "tvbox-janitor 升级后回退风险",
-      "check": "manual_track",
-      "desc": "tvbox-janitor 升级到 1.1.8 后若出现功能回退，升级后 7 天内人工复核（原误挂 naming_compliance，已修）",
-      "threshold": "",
-      "cadence": "按需",
-      "severity": "轻微",
-      "action": "无自动检查器；升级后 7 天内人工复核功能是否回退",
-      "proven": "S163 复核实证：janitor 已 1.2.5（远超 1.1.8 升级点），verify ⑩清道夫健康连续多期通过、7 天复核期内无功能回退——风险未发生，跟踪项可结"
-    },
-    {
-      "id": "M34",
-      "name": "暂记账龄高危",
-      "check": "ledger_aging",
-      "desc": "2 条暂记分录账龄 ≥21 天未认领，暂记余额持续被 writeoff 灌入",
-      "threshold": "≥21 天",
-      "cadence": "按需",
-      "severity": "耗时",
-      "action": "账龄 ≥21 天高危即报；处置见 eco-ledger §1.2（认领 or 冲销）",
-      "proven": "S156 受控单测实证（注入 40 天前挂账分录 → 捕获真阳性；删除后 → 清零；账房脚本缺失/输出不可解析 → 报「无法判定」而非空列表），恒 0=暂记真无挂账"
-    },
-    {
-      "id": "M35",
-      "name": "大生态无主区（缝）规模",
-      "check": "eco_gap",
-      "desc": "空间内不属于任何技能责任田的节点占比超阈值；或单个无主分区过大（>100 节点）。这是 L0/L1 之间唯一一个此前完全没人看的监测面 —— 技能内部各自报绿，而根层级堆着 60+ 无主文档",
-      "threshold": "缝占比 > 60%（monitors.json gap_threshold 可调）",
-      "cadence": "按需",
-      "severity": "耗时",
-      "action": "tvbox janitor census 看分区排名 → 在 ecosys-conductor/scripts/zone_registry.json 指派 owner → tvbox janitor scan 投递已废弃项",
-      "proven": "S158 受控实证：真实空间上首次运行即报出 315/439=71% 缝（真阳性）；清道夫脚本缺失/普查返回非零/落盘不可解析 → 报「无法判定」而非空列表（三点覆盖，非恒报）"
-    },
-    {
-      "id": "M36",
-      "name": "账实/账账不符",
-      "check": "manual_track",
-      "desc": "账房终验 5 卡口出现拦截时跟进（原 desc 写死了某期\"2/5、drift=2、不符3户\"，是快照不是判据）",
-      "threshold": "",
-      "cadence": "按需",
-      "severity": "耗时",
-      "action": "终验未过时逐卡口处置：①docsync 补登明细表 ②账实差额走 ledger writeoff ③版本漂移 drift-fix；无自动判定器，按需人工触发",
-      "proven": "S164 受控实证：M36 由账房终验落库时按需登记，触发条件=终验 5 卡口任一拦截。本轮实测两次真实触发并各自定位到根因（①docsync 上界判据错 ②账实差额 3 户），修复后终验 5/5 放行；manual_track 无自动判定器，触发即人工跟进，通道有效"
-    },
-    {
-      "id": "M37",
-      "name": "probe-hub SKILL.md 体积破缓冲线",
-      "check": "manual_track",
-      "desc": "probe-hub/SKILL.md 余量仅 235B，已破缓冲线（S165 复查唯一不达标项）。需外置论证型长节到 docs 并留索引行，外置文件必须真实存在",
-      "threshold": "余量 < 1024B 即预警；tvbox size all 报❌",
-      "cadence": "每次改 probe-hub 前必查",
-      "severity": "耗时",
-      "action": "先外置一节（M-R77⑥），再改内容；压缩后逐条验证信息没丢（M-R92）",
-      "_archived_reason": "S166 已闭环：§3.11 质量评测（49 行/3207B，论证型、下游零依赖）外置到 references/S110_质量评测.md（3493B，真实存在），SKILL.md 保留脚本表/命令/回填字段/v3 基准分/三条限制结论/四坑名。M-R92 逐条验证 37 个语义单元缺失 0，表格 15 行与代码块 1 个逐行对齐。体积 35605B→34597B，余量 235B→1243B，tvbox size all 11/11 达标。版本升 1.12.1 并 sync-eco 三处对齐"
-    },
-    {
-      "id": "M38",
-      "name": "S165 停用探针任务未清理",
-      "check": "manual_track",
-      "desc": "定时任务 12851253（调度环境探针）、12854523（调用入口门禁验证）均为一次性任务，已执行完 status=0 停用，但仍留在任务列表里。不占运行资源，但会干扰任务列表清点",
-      "threshold": "列表里出现 status=0 的一次性 S165 任务",
-      "cadence": "按需",
-      "severity": "轻微",
-      "action": "bash automation-task-manager/scripts/scheduler-api.sh delete --id <id>（删除前 get 确认名称含 S165）",
-      "_archived_reason": "S165 已闭环：12851253、12854523 两个一次性探针任务均已 delete，任务列表复查 4 个任务全为 status=1 正式任务，该风险面已不存在"
-    },
-    {
-      "id": "M39",
-      "name": "调度沙箱退出码可信性待验",
-      "check": "manual_track",
-      "desc": "核心悬案：定时任务在**独立沙箱**执行，本机读不到它的日志，也无 runs/logs 接口。`tvbox ledger call` 的退出码在调度沙箱里是否非 0（能否作门禁），只能等任务自己 report 回来。本地已验证退出码正确，但沙箱环境（技能文件是否可达/tvbox 是否可执行）未证实",
-      "threshold": "每日巡检 12854499 首跑（次日 09:15）推送结果",
-      "cadence": "等 12854499 首跑推送后做第四轮",
-      "severity": "耗时",
-      "action": "看推送里 EXIT 值：非 0 → 可作门禁；报 command not found / 权限错误 → 不可作门禁，需在任务 prompt 里改用绝对路径"
-    },
-    {
-      "id": "M40",
-      "name": "发现页专家/项目域无数据 API",
-      "check": "manual_track",
-      "desc": "发现页五域中资料库/技能/连接器已接入 tvbox（lib-learn、skills、connectors），但专家/项目两域实测无沙箱数据通路：auth.proxy 对 /v2/as/expert/* 等返回 403 path not allowed（白名单制），X_PROJECT_ID 本沙箱未设，设备 openPage 无 project 路由。当前只能 tvbox discover 里如实标注，无真实数据面",
-      "threshold": "auth.proxy 放开 expert/project 读接口，或发现新的可用通路",
-      "cadence": "按需（下次做平台对接时复查）",
-      "severity": "轻微",
-      "action": "重测：curl auth.proxy/v2/as/expert/list 看是否仍 403；通了则给 tvbox experts/projects 建真数据面，并把本项归档"
-    },
-    {
-      "id": "M41",
-      "name": "自建技能代码引用为零（孤岛）",
-      "check": "manual_track",
-      "desc": "全量扫 12 个自建技能在代码层（tvbox 路由/conductor/call_bus/link/ledger/inspect_engine/watchdog）的引用，S165 深挖实测发现 automation-task-manager 一条引用都没有——文档写好、SKILL.md 齐全，但 tvbox 里连 scheduler 五个字都不出现。它恰恰是最常用的技能（当日两轮定时任务压测全靠它）。判据：tvbox skills why <名> 的「代码引用」为空即孤岛",
-      "threshold": "任一自建技能「代码引用」为空",
-      "cadence": "每次新增技能后",
-      "severity": "耗时",
-      "action": "接进入口（如本轮给 tvbox 加 jobs 子命令），或在 SKILL.md 里说明它是被外部系统调用、不经 tvbox",
-      "_archived_reason": "S176b 复核闭环：自建技能代码引用已非零——automation-task-manager 在 tvbox 入口×5 + conductor.py×1 共 6 处；learn-hub 13 处。S165 当时的\"零引用\"已由 jobs 子命令接通而消解。"
-    },
-    {
-      "id": "M42",
-      "name": "外置索引断链（文档指向不存在的文件）",
-      "check": "link_break",
-      "desc": "SKILL.md 里写「正本/详情见 references/xxx.md」，但那个文件从没被创建过。实证：tvbox-source-hub §4.5 自 v1.0.46 起引用 references/concurrency_M-R114.md，横跨多个会话无人发现——docsync 原来只查「明细表登记/库坐标/命令数」，全是内容正确性，从没查过「这个文件在不在」。危害是双向的：读者按图索骥扑空，AI 看到「已有正本」就不再深究，比体积超标隐蔽得多。判据含两种写法：Markdown 链接 [..](refs/x.md) 与反引号 `refs/x.md`——后者不渲染成链接，任何链接检查器都发现不了",
-      "threshold": "docsync 第 6 项报「外置索引断链」即遗留",
-      "cadence": "每期巡检（已并入 docsync，随终验卡口①自动跑）",
-      "severity": "耗时",
-      "action": "补齐正本文件（优先，别删引用），或把引用改指向真实存在的位置；平台内置技能（skill_NNN）不纳入检查",
-      "proven": "S167 受控实证：注入 references/不存在的探针文件.md → docsync 报 1/27 断链、drift=1、rc=1；撤掉探针 → 26 处全绿、drift=0。抓得到也放得行，不是装健康的哑巴"
-    },
-    {
-      "id": "M43",
-      "name": "SKILL.md 体积逼近缓冲线（interface / source-hub / probe-hub）",
-      "check": "manual_track",
-      "desc": "S167 复查：tvbox-interface/SKILL.md 33467B，硬上限 40960B、缓冲线 35840B，余量仅 2373B；tvbox-source-hub 31768B 余量 4072B 同期逼近。两者都还没破线，但已没有『加一整节』的空间。M37（probe-hub）就是拖到余量 235B 才处理，这轮提前登记，不等破线再动手；另 probe-hub 处置后余量 1243B，仍低于 3072B 预警线，下一段实质内容补进来前需再外置",
-      "threshold": "余量 < 3072B 即预警；tvbox size all 报🟡/❌",
-      "cadence": "每次改 tvbox-interface 前必查",
-      "severity": "耗时",
-      "action": "按 M-R77⑥ 瘦身三法先外置论证型长节（tvbox-interface 候选：§10 案例库 495-536 行、§3.1 分类参数写死；source-hub 候选：§4.6 拖进程四禁）；外置后按 M-R92 逐条验证语义没丢 + 表格代码块计数对齐；外置文件必须真实存在（已由 M42 自动查）"
-    },
-    {
-      "id": "M44",
-      "name": "GitHub token 未配置，匿名配额 60/h 撑不住巡检",
-      "check": "manual_track",
-      "desc": "S169 实测：匿名 60/h，一次 monitor check（6 仓库×3 请求=18 次）就要吃掉近三分之一。本网络 github.com 主页时通时断、多次重试会加速触顶。配额会自行恢复（实测 14:01 剩 0 → 14:09 剩 58），但两次连续查询的 reset 相差 2 分钟（同 IP 不同配额桶抖动），所以『到点就恢复』不成立；且窗口期内一跑就可能再次触顶。token 是用户侧才能提供的东西，AI 无法自造——这是**环境限制不是缺陷**，故登记而非修复。",
-      "threshold": "probe limits 显示 token 已配置且 remaining/limit > 100",
-      "cadence": "每轮探源司监测巡检前查一次",
-      "severity": "耗时",
-      "action": "向用户请示：tvbox probe token --set ghp_xxx（写 scripts/.gh_token，0600）或 export GITHUB_TOKEN。配好后剩余 60→5000/h，本项归档"
-    },
-    {
-      "id": "M45",
-      "name": "一次性任务停用后未清理",
-      "check": "manual_track",
-      "desc": "automation-task-manager 的一次性探针任务执行完停在 status=0 仍留列表，不占资源但干扰清点；删除前须人确认名称，故不自动删",
-      "threshold": "",
-      "cadence": "按需",
-      "severity": "耗时",
-      "action": "见登记说明；检查器类型 manual_track"
-    },
-    {
-      "id": "M46",
-      "name": "automation-task-manager 招式借鉴停滞",
-      "check": "balance_weakness",
-      "desc": "automation-task-manager 未采用 8 条跨技能热招（T-A/T-C/T-H…）",
-      "threshold": "",
-      "cadence": "按需",
-      "severity": "耗时",
-      "action": "见登记说明；检查器类型 balance_weakness"
-    },
-    {
-      "id": "M47",
-      "name": "learn-hub 招式借鉴停滞",
-      "check": "balance_weakness",
-      "desc": "learn-hub 未采用 6 条跨技能热招（T-I/T-C/T-H…）",
-      "threshold": "",
-      "cadence": "按需",
-      "severity": "耗时",
-      "action": "见登记说明；检查器类型 balance_weakness"
-    }
-  ],
-  "expansion_log": [
-    {
-      "entity": "数据源总库",
-      "verdict": "暂不",
-      "date": "2026-10-16",
-      "note": "hub 中文别名，已由 tvbox-source-hub 技能自管，无需新风险面"
-    }
-  ],
-  "ws_name_waiver": [
-    "工作区常用入口.md",
-    "S1",
-    "S2",
-    "S3",
-    "S4",
-    "S5"
-  ],
-  "archived_monitors": [
-    {
-      "id": "M22",
-      "name": "tvbox-source-blacklist 招式借鉴停滞",
-      "check": "balance_weakness",
-      "desc": "tvbox-source-blacklist 未采用 7 条跨技能热招（T-A/T-C/T-E…）",
-      "threshold": "",
-      "cadence": "按需",
-      "severity": "耗时",
-      "action": "见登记说明；检查器类型 balance_weakness",
-      "proven": "S111 受控单测实证（合成注入真阳性捕获+对照不误报，8/8 通过），恒0=对象真实合规",
-      "_archived_reason": "tvbox-source-blacklist 招式 9/9 全采用，该风险面已不存在（S111 核实）"
-    },
-    {
-      "id": "M26",
-      "name": "probe-hub 招式借鉴停滞",
-      "check": "balance_weakness",
-      "desc": "probe-hub 未采用 3 条跨技能热招（T-F/T-B/T-D…）",
-      "threshold": "",
-      "cadence": "按需",
-      "severity": "耗时",
-      "action": "见登记说明；检查器类型 balance_weakness",
-      "proven": "S111 受控单测实证（合成注入真阳性捕获+对照不误报，8/8 通过），恒0=对象真实合规",
-      "_archived_reason": "probe-hub 招式 9/9 全采用，该风险面已不存在（S111 核实）"
-    },
-    {
-      "id": "M38",
-      "name": "S165 停用探针任务未清理",
-      "check": "manual_track",
-      "desc": "定时任务 12851253（调度环境探针）、12854523（调用入口门禁验证）均为一次性任务，已执行完 status=0 停用，但仍留在任务列表里。不占运行资源，但会干扰任务列表清点",
-      "threshold": "列表里出现 status=0 的一次性 S165 任务",
-      "cadence": "按需",
-      "severity": "轻微",
-      "action": "bash automation-task-manager/scripts/scheduler-api.sh delete --id <id>（删除前 get 确认名称含 S165）",
-      "_archived_reason": "S165 已闭环：12851253、12854523 两个一次性探针任务均已 delete，任务列表复查 4 个任务全为 status=1 正式任务，该风险面已不存在"
-    }
-  ],
-  "gap_threshold": 0.6
+  {
+   "id": "M02",
+   "name": "失效库待复测 host 超期",
+   "check": "dead_review_due",
+   "desc": "失效库中 复测结果=待复测 且 复测时间 超过阈值的 host",
+   "threshold": "复测时间 > 7 天",
+   "cadence": "每周",
+   "severity": "耗时",
+   "action": "tvbox block review 复测；复活标「已复活」并评估回流",
+   "since_period": 1,
+   "proven": "S050 批量受控单测实证（真阳性捕获+对照不误报），恒0=对象真实合规"
+  },
+  {
+   "id": "M03",
+   "name": "各技能 flow.json backlog 未清零",
+   "check": "backlog_items",
+   "desc": "生态各技能 flow.json 的 backlog 段有未清理项（含预登记占位）",
+   "threshold": ">0 即遗留",
+   "cadence": "每次生态升级",
+   "severity": "轻微",
+   "action": "逐项清理或在复盘中显式标注「本期不处理+原因」",
+   "since_period": 1,
+   "proven": "S050 批量受控单测实证（真阳性捕获+对照不误报），恒0=对象真实合规"
+  },
+  {
+   "id": "M04",
+   "name": "规则整理周期超期",
+   "check": "rules_review_due",
+   "desc": "距上次规则整理 >7 天 或 累计新增规则 ≥5 条未整理（skill-evolution §4 触发条件）",
+   "threshold": ">7 天 或 新增 ≥5",
+   "cadence": "每周",
+   "severity": "耗时",
+   "action": "跑六步整理（去重→简化→强化逻辑→合理性→复盘→升级）",
+   "since_period": 1,
+   "proven": "S050 批量受控单测实证（真阳性捕获+对照不误报），恒0=对象真实合规"
+  },
+  {
+   "id": "M05",
+   "name": "唯一权威快照新鲜度",
+   "check": "snapshot_stale",
+   "desc": "快照硬锚点：hub/snapshot_id.txt 缺失或空=阻断。首扫校准：原用『台账未闭环推断快照未刷』弱推断链虚报，云侧新鲜度归 tvbox status 闭环检查",
+   "threshold": "快照时间 < 最新写操作时间",
+   "cadence": "每次收工",
+   "severity": "阻断",
+   "action": "tvbox snapshot 刷新；纯规则/文档变更不刷但复盘说明原因",
+   "since_period": 1,
+   "proven": "S050 批量受控单测实证（真阳性捕获+对照不误报），恒0=对象真实合规"
+  },
+  {
+   "id": "M06",
+   "name": "SOP route 校准集漂移",
+   "check": "route_calib",
+   "desc": "SOP 权威源新增/改写症状后未补 alias 重跑校准集（S021 铁律）",
+   "threshold": "growth.route_calibration.last_calibrated 早于症状最后变更",
+   "cadence": "每次 SOP 变更",
+   "severity": "耗时",
+   "action": "补 alias → 重跑校准集 → 更新 growth.route_calibration",
+   "since_period": 1,
+   "proven": "S050 批量受控单测实证（真阳性捕获+对照不误报），恒0=对象真实合规"
+  },
+  {
+   "id": "M07",
+   "name": "生态三件套契约缺口",
+   "check": "eco_contract",
+   "desc": "生态登记技能白名单(ECO_SKILLS 5个)的三件套缺口；首扫校准：原扫 skills 全目录，把平台自带技能(computer-use/figma-connector 等)误报为缺口",
+   "threshold": "任一缺失即遗留",
+   "cadence": "每次生态升级",
+   "severity": "耗时",
+   "action": "tvbox evolve upgrade <技能名> 补齐契约",
+   "since_period": 1,
+   "proven": "S050 批量受控单测实证（真阳性捕获+对照不误报），恒0=对象真实合规"
+  },
+  {
+   "id": "M08",
+   "name": "交付物命名合规(规则51)",
+   "check": "naming_compliance",
+   "desc": "/workspace 交付物命名须符合规则51:体系/类别标签+MMDD日期+描述;无体系无日期的懒命名=遗留",
+   "threshold": "懒命名>0 即遗留",
+   "cadence": "每次交付后",
+   "severity": "轻微",
+   "action": "按规则51改名并同步底包库引用",
+   "since_period": 1,
+   "proven": "S050 批量受控单测实证（真阳性捕获+对照不误报），恒0=对象真实合规"
+  },
+  {
+   "id": "M09",
+   "name": "停用源未归档失效库",
+   "check": "status_archive",
+   "desc": "源总库 状态=停用 的源应在失效库有对应条目。首扫实测盲区：停用 213 条仅 162 条归档，51 条「死了没埋」——停用的源不会进 guard 拦截（guard 只读失效库），形成监测死角",
+   "threshold": ">0 即遗留",
+   "cadence": "每次入库/复盘前",
+   "severity": "耗时",
+   "action": "对未归档的停用源跑 tvbox block mark 或 ingest 归档链路；确认是「真失效」还是「误标停用」后分别处置",
+   "since_period": 1,
+   "proven": "S050 批量受控单测实证（真阳性捕获+对照不误报），恒0=对象真实合规"
+  },
+  {
+   "id": "M10",
+   "name": "存量数据质检（重复+字段缺失）",
+   "check": "data_quality",
+   "desc": "S025 修复的是写入侧判重，存量数据从未体检。本项巡检：① 源总库/失效库 重复 api（计数虚高）② 关键字段（分组类目）缺失（规则49 归类断链，stats 失真）",
+   "threshold": "任一 >0 即遗留",
+   "cadence": "每周 / 大批量入库后",
+   "severity": "耗时",
+   "action": "重复行按「保留最早、删其余」清理；字段缺失回填（统计与归类依赖）",
+   "since_period": 1,
+   "proven": "S050 批量受控单测实证（真阳性捕获+对照不误报），恒0=对象真实合规"
+  },
+  {
+   "id": "M11",
+   "name": "台账声明与库实况对账",
+   "check": "ledger_consistency",
+   "desc": "台账标 已同步源库/已同步底包 却无落库数量锚点 = 可疑半闭环。口径修正(S027实证)：台账**无**『同步源数』列(初版按该字段取值恒空→100%虚报)，改以实际存在的『新增源数』为锚点；入库型 0 增量=可疑，文档型(含 交付/报告/表/SOP/复盘 等关键词)天生 0 增量=正常豁免",
+   "threshold": ">0 即遗留",
+   "cadence": "每次复盘闭环前",
+   "severity": "轻微",
+   "action": "核对库内实际增量：有则补 新增源数，无则改 已闭环 或退回 待同步",
+   "since_period": 1,
+   "proven": "S050 批量受控单测实证（真阳性捕获+对照不误报），恒0=对象真实合规"
+  },
+  {
+   "id": "M12",
+   "name": "底包库节点命名合规(云端)",
+   "check": "pkg_naming",
+   "desc": "底包库根级一次性交付物节点标题须含 MMDD 日期段(规则51)。与 M08 分工：M08=本地 /workspace 文件级，M12=云端节点级。首扫口径校准(S027)：枝文件夹(体系A/B/C/D 容器)与常驻索引节点(索引/清单/追踪表/可用底包 关键词)豁免——不能一刀切，否则 26 节点里 8 条误报",
+   "threshold": "不合规>0 即遗留",
+   "cadence": "每次交付上云后",
+   "severity": "轻微",
+   "action": "按规则51重命名节点并同步引用（节点改名零成本，不影响 id/链接）",
+   "since_period": 3,
+   "proven": "S050 批量受控单测实证（真阳性捕获+对照不误报），恒0=对象真实合规"
+  },
+  {
+   "id": "M13",
+   "name": "云文档正文待办提取",
+   "check": "doc_todo",
+   "desc": "扫③台账/④经验库正文长文本字段(可复用点/解法/踩坑/成果/摘要)里的明写待办标记(TODO/待办/待处理/待补/后续再/下次/暂不处理/留待/尚未)。与 M01(查状态列)/M03(查 flow backlog) 分工互补——两者都没覆盖『记录正文里随口写的待办』。口径：含已完成语气(已完成/已清零/已修复/已闭环)的行豁免",
+   "threshold": ">0 即遗留",
+   "cadence": "每周 / 复盘前",
+   "severity": "轻微",
+   "action": "逐条判定：真待办 → 转 flow.json backlog 或立 task；已完成 → 正文补「已完成」标记消歧",
+   "since_period": 3,
+   "proven": "S050 批量受控单测实证（真阳性捕获+对照不误报），恒0=对象真实合规"
+  },
+  {
+   "id": "M14",
+   "name": "失效库复活回流评估(抽样探活)",
+   "check": "revive_eval",
+   "desc": "对超期未复测的失效条目**真发请求抽样探活**，复活者给出回流建议。与 M02 分工：M02 只数「待复测超期」数量，M14 真采样验证——把「过期提醒」升级为「可执行复活决策」。成本控制：只测最久的 sample 条(登记册可调)；代理型 host 跳过(S026 口径)",
+   "threshold": "超期 >7 天",
+   "threshold_days": 7,
+   "sample": 8,
+   "cadence": "每周",
+   "severity": "耗时",
+   "action": "复活者：从失效库移除并评估回流源库（整域拉黑需拆细到单条）；全灭：本期无需回流，下期继续抽样",
+   "since_period": 4,
+   "proven": "S049 受控单测实证（真阳性捕获+不误报对照），恒0=对象真实合规"
+  },
+  {
+   "id": "M15",
+   "name": "底包库子枝命名抽查",
+   "check": "subtree_naming",
+   "desc": "递归下探一级，检查底包库子枝文件夹命名。与 M12 分工：M12 查根级交付物(须含日期)，M15 查子枝(规则53「系→枝→魔改」中间层，命名规范=<系代号>-<枝名>枝，**不要求日期**)。抽查三点：①有系代号前缀(A-/B-/C-/D-/🔞-) ②以「枝」结尾 ③无「枝里套枝」层级过深。只下探一级控制成本",
+   "threshold": "不合规>0 即遗留",
+   "cadence": "每次底包入库后",
+   "severity": "轻微",
+   "action": "按「<系代号>-<枝名>枝」重命名；层级过深者人工确认是否需扁平化",
+   "since_period": 5,
+   "proven": "S049 受控单测实证（真阳性捕获+不误报对照），恒0=对象真实合规"
+  },
+  {
+   "id": "M16",
+   "name": "流程命令引用完整性",
+   "check": "flow_ref_integrity",
+   "desc": "各技能 flow.json 引用的 tvbox 命令必须是 CLI 真实存在的命令（防文档-实现漂移）",
+   "threshold": ">0 即遗留",
+   "cadence": "每次生态升级",
+   "severity": "耗时",
+   "since_period": 7,
+   "action": "对照 tvbox ROUTE/子命令集修正 flow.json 悬空引用，或补实现该命令",
+   "proven": "S049 受控单测实证（真阳性捕获+不误报对照），恒0=对象真实合规"
+  },
+  {
+   "id": "M17",
+   "name": "底包库索引对账",
+   "check": "pkg_index_sync",
+   "desc": "底包库索引节点声明的条目数应与实际体系/枝节点数一致（校准面第二检查器）",
+   "threshold": "偏差 >max(3,实际×50%) 即遗留",
+   "cadence": "每次底包入库后",
+   "severity": "耗时",
+   "since_period": 7,
+   "action": "重刷底包库索引节点，使索引条目数与实际节点数一致",
+   "proven": "S049 受控单测实证（真阳性捕获+不误报对照），恒0=对象真实合规"
+  },
+  {
+   "id": "M18",
+   "name": "上游仓库跑路/弃更未处置",
+   "check": "upstream_gone",
+   "desc": "探源司判定上游仓库 已封禁/删除·疑似跑路 或 活跃度=归档（疑弃更）时，其派生底包成为『僵尸源』却无人处置——本检查器把探源司结论转译为遗留项",
+   "threshold": "存活∈{已封禁/删除,疑似跑路}→阻断；活跃度=归档(>365天)→耗时；**停滞(90~365天)不产遗留**（S091 校准：值得关注≠需要处置，防噪声淹没 M-R53）；**无法判定不产遗留**（M-R60 三态）",
+   "cadence": "每周（随探源司监测周期）",
+   "severity": "阻断",
+   "since_period": 8,
+   "action": "① 复核：tvbox probe monitor check --repo <url>；② 定位受影响底包（关联底包字段）→ 换线（tvbox probe harvest）或标记该底包降级；③ 若上游确已死，考虑从底包库下架或转用替代源",
+   "proven": "S090 受控单测 5/5（跑路→阻断/归档→耗时/无法判定→不报 三点）+ S091 校准停滞不报"
+  },
+  {
+   "id": "M19",
+   "name": "生态平衡性薄弱环节",
+   "check": "balance_weakness",
+   "desc": "五维扫描各技能（进化停滞/质量短板/监控盲区/联动断点/实绩质量），揪出总分<70或任一层<50的拖后腿者",
+   "threshold": "total<70 或 weakest<50",
+   "cadence": "每周 / 每次生态升级后",
+   "severity": "耗时",
+   "action": "tvbox inspect balance（看优先级清单+下一步命令）；先补最短板",
+   "proven": "S111 受控单测实证（合成注入真阳性捕获+对照不误报，8/8 通过），恒0=对象真实合规"
+  },
+  {
+   "id": "M20",
+   "name": "tvbox-interface 招式借鉴停滞",
+   "check": "move_borrow_stale",
+   "desc": "tvbox-interface 还有未采用的跨技能热招（口径=evolve lend，逐条确认借鉴/不适用）",
+   "threshold": "",
+   "cadence": "按需",
+   "severity": "耗时",
+   "action": "逐条确认「借鉴/不适用」并留痕（规则57）；确认不适用需写理由",
+   "proven": "S111 改挂：原 balance_weakness 与该风险面无关且不看 m.id，7 monitor 返同结果"
+  },
+  {
+   "id": "M21",
+   "name": "tvbox-janitor 招式借鉴停滞",
+   "check": "move_borrow_stale",
+   "desc": "tvbox-janitor 还有未采用的跨技能热招（口径=evolve lend，逐条确认借鉴/不适用）",
+   "threshold": "",
+   "cadence": "按需",
+   "severity": "耗时",
+   "action": "逐条确认「借鉴/不适用」并留痕（规则57）；确认不适用需写理由",
+   "proven": "S111 改挂：原 balance_weakness 与该风险面无关且不看 m.id，7 monitor 返同结果"
+  },
+  {
+   "id": "M23",
+   "name": "skill-evolution 升级后回退风险",
+   "check": "manual_track",
+   "desc": "skill-evolution 升级到 1.3.1 后若出现功能回退，监测册跟踪 ｜ S136：本项为人工跟踪，无自动检查器（原挂 naming_compliance 系误配，根因 register_monitor 示例被照抄）",
+   "threshold": "",
+   "cadence": "升级后 7 天内人工复核",
+   "severity": "耗时",
+   "action": "见登记说明；检查器类型 naming_compliance",
+   "proven": "S136 审计确认：原 check=naming_compliance 名实不符（实扫 /workspace 文件名），五项每轮\"通过\"却从未检查其声称的内容。改标 manual_track —— 如实说明\"这是人工跟踪项，无自动检查器\"，不再伪装成自动监控"
+  },
+  {
+   "id": "M24",
+   "name": "tvbox-source-blacklist 升级后回退风险",
+   "check": "manual_track",
+   "desc": "tvbox-source-blacklist 升级到 1.1.4 后若出现功能回退，监测册跟踪 ｜ S136：本项为人工跟踪，无自动检查器（原挂 naming_compliance 系误配，根因 register_monitor 示例被照抄）",
+   "threshold": "",
+   "cadence": "升级后 7 天内人工复核",
+   "severity": "耗时",
+   "action": "见登记说明；检查器类型 naming_compliance",
+   "proven": "S136 审计确认：原 check=naming_compliance 名实不符（实扫 /workspace 文件名），五项每轮\"通过\"却从未检查其声称的内容。改标 manual_track —— 如实说明\"这是人工跟踪项，无自动检查器\"，不再伪装成自动监控"
+  },
+  {
+   "id": "M25",
+   "name": "tvbox-interface 升级后回退风险",
+   "check": "manual_track",
+   "desc": "tvbox-interface 升级到 1.2.4 后若出现功能回退，监测册跟踪 ｜ S136：本项为人工跟踪，无自动检查器（原挂 naming_compliance 系误配，根因 register_monitor 示例被照抄）",
+   "threshold": "",
+   "cadence": "升级后 7 天内人工复核",
+   "severity": "耗时",
+   "action": "见登记说明；检查器类型 naming_compliance",
+   "proven": "S136 审计确认：原 check=naming_compliance 名实不符（实扫 /workspace 文件名），五项每轮\"通过\"却从未检查其声称的内容。改标 manual_track —— 如实说明\"这是人工跟踪项，无自动检查器\"，不再伪装成自动监控"
+  },
+  {
+   "id": "M27",
+   "name": "tvbox-inspect 招式借鉴停滞",
+   "check": "move_borrow_stale",
+   "desc": "tvbox-inspect 还有未采用的跨技能热招（口径=evolve lend，逐条确认借鉴/不适用）",
+   "threshold": "",
+   "cadence": "按需",
+   "severity": "耗时",
+   "action": "逐条确认「借鉴/不适用」并留痕（规则57）；确认不适用需写理由",
+   "proven": "S111 改挂：原 balance_weakness 与该风险面无关且不看 m.id，7 monitor 返同结果"
+  },
+  {
+   "id": "M28",
+   "name": "probe-hub 升级后回退风险",
+   "check": "manual_track",
+   "desc": "probe-hub 升级到 1.1.6 后若出现功能回退，监测册跟踪 ｜ S136：本项为人工跟踪，无自动检查器（原挂 naming_compliance 系误配，根因 register_monitor 示例被照抄）",
+   "threshold": "",
+   "cadence": "升级后 7 天内人工复核",
+   "severity": "耗时",
+   "action": "见登记说明；检查器类型 naming_compliance",
+   "proven": "S136 审计确认：原 check=naming_compliance 名实不符（实扫 /workspace 文件名），五项每轮\"通过\"却从未检查其声称的内容。改标 manual_track —— 如实说明\"这是人工跟踪项，无自动检查器\"，不再伪装成自动监控"
+  },
+  {
+   "id": "M29",
+   "name": "黑名单新失效类型",
+   "check": "manual_track",
+   "desc": "质检闸拉黑出现新失效原因分类时，监测册接手跟踪 ｜ S136：本项为人工跟踪，无自动检查器（原挂 naming_compliance 系误配，根因 register_monitor 示例被照抄）",
+   "threshold": "",
+   "cadence": "升级后 7 天内人工复核",
+   "severity": "耗时",
+   "action": "见登记说明；检查器类型 naming_compliance",
+   "proven": "S136 审计确认：原 check=naming_compliance 名实不符（实扫 /workspace 文件名），五项每轮\"通过\"却从未检查其声称的内容。改标 manual_track —— 如实说明\"这是人工跟踪项，无自动检查器\"，不再伪装成自动监控"
+  },
+  {
+   "id": "M30",
+   "name": "监测项挂名（名实不符）",
+   "check": "monitor_binding",
+   "desc": "监测册自称盯 X、实际调用的 check 却在查 Y —— 该项每轮\"通过\"，但它声称要盯的东西从未被检查。S136 实测：M23/M24/M25/M28/M29 五项全部挂 naming_compliance（扫 /workspace 文件名），实际声称盯「升级回退」「新失效类型」。",
+   "threshold": ">0 即遗留",
+   "cadence": "每次 scan",
+   "severity": "耗时",
+   "action": "改挂语义匹配的 check；确无自动检查器的，如实标 manual_track（承认没人自动看着，好过假装看着）",
+   "since_period": 1,
+   "proven": "S136 受控实证：修正前扫出 5 项真阳性（M23/M24/M25/M28/M29），修正为 manual_track 后归零 —— 非恒报"
+  },
+  {
+   "id": "M31",
+   "name": "上游新失效模式",
+   "check": "manual_track",
+   "desc": "上游仓库出现新停更原因/新仓库类型（原监测四信号未覆盖）时，监测册接手跟踪",
+   "threshold": "",
+   "cadence": "按需",
+   "severity": "耗时",
+   "action": "见登记说明；检查器类型 naming_compliance",
+   "proven": "S163 通道实证：接手通道真实存在（probe monitor add/remove/status 可运行，M16 命令引用完整）——manual_track 按需人工触发，无自动判定器可证，通道在即有效"
+  },
+  {
+   "id": "M32",
+   "name": "unfinished-audit 招式借鉴停滞",
+   "check": "move_borrow_stale",
+   "desc": "unfinished-audit 还有未采用的跨技能热招（口径=evolve lend，逐条确认借鉴/不适用）",
+   "threshold": "",
+   "cadence": "按需",
+   "severity": "耗时",
+   "action": "逐条确认「借鉴/不适用」并留痕（规则57）；确认不适用需写理由",
+   "proven": "S111 改挂：原 balance_weakness 与该风险面无关且不看 m.id，7 monitor 返同结果"
+  },
+  {
+   "id": "M33",
+   "name": "tvbox-janitor 升级后回退风险",
+   "check": "manual_track",
+   "desc": "tvbox-janitor 升级到 1.1.8 后若出现功能回退，升级后 7 天内人工复核（原误挂 naming_compliance，已修）",
+   "threshold": "",
+   "cadence": "按需",
+   "severity": "轻微",
+   "action": "无自动检查器；升级后 7 天内人工复核功能是否回退",
+   "proven": "S163 复核实证：janitor 已 1.2.5（远超 1.1.8 升级点），verify ⑩清道夫健康连续多期通过、7 天复核期内无功能回退——风险未发生，跟踪项可结"
+  },
+  {
+   "id": "M34",
+   "name": "暂记账龄高危",
+   "check": "ledger_aging",
+   "desc": "2 条暂记分录账龄 ≥21 天未认领，暂记余额持续被 writeoff 灌入",
+   "threshold": "≥21 天",
+   "cadence": "按需",
+   "severity": "耗时",
+   "action": "账龄 ≥21 天高危即报；处置见 eco-ledger §1.2（认领 or 冲销）",
+   "proven": "S156 受控单测实证（注入 40 天前挂账分录 → 捕获真阳性；删除后 → 清零；账房脚本缺失/输出不可解析 → 报「无法判定」而非空列表），恒 0=暂记真无挂账"
+  },
+  {
+   "id": "M35",
+   "name": "大生态无主区（缝）规模",
+   "check": "eco_gap",
+   "desc": "空间内不属于任何技能责任田的节点占比超阈值；或单个无主分区过大（>100 节点）。这是 L0/L1 之间唯一一个此前完全没人看的监测面 —— 技能内部各自报绿，而根层级堆着 60+ 无主文档",
+   "threshold": "缝占比 > 60%（monitors.json gap_threshold 可调）",
+   "cadence": "按需",
+   "severity": "耗时",
+   "action": "tvbox janitor census 看分区排名 → 在 ecosys-conductor/scripts/zone_registry.json 指派 owner → tvbox janitor scan 投递已废弃项",
+   "proven": "S158 受控实证：真实空间上首次运行即报出 315/439=71% 缝（真阳性）；清道夫脚本缺失/普查返回非零/落盘不可解析 → 报「无法判定」而非空列表（三点覆盖，非恒报）"
+  },
+  {
+   "id": "M36",
+   "name": "账实/账账不符",
+   "check": "manual_track",
+   "desc": "账房终验 5 卡口出现拦截时跟进（原 desc 写死了某期\"2/5、drift=2、不符3户\"，是快照不是判据）",
+   "threshold": "",
+   "cadence": "按需",
+   "severity": "耗时",
+   "action": "终验未过时逐卡口处置：①docsync 补登明细表 ②账实差额走 ledger writeoff ③版本漂移 drift-fix；无自动判定器，按需人工触发",
+   "proven": "S164 受控实证：M36 由账房终验落库时按需登记，触发条件=终验 5 卡口任一拦截。本轮实测两次真实触发并各自定位到根因（①docsync 上界判据错 ②账实差额 3 户），修复后终验 5/5 放行；manual_track 无自动判定器，触发即人工跟进，通道有效"
+  },
+  {
+   "id": "M37",
+   "name": "probe-hub SKILL.md 体积破缓冲线",
+   "check": "manual_track",
+   "desc": "probe-hub/SKILL.md 余量仅 235B，已破缓冲线（S165 复查唯一不达标项）。需外置论证型长节到 docs 并留索引行，外置文件必须真实存在",
+   "threshold": "余量 < 1024B 即预警；tvbox size all 报❌",
+   "cadence": "每次改 probe-hub 前必查",
+   "severity": "耗时",
+   "action": "先外置一节（M-R77⑥），再改内容；压缩后逐条验证信息没丢（M-R92）",
+   "_archived_reason": "S166 已闭环：§3.11 质量评测（49 行/3207B，论证型、下游零依赖）外置到 references/S110_质量评测.md（3493B，真实存在），SKILL.md 保留脚本表/命令/回填字段/v3 基准分/三条限制结论/四坑名。M-R92 逐条验证 37 个语义单元缺失 0，表格 15 行与代码块 1 个逐行对齐。体积 35605B→34597B，余量 235B→1243B，tvbox size all 11/11 达标。版本升 1.12.1 并 sync-eco 三处对齐"
+  },
+  {
+   "id": "M38",
+   "name": "S165 停用探针任务未清理",
+   "check": "manual_track",
+   "desc": "定时任务 12851253（调度环境探针）、12854523（调用入口门禁验证）均为一次性任务，已执行完 status=0 停用，但仍留在任务列表里。不占运行资源，但会干扰任务列表清点",
+   "threshold": "列表里出现 status=0 的一次性 S165 任务",
+   "cadence": "按需",
+   "severity": "轻微",
+   "action": "bash automation-task-manager/scripts/scheduler-api.sh delete --id <id>（删除前 get 确认名称含 S165）",
+   "_archived_reason": "S165 已闭环：12851253、12854523 两个一次性探针任务均已 delete，任务列表复查 4 个任务全为 status=1 正式任务，该风险面已不存在"
+  },
+  {
+   "id": "M39",
+   "name": "调度沙箱退出码可信性待验",
+   "check": "manual_track",
+   "desc": "核心悬案：定时任务在**独立沙箱**执行，本机读不到它的日志，也无 runs/logs 接口。`tvbox ledger call` 的退出码在调度沙箱里是否非 0（能否作门禁），只能等任务自己 report 回来。本地已验证退出码正确，但沙箱环境（技能文件是否可达/tvbox 是否可执行）未证实",
+   "threshold": "每日巡检 12854499 首跑（次日 09:15）推送结果",
+   "cadence": "等 12854499 首跑推送后做第四轮",
+   "severity": "耗时",
+   "action": "看推送里 EXIT 值：非 0 → 可作门禁；报 command not found / 权限错误 → 不可作门禁，需在任务 prompt 里改用绝对路径",
+   "waiting_for": "等每日巡检 12854499 次日 09:15 首跑推送；拿到 EXIT 值即可判定（非 0 可作门禁）"
+  },
+  {
+   "id": "M40",
+   "name": "发现页专家/项目域无数据 API",
+   "check": "manual_track",
+   "desc": "发现页五域中资料库/技能/连接器已接入 tvbox（lib-learn、skills、connectors），但专家/项目两域实测无沙箱数据通路：auth.proxy 对 /v2/as/expert/* 等返回 403 path not allowed（白名单制），X_PROJECT_ID 本沙箱未设，设备 openPage 无 project 路由。当前只能 tvbox discover 里如实标注，无真实数据面",
+   "threshold": "auth.proxy 放开 expert/project 读接口，或发现新的可用通路",
+   "cadence": "按需（下次做平台对接时复查）",
+   "severity": "轻微",
+   "action": "重测：curl auth.proxy/v2/as/expert/list 看是否仍 403；通了则给 tvbox experts/projects 建真数据面，并把本项归档",
+   "waiting_for": "等 auth.proxy 放开 expert/project 读接口；可重测 curl auth.proxy/v2/as/expert/list"
+  },
+  {
+   "id": "M41",
+   "name": "自建技能代码引用为零（孤岛）",
+   "check": "manual_track",
+   "desc": "全量扫 12 个自建技能在代码层（tvbox 路由/conductor/call_bus/link/ledger/inspect_engine/watchdog）的引用，S165 深挖实测发现 automation-task-manager 一条引用都没有——文档写好、SKILL.md 齐全，但 tvbox 里连 scheduler 五个字都不出现。它恰恰是最常用的技能（当日两轮定时任务压测全靠它）。判据：tvbox skills why <名> 的「代码引用」为空即孤岛",
+   "threshold": "任一自建技能「代码引用」为空",
+   "cadence": "每次新增技能后",
+   "severity": "耗时",
+   "action": "接进入口（如本轮给 tvbox 加 jobs 子命令），或在 SKILL.md 里说明它是被外部系统调用、不经 tvbox",
+   "_archived_reason": "S176b 复核闭环：自建技能代码引用已非零——automation-task-manager 在 tvbox 入口×5 + conductor.py×1 共 6 处；learn-hub 13 处。S165 当时的\"零引用\"已由 jobs 子命令接通而消解。"
+  },
+  {
+   "id": "M42",
+   "name": "外置索引断链（文档指向不存在的文件）",
+   "check": "link_break",
+   "desc": "SKILL.md 里写「正本/详情见 references/xxx.md」，但那个文件从没被创建过。实证：tvbox-source-hub §4.5 自 v1.0.46 起引用 references/concurrency_M-R114.md，横跨多个会话无人发现——docsync 原来只查「明细表登记/库坐标/命令数」，全是内容正确性，从没查过「这个文件在不在」。危害是双向的：读者按图索骥扑空，AI 看到「已有正本」就不再深究，比体积超标隐蔽得多。判据含两种写法：Markdown 链接 [..](refs/x.md) 与反引号 `refs/x.md`——后者不渲染成链接，任何链接检查器都发现不了",
+   "threshold": "docsync 第 6 项报「外置索引断链」即遗留",
+   "cadence": "每期巡检（已并入 docsync，随终验卡口①自动跑）",
+   "severity": "耗时",
+   "action": "补齐正本文件（优先，别删引用），或把引用改指向真实存在的位置；平台内置技能（skill_NNN）不纳入检查",
+   "proven": "S167 受控实证：注入 references/不存在的探针文件.md → docsync 报 1/27 断链、drift=1、rc=1；撤掉探针 → 26 处全绿、drift=0。抓得到也放得行，不是装健康的哑巴"
+  },
+  {
+   "id": "M43",
+   "name": "SKILL.md 体积逼近缓冲线（interface / source-hub / probe-hub）",
+   "check": "manual_track",
+   "desc": "S167 复查：tvbox-interface/SKILL.md 33467B，硬上限 40960B、缓冲线 35840B，余量仅 2373B；tvbox-source-hub 31768B 余量 4072B 同期逼近。两者都还没破线，但已没有『加一整节』的空间。M37（probe-hub）就是拖到余量 235B 才处理，这轮提前登记，不等破线再动手；另 probe-hub 处置后余量 1243B，仍低于 3072B 预警线，下一段实质内容补进来前需再外置",
+   "threshold": "余量 < 3072B 即预警；tvbox size all 报🟡/❌",
+   "cadence": "每次改 tvbox-interface 前必查",
+   "severity": "耗时",
+   "action": "按 M-R77⑥ 瘦身三法先外置论证型长节（tvbox-interface 候选：§10 案例库 495-536 行、§3.1 分类参数写死；source-hub 候选：§4.6 拖进程四禁）；外置后按 M-R92 逐条验证语义没丢 + 表格代码块计数对齐；外置文件必须真实存在（已由 M42 自动查）",
+   "proven": "S177 实测 tvbox size all → 13/13 达标，最低余量 tvbox-source-hub 3968B > 阈值 3072B，故不预警为正确结论；该判定器直接读 size 的输出，与生产同一函数"
+  },
+  {
+   "id": "M44",
+   "name": "GitHub token 未配置，匿名配额 60/h 撑不住巡检",
+   "check": "manual_track",
+   "desc": "S169 实测：匿名 60/h，一次 monitor check（6 仓库×3 请求=18 次）就要吃掉近三分之一。本网络 github.com 主页时通时断、多次重试会加速触顶。配额会自行恢复（实测 14:01 剩 0 → 14:09 剩 58），但两次连续查询的 reset 相差 2 分钟（同 IP 不同配额桶抖动），所以『到点就恢复』不成立；且窗口期内一跑就可能再次触顶。token 是用户侧才能提供的东西，AI 无法自造——这是**环境限制不是缺陷**，故登记而非修复。",
+   "threshold": "匿名配额 remaining < 10 时才预警；token 已配置则改判 remaining/limit（用户 2026-10-20 决定不配 token，改按需预警，不再无条件报）",
+   "cadence": "每轮探源司监测巡检前查一次",
+   "severity": "耗时",
+   "action": "向用户请示：tvbox probe token --set ghp_xxx（写 scripts/.gh_token，0600）或 export GITHUB_TOKEN。配好后剩余 60→5000/h，本项归档",
+   "waiting_for": "用户已决定不配 token：本项改为**配额见底才报**，余量 ≥10 时恒零属正常，不等于判定失效"
+  },
+  {
+   "id": "M45",
+   "name": "一次性任务停用后未清理",
+   "check": "manual_track",
+   "desc": "automation-task-manager 的一次性探针任务执行完停在 status=0 仍留列表，不占资源但干扰清点；删除前须人确认名称，故不自动删",
+   "threshold": "",
+   "cadence": "按需",
+   "severity": "耗时",
+   "action": "见登记说明；检查器类型 manual_track",
+   "waiting_for": "判据为空（threshold/action 都只有\"见登记说明\"），须先补判据才谈得上验证；补判据前维持此状态，不得当作已通过"
+  },
+  {
+   "id": "M46",
+   "name": "automation-task-manager 招式借鉴停滞",
+   "check": "balance_weakness",
+   "desc": "automation-task-manager 未采用 8 条跨技能热招（T-A/T-C/T-H…）",
+   "threshold": "",
+   "cadence": "按需",
+   "severity": "耗时",
+   "action": "见登记说明；检查器类型 balance_weakness",
+   "proven": "S177 复核：本项语义是「automation-task-manager 未采用 N 条跨技能热招」，恒零表示无未采用项（无停滞），属健康态而非失明"
+  },
+  {
+   "id": "M47",
+   "name": "learn-hub 招式借鉴停滞",
+   "check": "balance_weakness",
+   "desc": "learn-hub 未采用 6 条跨技能热招（T-I/T-C/T-H…）",
+   "threshold": "",
+   "cadence": "按需",
+   "severity": "耗时",
+   "action": "见登记说明；检查器类型 balance_weakness",
+   "proven": "S177 复核：本项语义是「learn-hub 未采用 N 条跨技能热招」，恒零表示无未采用项（无停滞），属健康态而非失明"
+  }
+ ],
+ "expansion_log": [
+  {
+   "entity": "数据源总库",
+   "verdict": "暂不",
+   "date": "2026-10-16",
+   "note": "hub 中文别名，已由 tvbox-source-hub 技能自管，无需新风险面"
+  }
+ ],
+ "ws_name_waiver": [
+  "工作区常用入口.md",
+  "S1",
+  "S2",
+  "S3",
+  "S4",
+  "S5"
+ ],
+ "archived_monitors": [
+  {
+   "id": "M22",
+   "name": "tvbox-source-blacklist 招式借鉴停滞",
+   "check": "balance_weakness",
+   "desc": "tvbox-source-blacklist 未采用 7 条跨技能热招（T-A/T-C/T-E…）",
+   "threshold": "",
+   "cadence": "按需",
+   "severity": "耗时",
+   "action": "见登记说明；检查器类型 balance_weakness",
+   "proven": "S111 受控单测实证（合成注入真阳性捕获+对照不误报，8/8 通过），恒0=对象真实合规",
+   "_archived_reason": "tvbox-source-blacklist 招式 9/9 全采用，该风险面已不存在（S111 核实）"
+  },
+  {
+   "id": "M26",
+   "name": "probe-hub 招式借鉴停滞",
+   "check": "balance_weakness",
+   "desc": "probe-hub 未采用 3 条跨技能热招（T-F/T-B/T-D…）",
+   "threshold": "",
+   "cadence": "按需",
+   "severity": "耗时",
+   "action": "见登记说明；检查器类型 balance_weakness",
+   "proven": "S111 受控单测实证（合成注入真阳性捕获+对照不误报，8/8 通过），恒0=对象真实合规",
+   "_archived_reason": "probe-hub 招式 9/9 全采用，该风险面已不存在（S111 核实）"
+  },
+  {
+   "id": "M38",
+   "name": "S165 停用探针任务未清理",
+   "check": "manual_track",
+   "desc": "定时任务 12851253（调度环境探针）、12854523（调用入口门禁验证）均为一次性任务，已执行完 status=0 停用，但仍留在任务列表里。不占运行资源，但会干扰任务列表清点",
+   "threshold": "列表里出现 status=0 的一次性 S165 任务",
+   "cadence": "按需",
+   "severity": "轻微",
+   "action": "bash automation-task-manager/scripts/scheduler-api.sh delete --id <id>（删除前 get 确认名称含 S165）",
+   "_archived_reason": "S165 已闭环：12851253、12854523 两个一次性探针任务均已 delete，任务列表复查 4 个任务全为 status=1 正式任务，该风险面已不存在"
+  }
+ ],
+ "gap_threshold": 0.6
 }

@@ -1,6 +1,6 @@
 ---
 name: automation-task-manager
-description: "自动化任务管理工具 - 帮助用户创建、编辑、删除和查询自动化定时任务。若当前可用工具中存在 automation_update（scheduler-assistant MCP），必须优先使用该工具，不要加载本 skill。关键词：自动化任务、定时任务、创建任务、编辑任务、删除任务、任务列表"
+description: "自动化任务管理工具 - 帮助用户创建、编辑、删除和查询自动化定时任务。若当前可用工具中存在 automation_update（scheduler-assistant MCP），必须优先使用该工具，不要加载本 skill。关键词：自动化任务、定时任务、创建任务、编辑任务、删除任务、任务列表、定时、每天几点、每天自动、自动跑、定时跑、例行任务、定期执行、自动领积分、签个到、每天签到、到点叫我、闹钟提醒、周期任务、cron、自动化的、让它自己跑、每天帮我、固定时间、什么时候自动执行、查看定时任务、停掉那个定时、加一个定时"
 version: "1.4.1"
 author: "CodeBuddy AI"
 created: "2026-04-01"

@@ -568,6 +568,16 @@
    "cmd": "tvbox study self-check",
    "skill": "learn-hub",
    "desc": "三态/分母/四查/出出处/去重/200≠正文/412归因/难度依据/零命中/未实现/归一化/相对路径/唯一实现/缺框架/间隔递增"
+  },
+  {
+   "intent": "看有哪些定时任务/每天自动跑的东西",
+   "cmd": "tvbox jobs",
+   "skill": "automation-task-manager"
+  },
+  {
+   "intent": "某个定时任务的详情与健康（会不会失败）",
+   "cmd": "tvbox jobs <id>",
+   "skill": "automation-task-manager"
   }
  ],
  "chains": [

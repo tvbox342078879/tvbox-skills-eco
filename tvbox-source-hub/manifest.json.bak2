@@ -1,0 +1,863 @@
+{
+ "version": "1.0.54",
+ "updated": "2026-10-19",
+ "note": "底包双形态（S111）：底包=三包(L包lytvs/G包guard/D包DmaxPro908)+备用包(轻量可编辑态)。三坐标（S110）：技术体系/枝/业务别名正交，D包≠体系D·Amns。加归位断言防游离。",
+ "commands": [
+  {
+   "intent": "开工速览(四极状态+历史坑)",
+   "cmd": "tvbox brief",
+   "skill": "tvbox-source-hub"
+  },
+  {
+   "intent": "四方联动体检+闭环检查",
+   "cmd": "tvbox status",
+   "skill": "tvbox-source-hub"
+  },
+  {
+   "intent": "查业务历史经验(③台账)｜经验池没写会被信号源22报出",
+   "cmd": "tvbox learn <关键字>",
+   "skill": "tvbox-source-hub"
+  },
+  {
+   "intent": "查平台操作坑(④经验库)",
+   "cmd": "tvbox lib-learn <关键字>",
+   "skill": "tvbox-source-hub"
+  },
+  {
+   "intent": "收工写业务台账(规则58·每次会话必做)",
+   "cmd": "tvbox log --summary .. --pit .. --fix .. --reuse ..",
+   "skill": "tvbox-source-hub"
+  },
+  {
+   "intent": "记平台经验(规则58·每次会话必做)",
+   "cmd": "tvbox lib-log --scene .. --pit .. --fix .. --reuse .. --type ..",
+   "skill": "tvbox-source-hub"
+  },
+  {
+   "intent": "底包→源库自动提源(L1)",
+   "cmd": "tvbox sync",
+   "skill": "tvbox-source-hub"
+  },
+  {
+   "intent": "一致性对账(文档vs真值)",
+   "cmd": "tvbox audit",
+   "skill": "tvbox-source-hub"
+  },
+  {
+   "intent": "刷新唯一权威快照",
+   "cmd": "tvbox snapshot",
+   "skill": "tvbox-source-hub"
+  },
+  {
+   "intent": "统一入库管线(黑名单拦截→入源库)",
+   "cmd": "tvbox ingest --candidates /tmp/to_add.json",
+   "skill": "tvbox-source-hub"
+  },
+  {
+   "intent": "失效源拉黑(整域/单条)",
+   "cmd": "tvbox block mark",
+   "skill": "tvbox-source-blacklist"
+  },
+  {
+   "intent": "入库前拦截判定",
+   "cmd": "tvbox block check <api>",
+   "skill": "tvbox-source-blacklist"
+  },
+  {
+   "intent": "失效库统计",
+   "cmd": "tvbox block stats",
+   "skill": "tvbox-source-blacklist"
+  },
+  {
+   "intent": "失效host复测(复活检测)",
+   "cmd": "tvbox block review",
+   "skill": "tvbox-source-blacklist"
+  },
+  {
+   "intent": "复发问题聚类→应技能化",
+   "cmd": "tvbox evolve recurring --min 3",
+   "skill": "skill-evolution"
+  },
+  {
+   "intent": "脚手架生成可升级技能",
+   "cmd": "tvbox evolve create <name> --trigger .. --desc ..",
+   "skill": "skill-evolution"
+  },
+  {
+   "intent": "技能升级就绪度体检",
+   "cmd": "tvbox evolve scan",
+   "skill": "skill-evolution"
+  },
+  {
+   "intent": "技能版本提升+契约补齐",
+   "cmd": "tvbox evolve upgrade <name>",
+   "skill": "skill-evolution"
+  },
+  {
+   "intent": "查技能可借鉴的通用招式(经验对照·规则57)",
+   "cmd": "tvbox evolve lend <name> --own",
+   "skill": "skill-evolution"
+  },
+  {
+   "intent": "扫全生态抽通用招式入库(方法极)",
+   "cmd": "tvbox evolve mine",
+   "skill": "skill-evolution"
+  },
+  {
+   "intent": "经验对照对账(谁升级没留对照)",
+   "cmd": "tvbox evolve review-lend",
+   "skill": "skill-evolution"
+  },
+  {
+   "intent": "技能生态全景",
+   "cmd": "tvbox eco",
+   "skill": "tvbox-source-hub"
+  },
+  {
+   "intent": "联动契约清单(上下游数据格式)",
+   "cmd": "tvbox contracts",
+   "skill": "tvbox-source-hub"
+  },
+  {
+   "intent": "遗留问题扫描(未闭环+时效项)",
+   "cmd": "tvbox watchdog scan",
+   "skill": "legacy-watchdog"
+  },
+  {
+   "intent": "遗留监测项状态",
+   "cmd": "tvbox watchdog status",
+   "skill": "legacy-watchdog"
+  },
+  {
+   "intent": "遗留问题监测报告(流程化文档)",
+   "cmd": "tvbox watchdog report",
+   "skill": "legacy-watchdog"
+  },
+  {
+   "intent": "时效项登记册(可成长)",
+   "cmd": "tvbox watchdog monitors / add-monitor",
+   "skill": "legacy-watchdog"
+  },
+  {
+   "intent": "并行任务分道规划(提速)",
+   "cmd": "tvbox conductor plan",
+   "skill": "ecosys-conductor"
+  },
+  {
+   "intent": "冲刺执行串生成",
+   "cmd": "tvbox conductor sprint",
+   "skill": "ecosys-conductor"
+  },
+  {
+   "intent": "意图技能路由",
+   "cmd": "tvbox conductor whoami",
+   "skill": "ecosys-conductor"
+  },
+  {
+   "intent": "生态分工地图",
+   "cmd": "tvbox conductor lanes",
+   "skill": "ecosys-conductor"
+  },
+  {
+   "intent": "生态全景评估(五维)",
+   "cmd": "tvbox conductor assess",
+   "skill": "ecosys-conductor"
+  },
+  {
+   "intent": "进化方向建议(留痕对账)",
+   "cmd": "tvbox conductor direction",
+   "skill": "ecosys-conductor"
+  },
+  {
+   "intent": "多任务写冲突仲裁",
+   "cmd": "tvbox conductor conflict",
+   "skill": "ecosys-conductor"
+  },
+  {
+   "intent": "技能交接契约检查",
+   "cmd": "tvbox conductor handoff",
+   "skill": "ecosys-conductor"
+  },
+  {
+   "intent": "生态空白识别雷达",
+   "cmd": "tvbox conductor expand-eco",
+   "skill": "ecosys-conductor"
+  },
+  {
+   "intent": "会话复盘引导",
+   "cmd": "tvbox conductor retro",
+   "skill": "ecosys-conductor"
+  },
+  {
+   "intent": "进化建议采纳率对账",
+   "cmd": "tvbox conductor evo-check",
+   "skill": "ecosys-conductor"
+  },
+  {
+   "cmd": "tvbox conductor retract",
+   "skill": "ecosys-conductor",
+   "desc": "撤回已证伪建议（误报修正后清敞口，merge 语义+回读验证）"
+  },
+  {
+   "cmd": "tvbox conductor signal-check",
+   "skill": "ecosys-conductor",
+   "desc": "信号源活体探针（注入→捕获→清理，证明检测器逻辑有效）"
+  },
+  {
+   "cmd": "tvbox conductor rules",
+   "skill": "ecosys-conductor",
+   "desc": "规则纳管总览（73 条：归属/落地/孤岛/去重候选）"
+  },
+  {
+   "cmd": "tvbox conductor rules <编号>",
+   "skill": "ecosys-conductor",
+   "desc": "单条规则查正本技能+落地状态"
+  },
+  {
+   "cmd": "tvbox conductor rules --orphan",
+   "skill": "ecosys-conductor",
+   "desc": "列出无技能守护的孤岛规则"
+  },
+  {
+   "cmd": "tvbox conductor rules --owner <技能>",
+   "skill": "ecosys-conductor",
+   "desc": "按技能列其守护的规则"
+  },
+  {
+   "cmd": "tvbox conductor rules check",
+   "skill": "ecosys-conductor",
+   "desc": "规则三方一致性校验（注册表 vs 总册 vs 技能实况）"
+  },
+  {
+   "cmd": "tvbox conductor verify",
+   "skill": "ecosys-conductor",
+   "desc": "一键终验六判据（探针+assess+evolve+watchdog+齐备+洁净）"
+  },
+  {
+   "intent": "四极规模只读一行(评估用)",
+   "cmd": "tvbox sizes",
+   "skill": "tvbox-source-hub"
+  },
+  {
+   "intent": "查看路由清单(全命令)",
+   "cmd": "tvbox manifest",
+   "skill": "tvbox-source-hub"
+  },
+  {
+   "intent": "链路串联执行(N步流水)",
+   "cmd": "tvbox chain",
+   "skill": "tvbox-source-hub"
+  },
+  {
+   "intent": "同进程连跑多命令(共享缓存)",
+   "cmd": "tvbox run",
+   "skill": "tvbox-source-hub"
+  },
+  {
+   "intent": "监测上游作者仓库动态",
+   "cmd": "tvbox probe monitor check",
+   "skill": "probe-hub",
+   "desc": "底包库原作者仓库存活/内容/目录变更监测（跑路/封禁/更新早知早处置）"
+  },
+  {
+   "intent": "预测上游仓库弃更风险(活跃度趋势外推)",
+   "cmd": "tvbox probe monitor forecast",
+   "skill": "probe-hub",
+   "desc": "对采样史 n_commits_30d 序列最小二乘外推→弃更风险(升高/稳定/增长)；数据不足明确不预测(S093)"
+  },
+  {
+   "intent": "上游仓库监测台(存活/活跃/到期)",
+   "cmd": "tvbox probe monitor status",
+   "skill": "probe-hub",
+   "desc": "一览所有监测目标的存活态、活跃度、上次检查与到期"
+  },
+  {
+   "intent": "登记上游仓库到监测册",
+   "cmd": "tvbox probe monitor add",
+   "skill": "probe-hub",
+   "desc": "把一个上游作者仓库登入监测册（自动探测配置路径）"
+  },
+  {
+   "intent": "搜索更多可用仓库(扩库容)",
+   "cmd": "tvbox probe search github",
+   "skill": "probe-hub",
+   "desc": "GitHub/Gitee 检索候选仓库，按星标/活跃/内含配置排序，扩可加工底包源（多平台适配 S091：GitLab 用 `tvbox probe search gitlab`）"
+  },
+  {
+   "intent": "搜索 GitLab 上的可用仓库(扩库容)",
+   "cmd": "tvbox probe search gitlab",
+   "skill": "probe-hub",
+   "desc": "GitLab 项目检索（/search?scope=projects），补 GitHub/Gitee 之外的上游可侦察面（S091）"
+  },
+  {
+   "intent": "采集高质量线路(供换线调用)",
+   "cmd": "tvbox probe harvest scan",
+   "skill": "probe-hub",
+   "desc": "从上游配置抽取线路（直链/采集），测活过滤后导出候选供换线"
+  },
+  {
+   "intent": "查看云端搜索候选册(跨会话持久)",
+   "cmd": "tvbox probe search cloud",
+   "skill": "probe-hub",
+   "desc": "读 DB_CANDIDATE：搜索候选清单跨会话持久，本地 search_results.json 随沙箱重置即丢（S095）"
+  },
+  {
+   "intent": "查看云端采集候选册(跨会话持久)",
+   "cmd": "tvbox probe harvest cloud",
+   "skill": "probe-hub",
+   "desc": "读 DB_HARVEST：采集候选清单（含测活/入库状态）跨会话持久（S095）"
+  },
+  {
+   "intent": "探源司监测器活体探针",
+   "cmd": "tvbox probe self-check",
+   "skill": "probe-hub",
+   "desc": "16 组判定器「注入→捕获→清理+假阳性基线」探针（含 XML 判活通道/评分分层/残留识别/上云回执判真；证明逻辑有效，非仅依赖可达）"
+  },
+  {
+   "intent": "查看/配置 GitHub 凭据(解除 API 限流)",
+   "cmd": "tvbox probe token",
+   "skill": "probe-hub"
+  },
+  {
+   "intent": "查看 GitHub 剩余配额",
+   "cmd": "tvbox probe limits",
+   "skill": "probe-hub"
+  },
+  {
+   "intent": "待删清单(AI删不掉的集中一处)",
+   "cmd": "tvbox janitor list",
+   "skill": "tvbox-janitor"
+  },
+  {
+   "intent": "建/确认待删收件箱",
+   "cmd": "tvbox janitor inbox",
+   "skill": "tvbox-janitor"
+  },
+  {
+   "intent": "投递待删节点进收件箱",
+   "cmd": "tvbox janitor add --node <ID> --reason <原因>",
+   "skill": "tvbox-janitor"
+  },
+  {
+   "intent": "扫全空间找废弃/待删标记节点",
+   "cmd": "tvbox janitor scan",
+   "skill": "tvbox-janitor"
+  },
+  {
+   "intent": "生态监测总控(自监测+库监测+上游)",
+   "cmd": "tvbox inspect scan",
+   "skill": "tvbox-inspect"
+  },
+  {
+   "intent": "信号源活体探针(20路检测器有效性)",
+   "cmd": "tvbox inspect signal-check",
+   "skill": "tvbox-inspect"
+  },
+  {
+   "intent": "六判据一键终验",
+   "cmd": "tvbox inspect verify",
+   "skill": "tvbox-inspect"
+  },
+  {
+   "intent": "生态五维评估",
+   "cmd": "tvbox inspect assess",
+   "skill": "tvbox-inspect"
+  },
+  {
+   "intent": "监测覆盖率地图(哪些风险面没检查器)",
+   "cmd": "tvbox inspect coverage",
+   "skill": "tvbox-inspect"
+  },
+  {
+   "intent": "生态平衡性体检(五维:谁进化慢/谁拖后腿)",
+   "cmd": "tvbox inspect balance",
+   "skill": "tvbox-inspect"
+  },
+  {
+   "intent": "风险面动态扩展雷达(新风险自动接手)",
+   "cmd": "tvbox inspect expand",
+   "skill": "tvbox-inspect"
+  },
+  {
+   "intent": "登记新监测项(不改代码)",
+   "cmd": "tvbox inspect add-monitor --id Mxx ...",
+   "skill": "tvbox-inspect"
+  },
+  {
+   "intent": "三层联动备份(生态库→资料库→云端后盾,manifest sha256 对账)",
+   "cmd": "tvbox conductor backup",
+   "skill": "ecosys-conductor"
+  },
+  {
+   "intent": "云端恢复生态库(sha256 校验+云端拉回+--apply 真恢复)",
+   "cmd": "tvbox conductor restore",
+   "skill": "ecosys-conductor"
+  },
+  {
+   "intent": "三库全系联动对账(生态/资料/云端 两两+整体一屏)",
+   "cmd": "tvbox conductor linkmap",
+   "skill": "ecosys-conductor"
+  },
+  {
+   "intent": "白做账本(投入错配/返工率/闭环命中四面板)",
+   "cmd": "tvbox conductor waste",
+   "skill": "ecosys-conductor"
+  },
+  {
+   "intent": "统一收尾(六源采集→派单→汇报完成/未完成)",
+   "cmd": "tvbox close",
+   "skill": "unfinished-audit"
+  },
+  {
+   "intent": "看未完成事项总账(欠账单)",
+   "cmd": "tvbox close status",
+   "skill": "unfinished-audit"
+  },
+  {
+   "intent": "显式收口一笔欠账(须带证据)",
+   "cmd": "tvbox close done <sid> <证据>",
+   "skill": "unfinished-audit"
+  },
+  {
+   "intent": "看某监察官名下欠账(派单反查)",
+   "cmd": "tvbox close mine <技能名>",
+   "skill": "unfinished-audit"
+  },
+  {
+   "intent": "欠账单自检(无主项/逾期)",
+   "cmd": "tvbox close verify",
+   "skill": "unfinished-audit"
+  },
+  {
+   "intent": "生成收尾汇报Markdown",
+   "cmd": "tvbox close report",
+   "skill": "unfinished-audit"
+  },
+  {
+   "intent": "从别人包里采集解析接口并验真实出流",
+   "cmd": "tvbox probe harvest parse --repo <仓库URL>",
+   "skill": "probe-hub",
+   "desc": "抽 parses → 按 host+path 去重 → headless 真跑遍历所有 frame → check_m3u8 拉分片。实测 cluntop 21 条全 200 但真出流仅 3 条；产出候选不入库（S173）"
+  },
+  {
+   "intent": "从已有TVBox包抽线路并判能否跨包平移",
+   "cmd": "tvbox probe harvest repack --pkg <整包.json>",
+   "skill": "probe-hub",
+   "desc": "抽 sites/lives/parses → 真实测活 → 判 api 是否远程可平移（相对路径 jar 即不可搬）→ 与目标包做 key/api 冲突检查（S142）"
+  },
+  {
+   "intent": "重算候选仓库评分并排序",
+   "cmd": "tvbox probe search rank --why",
+   "skill": "probe-hub",
+   "desc": "四分量加权（相关.40/体量.25/新鲜.25/存活.10）重算，--why 打印前 5 条分项拆解（S143）"
+  },
+  {
+   "intent": "撤登记上游监测目标",
+   "cmd": "tvbox probe monitor remove <id>",
+   "skill": "probe-hub",
+   "desc": "缺省只预演，--yes 才写；先云端真删再写本地，避免 save_targets 只 upsert 导致删后复活（S143）"
+  },
+  {
+   "intent": "清理监测册测试残留",
+   "cmd": "tvbox probe monitor purge-test --yes",
+   "skill": "probe-hub",
+   "desc": "按特征识别 test1/tvbox 等自检写入的假目标并云端真删，保留真实目标（S143）"
+  },
+  {
+   "intent": "账房总览(建账/闸门/日结/试算)",
+   "cmd": "tvbox ledger status",
+   "skill": "eco-ledger"
+  },
+  {
+   "intent": "试算平衡表(账面vs登记)",
+   "cmd": "tvbox ledger balance",
+   "skill": "eco-ledger"
+  },
+  {
+   "intent": "账实/账账两线对账",
+   "cmd": "tvbox ledger reconcile",
+   "skill": "eco-ledger"
+  },
+  {
+   "intent": "差额平账(进暂记)",
+   "cmd": "tvbox ledger settle",
+   "skill": "eco-ledger"
+  },
+  {
+   "intent": "账房终验五卡口",
+   "cmd": "tvbox ledger finalcheck",
+   "skill": "eco-ledger"
+  },
+  {
+   "intent": "记一笔分录",
+   "cmd": "tvbox ledger post",
+   "skill": "eco-ledger"
+  },
+  {
+   "intent": "冲销/无主变动挂暂记",
+   "cmd": "tvbox ledger writeoff",
+   "skill": "eco-ledger"
+  },
+  {
+   "intent": "账房活体自检",
+   "cmd": "tvbox ledger selftest",
+   "skill": "eco-ledger"
+  },
+  {
+   "intent": "★跨界统一调用：跨对话/任务/场景/生态调一次并自动入账",
+   "cmd": "tvbox ledger call <动词>",
+   "skill": "eco-ledger"
+  },
+  {
+   "intent": "看统一调用入口有哪些动词(不知道敲什么先敲这个)",
+   "cmd": "tvbox ledger verbs",
+   "skill": "eco-ledger"
+  },
+  {
+   "intent": "跨场景接力：一条链逐步跑逐步入账",
+   "cmd": "tvbox ledger relay <链路名>",
+   "skill": "eco-ledger"
+  },
+  {
+   "intent": "调用地图：哪个技能能调谁、有没有幽灵命令",
+   "cmd": "tvbox ledger map",
+   "skill": "eco-ledger"
+  },
+  {
+   "intent": "调用体检：路由-登记-记账三方一致",
+   "cmd": "tvbox ledger audit-call",
+   "skill": "eco-ledger"
+  },
+  {
+   "intent": "调用业态：各界调用次数与成功率",
+   "cmd": "tvbox ledger metrics",
+   "skill": "eco-ledger"
+  },
+  {
+   "intent": "采集学习素材(本地文档/PDF/网页/目录批量)",
+   "cmd": "tvbox study intake scan <目录> --recursive",
+   "skill": "learn-hub",
+   "desc": "三态落地：取到了/确定取不到/无法判定；按内容哈希去重；零命中 rc=1 不报完成"
+  },
+  {
+   "intent": "建知识点树(外部分母优先)",
+   "cmd": "tvbox study sort outline <素材目录> --from <框架文件>",
+   "skill": "learn-hub",
+   "desc": "分母须外部(教材目录/考纲)，自建分母不许当覆盖率分母(M-L02)；无出处节点标 unverified"
+  },
+  {
+   "intent": "质检闸四查(覆盖/出处/答案自洽/难度)",
+   "cmd": "tvbox study gate run <outline.json> <成品目录>",
+   "skill": "learn-hub",
+   "desc": "强制逐项报数，禁止『质检通过』四字结案；任一不过 rc=1 不出品"
+  },
+  {
+   "intent": "学情诊断(错题归因到知识点)",
+   "cmd": "tvbox study forge diagnose <错题文件> --outline <outline.json>",
+   "skill": "learn-hub",
+   "desc": "归因须落到 outline 节点；落不到说无法归因，禁硬套『基础不牢』；缺框架判无法判定"
+  },
+  {
+   "intent": "资料入库/检索/回溯",
+   "cmd": "tvbox study store find <关键词>",
+   "skill": "learn-hub",
+   "desc": "先找后建不重复造；重名 put 不覆盖(rc=3)；trace 回溯到源素材"
+  },
+  {
+   "intent": "学习工坊自检(15条命门探针)",
+   "cmd": "tvbox study self-check",
+   "skill": "learn-hub",
+   "desc": "三态/分母/四查/出出处/去重/200≠正文/412归因/难度依据/零命中/未实现/归一化/相对路径/唯一实现/缺框架/间隔递增"
+  },
+  {
+   "intent": "看有哪些定时任务/每天自动跑的东西",
+   "cmd": "tvbox jobs",
+   "skill": "automation-task-manager"
+  },
+  {
+   "intent": "某个定时任务的详情与健康（会不会失败）",
+   "cmd": "tvbox jobs <id>",
+   "skill": "automation-task-manager"
+  },
+  {
+   "intent": "新建/改/删定时任务（几点几分帮我跑）",
+   "cmd": "automation_update（MCP）",
+   "skill": "automation-task-manager"
+  }
+ ],
+ "chains": [
+  {
+   "name": "开工速览",
+   "scene": "新会话第一件事：四极状态+雷区+闭环体检，一次看完",
+   "steps": [
+    {
+     "t": "cmd",
+     "v": "run brief status"
+    }
+   ],
+   "accept": "雷区已知 + tvbox status 闭环全绿"
+  },
+  {
+   "name": "新接口全流程",
+   "scene": "用户发来接口URL/本地包：从抓取到复盘的整包流水线（tvbox-interface 十步）",
+   "steps": [
+    {
+     "t": "cmd",
+     "v": "brief"
+    },
+    {
+     "t": "flow",
+     "v": "tvbox-interface §0-§8 十步（触发→三问→抓取→体系识别→体检→拆分→去重→测活→入库→登记→复盘）",
+     "ref": "tvbox-interface/scripts/flow.json"
+    },
+    {
+     "t": "cmd",
+     "v": "ingest --candidates <候选文件> --dry"
+    },
+    {
+     "t": "cmd",
+     "v": "ingest --candidates <候选文件>"
+    },
+    {
+     "t": "cmd",
+     "v": "log --summary <本次结论> --pit <坑> --fix <解法> --reuse <可复用点>"
+    },
+    {
+     "t": "cmd",
+     "v": "snapshot"
+    }
+   ],
+   "accept": "四项交付齐 + 状态列零空值 + 命名含体系日期 + 复盘双库对账 + snapshot 已刷新"
+  },
+  {
+   "name": "候选入库",
+   "scene": "已拆好的候选清单 json：黑名单拦截→去重→入库→快照，一步到位",
+   "steps": [
+    {
+     "t": "cmd",
+     "v": "ingest --candidates <候选文件> --dry"
+    },
+    {
+     "t": "cmd",
+     "v": "ingest --candidates <候选文件>"
+    },
+    {
+     "t": "cmd",
+     "v": "block stats"
+    },
+    {
+     "t": "cmd",
+     "v": "snapshot"
+    }
+   ],
+   "accept": "拦截只进失效库 + 放行入源总库 + 拦截计数+1 + snapshot 已刷新"
+  },
+  {
+   "name": "失效源治理",
+   "scene": "实测发现失效源/新源入库前拦截：拉黑→分流→复测→统计",
+   "steps": [
+    {
+     "t": "cmd",
+     "v": "block guard --candidates <候选文件>"
+    },
+    {
+     "t": "cmd",
+     "v": "ingest --candidates /tmp/guard_pass.json"
+    },
+    {
+     "t": "cmd",
+     "v": "block review"
+    },
+    {
+     "t": "cmd",
+     "v": "block stats"
+    },
+    {
+     "t": "cmd",
+     "v": "snapshot"
+    }
+   ],
+   "accept": "拦截与放行未混流 + 复活已标记 + snapshot 已刷新"
+  },
+  {
+   "name": "复盘闭环",
+   "scene": "一次任务收工：遗留扫描+双库对账+进化扫描+一致性审计+快照",
+   "steps": [
+    {
+     "t": "cmd",
+     "v": "watchdog scan"
+    },
+    {
+     "t": "cmd",
+     "v": "evolve recurring --min 3"
+    },
+    {
+     "t": "cmd",
+     "v": "log --summary <本次结论> --type <任务类型>"
+    },
+    {
+     "t": "cmd",
+     "v": "lib-log --scene <场景> --pit <坑> --fix <解法> --reuse <可复用点>"
+    },
+    {
+     "t": "cmd",
+     "v": "audit"
+    },
+    {
+     "t": "cmd",
+     "v": "snapshot"
+    }
+   ],
+   "accept": "遗留清单已阅且阻断项当次处理 + ③④各落各的 + tvbox status 闭环全绿 + recurring 输出带已固化途径"
+  },
+  {
+   "name": "遗留清零",
+   "scene": "定期遗留治理：扫描→报告→逐项深挖→闭环回写→成长复盘",
+   "steps": [
+    {
+     "t": "cmd",
+     "v": "watchdog scan"
+    },
+    {
+     "t": "cmd",
+     "v": "watchdog report"
+    },
+    {
+     "t": "flow",
+     "v": "按报告「下一步」逐项联动处理：台账未闭环→log / 失效库待复测→block review / 规则超期→evolve review / 快照→snapshot / 契约缺口→evolve upgrade",
+     "ref": "legacy-watchdog/scripts/flow.json"
+    },
+    {
+     "t": "cmd",
+     "v": "watchdog scan"
+    },
+    {
+     "t": "cmd",
+     "v": "eco"
+    },
+    {
+     "t": "cmd",
+     "v": "snapshot"
+    }
+   ],
+   "accept": "阻断项清零 + 耗时项逐条有结论（处理或标注原因）+ 处理后复扫遗留数下降 + monitors.json 如有新盲区已登记"
+  },
+  {
+   "name": "生态升级",
+   "scene": "规则/契约/流程变更后的全局升级收尾：就绪体检→全景→登记→快照",
+   "steps": [
+    {
+     "t": "cmd",
+     "v": "evolve scan"
+    },
+    {
+     "t": "cmd",
+     "v": "eco"
+    },
+    {
+     "t": "cmd",
+     "v": "evolve upgrade <技能名>"
+    },
+    {
+     "t": "cmd",
+     "v": "snapshot"
+    }
+   ],
+   "accept": "evolve scan 4/4（含 flow.json 检查项）+ 生态库 version 与实际一致"
+  },
+  {
+   "name": "清理待删节点",
+   "scene": "发现冗余/废弃/重复节点，AI 删不掉——统一投递收件箱，用户一处按单删",
+   "steps": [
+    {
+     "t": "cmd",
+     "v": "janitor scan"
+    },
+    {
+     "t": "cmd",
+     "v": "janitor add --node <ID> --reason <为什么该删>"
+    },
+    {
+     "t": "cmd",
+     "v": "janitor list"
+    }
+   ],
+   "accept": "节点已移入「🗑 待删收件箱」+ 待删清单已生成（用户照单删）"
+  },
+  {
+   "name": "生态体检",
+   "scene": "定期/收工前：全维监测→自检→处置报告，一次看清生态健康",
+   "steps": [
+    {
+     "t": "cmd",
+     "v": "inspect scan"
+    },
+    {
+     "t": "cmd",
+     "v": "inspect signal-check"
+    },
+    {
+     "t": "cmd",
+     "v": "inspect verify"
+    },
+    {
+     "t": "cmd",
+     "v": "watchdog report"
+    }
+   ],
+   "accept": "监测无遗留(或有遗留已分级) + 探针 20/20 + verify 6/6 + 监测报告已生成/上云"
+  },
+  {
+   "name": "生态平衡体检",
+   "scene": "定期/生态失衡时：五维体检找最短板→按优先级清单处置→复检回归平衡",
+   "steps": [
+    {
+     "t": "cmd",
+     "v": "inspect balance"
+    },
+    {
+     "t": "flow",
+     "v": "按优先级清单逐条处置：最短板先补（补 self_check / 接门面 / 清 backlog）→ 复跑 balance 看指数回升",
+     "ref": "tvbox-inspect/scripts/flow.json"
+    },
+    {
+     "t": "cmd",
+     "v": "inspect balance"
+    },
+    {
+     "t": "cmd",
+     "v": "inspect verify"
+    }
+   ],
+   "accept": "平衡指数回升 + 优先级清单缩短 + 全生态无 <70 维度 + verify 6/6"
+  },
+  {
+   "name": "升级必对照",
+   "scene": "技能升级前后按规则57做经验对照：升级前查可借鉴招式、升级后回写留痕（方法极联动）",
+   "steps": [
+    {
+     "t": "cmd",
+     "v": "evolve lend <name> --own"
+    },
+    {
+     "t": "flow",
+     "v": "逐条确认「借鉴 T-X / 不适用 T-X（原因）」，确定本次要借鉴的招式",
+     "ref": "skill-evolution/scripts/flow.json"
+    },
+    {
+     "t": "cmd",
+     "v": "evolve upgrade <name>"
+    },
+    {
+     "t": "cmd",
+     "v": "evolve mine --skill <name>"
+    },
+    {
+     "t": "cmd",
+     "v": "evolve review-lend"
+    }
+   ],
+   "accept": "lend 已查（有未用清单或明确无）+ CHANGELOG 记「借鉴 T-X/不适用」+ review-lend 无该技能缺口"
+  }
+ ]
+}

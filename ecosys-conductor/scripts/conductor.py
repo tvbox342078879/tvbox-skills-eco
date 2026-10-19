@@ -779,7 +779,33 @@ _SKILL_INTENTS = [
                          #   把「这摊子还有啥没收」从遗迹哨手里拿回来（遗迹哨管"还剩哪些老问题"，
                          #   不管"还有哪些活没收"——前者是问题清单，后者是工作清单）。
                          '没收 收摊 收尾 会话收尾 这轮收尾 还差几件 剩几件 清清单子'),
-    ('learn-hub', '做学习资料 整理学习资料 学习资料库 这套资料能用吗 把这些文章做成资料 网盘资料整理 本地文档整理 公众号文章整理 知识点切一下 教材拆解 学情分析 复习资料 复习资料全不全 资料全不全 资料有没有出处 这份资料靠不靠谱 资料哪里来的 讲义 考点整理 课件材料 笔记整理 整理成笔记 学习材料 学习工坊 错题为什么错 这块为什么老错 孩子老错 记不住 背不下来 能不能直接背 知识框架 知识点 教材 考点 试卷材料 学习计划 什么时候复习 记忆曲线'),
+    ('learn-hub', '做学习资料 整理学习资料 学习资料库 这套资料能用吗 把这些文章做成资料 网盘资料整理 本地文档整理 公众号文章整理 知识点切一下 教材拆解 学情分析 复习资料 复习资料全不全 资料全不全 资料有没有出处 这份资料靠不靠谱 资料哪里来的 讲义 考点整理 课件材料 笔记整理 整理成笔记 学习材料 学习工坊 错题为什么错 这块为什么老错 孩子老错 记不住 背不下来 能不能直接背 知识框架 知识点 教材 考点 试卷材料 学习计划 什么时候复习 记忆曲线 '
+                  # ★ S177 步9：补 description 声明过、但投影漏登记的 2 个词
+                  #   （_sig_health 的「话术两源缺口」实测报出）。
+                  #   这不是多加词凑数，是**真源早写了、投影没跟上**——典型的 M-R76。
+                  '资料体检 覆盖率怎么样 '
+                  # ★ S177 步9：黄金用例「这堆 PDF 太乱了」实测路由到「无匹配」。
+                  #   根因不是话术缺词这么简单——它考的是「太乱了」这种**状态描述**。
+                  #   用户不会说「整理学习资料」，只会说「太乱了」。原词表全是
+                  #   动作+名词（整理/拆解/分析），缺「乱/散/杂」这类痛点词。
+                  #   补这一类：用户抱怨现状，而不是下单要做什么。
+                  '太乱了 乱成一团 乱七八糟 一堆没整理 散在各处 找不到哪份 '
+                  '这堆文件 文件夹很乱 资料太杂 理一理'),
+    # ★ S177 步9：**此前完全没有登记**，故 _sig_route_blind 报「双重盲区」。
+    #   它在 ECO_SKILLS 里（13 个成员之一），却被漏在两张路由表外——
+    #   与源28「漏纳管」是同一个病的两个面：纳了管，但没接话术。
+    #   话术按「用户真会怎么说」写，不抄技能名：用户不会说"自动化任务管理器"，
+    #   会说"每天几点帮我跑""定时""自动领""例行任务"。
+    ('automation-task-manager',
+     '定时任务 定时 每天几点 每天自动 自动跑 定时跑 例行任务 定期执行 自动领积分 '
+     '签个到 每天签到 到点叫我 闹钟提醒 周期任务 cron 自动化的 让它自己跑 '
+     '每天帮我 固定时间 什么时候自动执行 查看定时任务 停掉那个定时 加一个定时 '
+     # description 声明的 6 个词——真源（SKILL.md 的 `关键词：` 段）有、投影无，补齐。
+     # 注意：**别在这条注释里再写"尾引号是 description 的排版瑕疵"**——
+     #   S177 实测，`任务列表"` 那个尾引号不是文档写错，是 `_skill_desc_terms`
+     #   没把 YAML 收尾引号剥掉（已修在 strip 里）。我当时先怀疑文档、后查代码，
+     #   方向搞反了一次，记在这里防重犯。
+     '自动化任务 创建任务 编辑任务 删除任务 任务列表'),
 ]
 
 # 真实用户话术用例（S135 M-R77）：**独立标尺**，不随技能 description / _SKILL_INTENTS 变化。
@@ -2188,7 +2214,17 @@ def _skill_desc_terms(s):
             return []
     out = []
     for x in parts:
-        x = x.strip(' 「」『』*★（()）')
+        # ★ S177 步9：**必须把成对引号也剥掉**。
+        #   实测：automation-task-manager 的 frontmatter 是
+        #     description: "... 关键词：自动化任务、…、任务列表"
+        #   行尾那个 `"` 是 YAML 的字符串结束符，但 `description:` 的提取用的是
+        #   正则 `["\']?(.*?)(?:\n[A-Za-z_-]+:|\Z)`，走到文件头/块尾时会把收尾引号一起吃进来，
+        #   于是最后一个词变成 `任务列表"`。
+        #   后果不是"多一个怪词"这么轻——**它在路由表里占了一个位，而真词 `任务列表` 不在**，
+        #   于是用户说「看一下任务列表」反而落不到这个技能上。
+        #   这正是 S176b 同类事故的翻版：判据太窄，词被吞掉。这次吞掉的是引号。
+        #   ASCII 直引号与中文引号都剥（「」已有，此处补 " ' " '）。
+        x = x.strip(' \t「」『』*★（）()"\'“”‘’')
         # 触发词应是短语，不含标点/箭头/连接符号；超长或含分隔符的一律丢弃
         if 2 <= len(x) <= 14 and not re.search(r'[→·—…：:]', x):
             out.append(x)
@@ -2526,6 +2562,17 @@ def _sig_health():
         # ★ S159（M-R117）：依赖本模块与当日 journal，二者都在运行时判定，
         #   与 2/16/24/25/26/27/41 同一种处置（不算漏登记）。
         ('42', '会话提炼缺口', None),
+        # ★ S177 步9：43/44/45 **已注册进 SIGNAL_SOURCES、已加进假阳性基线，却漏了自检登记**。
+        #   这与本函数注释里 S159 记的那次是同一种漏：加注册表时只想着"探针要不要注入"，
+        #   忘了"依赖坏了谁来报"。后果正是本函数自己要防的病——
+        #   自检覆盖 42/45，而 SIGNAL_SOURCES 有 45 条，差值 3 就是这三个「装健康的哑巴」：
+        #   它们的依赖哪天丢了，_sig_health 一声不响，signal-check 照样 ✅。
+        #   自检的全部价值在于「覆盖 == 注册表条目数」（M-R34），漏登记 = 自检本身在说谎。
+        #   依赖逐个落实：43/44 走 eco-ledger 与 source-hub 的资料库通路（core.py 是唯一写入通道），
+        #   45 依赖 drift-fix 的复检步骤，落在本模块与 evolve。
+        ('43', '台账回写防错行', [os.path.join(SKILL_ROOT, 'tvbox-source-hub', 'scripts', 'core.py')]),
+        ('44', '回读防缓存欺骗', [os.path.join(SKILL_ROOT, 'tvbox-source-hub', 'scripts', 'core.py')]),
+        ('45', '漂移修闭环不谎报', [os.path.join(SKILL_ROOT, 'skill-evolution', 'scripts', 'evolve.py')]),
     ]
     out = []
     for sid, name, deps in checks:
@@ -2626,8 +2673,24 @@ def _sig_doc_gap():
 
 def _sig_backlog():
     """信号源1：backlog 未兑现扩展点（已采纳的过期条目过滤——防建议已完成的事）。
-    抽成函数以便 signal-check 探针（S058）。返回 [{skill,type,evidence}]。"""
+    抽成函数以便 signal-check 探针（S058）。返回 [{skill,type,evidence}]。
+
+    ★ S177 步9 判据校正：「方向性记录」不该算缺陷。
+      实测这 2 条长期挂着：
+        [automation-task-manager] 长期方向：MCP automation_update 完全替代脚本后，脚本通道可降级为兜底
+        [legacy-watchdog]         同一条（清账司派单转过来的）
+      它们写的是「**如果**哪天 MCP 能替代了，就把脚本降级」——条件还没发生，
+      不是欠的活，永远不会被"兑现"，于是永远挂在基线里当噪音。
+      **判据前提立错了**：把"未兑现"一律等同"有问题"，而 backlog 本来就包含
+      「等条件成熟再说」的方向性条目。
+
+      改法：把「长期方向 / 方向性 / 等…再说」这类**条件式记录**单列类型，
+      不计入缺陷、但**打标返回**——不静默丢弃（否则哪天真的该做了也没人看见）。
+      探针侧据此区分：真待办 → 算缺陷；方向性 → 只留痕。
+    """
     out = []
+    # 条件式记录的措辞特征。宁可漏判成缺陷（会被复核），不可错判成方向性（会被忽略）。
+    _DIRECTIONAL = ('长期方向', '方向性', '等条件', '条件成熟', '若将来', '为未来')
     for s in ECO_SKILLS:
         fp = os.path.join(SKILL_ROOT, s, 'scripts', 'flow.json')
         if not os.path.exists(fp):
@@ -2638,7 +2701,8 @@ def _sig_backlog():
                 if '扩展点' in b and '已清零' not in b:
                     if _is_adopted(s, b):
                         continue   # 过期扩展点（实际已兑现）≠ 新建议
-                    out.append({'skill': s, 'type': 'backlog兑现', 'evidence': b[:80]})
+                    kind = 'backlog方向性' if any(k in b for k in _DIRECTIONAL) else 'backlog兑现'
+                    out.append({'skill': s, 'type': kind, 'evidence': b[:80]})
         except Exception:
             pass
     return out
@@ -3568,6 +3632,23 @@ def _fold_fp(line_text):
 # · 已修复点：修复后仍会命中正则（因修的是语义非结构），登记以示"已审计"。
 # · 合理折叠：返回/赋值空是正确语义（如真·首期无历史、纯流程控制、保守判死）。
 _FOLD_SCAN_ALLOWLIST = {
+    # —— ecosys-conductor 代码健康判据的「工具可用性」（S177 步9）——
+    # 合理：`tools[name] = False` 是**探测器自身跑不起来的三态哨兵**，不是把"查不出"
+    #   折成"没问题"。判据可核（删任一条即失效，故写死在这里）：
+    #     · 紧随其后 `if not any(tools.values()): return None, '无法判定'` ——
+    #       两个工具都不可用时**返回 None**，调用方把 None 当"判红"处理（不放行）；
+    #     · 只有一个可用时，另一路跳过，最终文案里如实打印 `pyflakes—` 表明它没参与；
+    #     · 三态可区分：None(无法判定) / True(查过且干净) / False(查过有问题)。
+    #   为什么会被扫到：扫描器只看到 `except: tools[name] = False`，看不到下面那个 any()。
+    #   **这条本身也印证了 #16 的价值**：它把我刚写的新代码当"未登记候选"抓了出来，
+    #   而我确实是写到第二次才想起要处理"两个都不可用"的情况。
+    'ecosys-conductor/scripts/conductor.py:08139f5d95',   # tools[name] = False（工具可用性哨兵·附 any() 三态出口）
+    # —— ecosys-conductor manifest 读取失败（S177 步9）——
+    # 合理：`_man_ok = False` 是**manifest 读不出来**的三态哨兵，且同 except 块内
+    #   **立即 print 显式告知**「manifest 读取失败……仅含技能级触发词，命令级一列未能核验」。
+    #   也就是说：它把"读失败"和"命令表为空"用**输出文字**彻底分开了，没有折叠。
+    #   三态可区分：False(读失败·已告警) / True(读成功) / 未赋值(未走到该分支)。
+    'ecosys-conductor/scripts/conductor.py:1e24dfd695',   # _man_ok = False（manifest 读失败哨兵·附显式告警）
     # —— ecosys-conductor 分层判定降级（S176）——
     # 合理：`layer = None` 是 **eco_inventory 不可用时的三态哨兵**，不是把"读不出分层"
     #   折成"某个具体层"。判据可核：
@@ -5235,6 +5316,7 @@ def cmd_verify(args):
     _jok = _src_pass(sc_out, 35)
     _iok = _src_pass(sc_out, 37)
     _cov = _sig_skill_coverage()   # 默认含 ③ 覆盖缺口（轻量：仅文件读+编译，无副作用）
+    _decl = list(getattr(_sig_skill_coverage, 'declarative', []) or [])
     _broken = [x for x in _cov if '缺 SKILL.md' in x['evidence'] or '编译' in x['evidence']]
     _gap = [x for x in _cov if x not in _broken]
     _cov_ok = (len(_broken) == 0)
@@ -5246,6 +5328,17 @@ def cmd_verify(args):
     _cov_total = len([n for n in sorted(os.listdir(SKILL_ROOT))
                       if os.path.isdir(os.path.join(SKILL_ROOT, n))
                       and not n.startswith('.') and n != '__pycache__'])
+    # ★ S177 步9：⑫ 的文案原来写「全 66 技能 · 结构异常 0 · 自监察缺口 9」。
+    #   三个数摆在一行，读者会理解成「66 个都查过了，只有 9 个缺口」。
+    #   实测不然：**结构+编译** 确实扫了全部 66 个（strict 模式 0 异常，为真）；
+    #   但 **③ 自监察声明只适用于非市场技能**（市场 skill_* 由平台监护，不要求登记），
+    #   21 个非市场技能里 7 个有 self_check、9 个缺、5 个无 scripts 目录不在范围。
+    #   数字没错，**口径没交代**——这属于"说对了但让人误解"，与谎报同样有害。
+    #   故把三段分开写清：扫了多少 / 结构是否真的零异常 / 自监察只在哪个范围内算。
+    _cov_nonmarket = [n for n in sorted(os.listdir(SKILL_ROOT))
+                      if os.path.isdir(os.path.join(SKILL_ROOT, n))
+                      and not n.startswith('.') and n != '__pycache__'
+                      and not n.startswith('skill_')]
     checks = [
         (f'① 探针 {len(SIGNAL_SOURCES)}/{len(SIGNAL_SOURCES)}', sc_ok,
          (f'{pr[0]}/{pr[1]}' if pr else '无输出')
@@ -5278,7 +5371,13 @@ def cmd_verify(args):
         ('⑩ 清道夫健康', _jok, ('清道夫已被监察·收件箱健康' if _jok else '清道夫探针未通过/未注册')),
         ('⑪ 监察司自身', _iok, ('监察司已被监察·可运行' if _iok else '监察司探针未通过/未注册')),
         ('⑫ 全技能监护覆盖', _cov_ok,
-         f'全 {_cov_total} 技能 · 结构异常 {len(_broken)} · 自监察缺口 {len(_gap)}'
+         f'结构+编译 {_cov_total}/{_cov_total} 全扫 · 异常 {len(_broken)}'
+         f'｜自监察声明仅查非市场 {len(_cov_nonmarket)} 个（市场技能由平台监护）'
+         f'· 缺口 {len(_gap)}'
+         # ★ S177 步9：说明型技能（无任何可执行脚本，靠 SKILL.md 指导调用平台能力）
+         #   不要求 self_check——要求它就是逼人写空话。但**豁免要留痕**：
+         #   把名单直接印出来，免得下次问「都覆盖了吗」答不上来。
+         + (f'｜其中 {len(_decl)} 个为说明型无需自检：' + '、'.join(_decl) if _decl else '')
          + ('｜异常: ' + '、'.join(x['skill'] for x in _broken) if _broken else '')),
         # ⑬ S177：⑫ 只能证明"能编译"，不能证明"名字没写错、变量读了没有"。
         #   ask_bank.py 就是 ⑫ 全绿、运行时 NameError 的样本 —— 补这一条堵住。
@@ -5876,6 +5975,11 @@ def _sig_skill_coverage(s=None, strict=False):
     关键性质：按路径枚举 ⇒ 任何技能（含新装）都无法"裸奔"，天然满足"所有技能有人监察"。"""
     import py_compile
     out = []
+    # ★ S177 步9：说明型技能（无可执行脚本）在本轮被豁免的名单。
+    #   为什么要单独收：豁免不能等于"消失"。用户点名「所有技能都要有人监察」，
+    #   若这类技能直接从报告里抹掉，下次问「覆盖了哪些」就答不出来。
+    #   故收集起来由 verify ⑫ 的文案显式列出（"其中 N 个为说明型，不需自检项"）。
+    _SIG_COVER_DECLARATIVE = []
     root = SKILL_ROOT
     if not os.path.isdir(root):
         return [{'skill': '(全局)', 'type': '全技能监护', 'evidence': f'技能根目录缺失: {root}'}]
@@ -5921,19 +6025,52 @@ def _sig_skill_coverage(s=None, strict=False):
         # ③ 自监察声明（市场技能由平台监护覆盖）
         is_market = name.startswith('skill_')
         if not is_market:
-            ffp = os.path.join(er, 'scripts', 'flow.json')
+            # ★ S177 步9：**按形态分级**，不再"一刀切要求所有技能都写 self_check"。
+            #   起因：实测 9 个缺口里，形态差得极远——
+            #     · .py/.sh 混编（automation-task-manager、computer-use）→ 真能写可执行自检
+            #     · 只有 .sh 的连接器（figma/github/gongfeng-connector）→ 自检只能验 token 通路
+            #     · 只有 .js（sites）→ 同 Python 体系不一个运行时
+            #     · **scripts 目录空/不存在**（library、workbuddy-local-office-edit、
+            #       workbuddy-office-routing）→ 它是**说明型技能**，靠 SKILL.md 指导调用
+            #       平台能力，本身没有任何可执行资产，**要求它写 self_check 就是逼人写空话**
+            #   原判据的错在于：把"技能"当成同质对象。尺子对不上形态，量出来的全是"缺口"。
+            #   新口径（三段）：
+            #     有可执行脚本（.py/.sh/.js）→ 必须 self_check 非空，缺失仍报（真缺口）
+            #     无可执行脚本（说明型）      → **豁免**，但显式打上'说明型'标记，
+            #                                    免得"豁免"变成"没人知道它在这"
+            #     flow.json 损坏             → 照旧报（连读都读不了，不能算豁免）
+            sdir = os.path.join(er, 'scripts')
+            _exec_assets = []
+            if os.path.isdir(sdir):
+                _exec_assets = [f for f in os.listdir(sdir)
+                                if f.endswith(('.py', '.sh', '.js', '.mjs', '.ts'))
+                                and not f.startswith('.')]
+            ffp = os.path.join(sdir, 'flow.json')
             if not os.path.exists(ffp):
+                if not _exec_assets:
+                    # 说明型：没有可执行资产 → 记进 _SIG_COVER_NOTE 一类，由调用方展示，不算缺陷
+                    _SIG_COVER_DECLARATIVE.append(name)
+                    continue
                 out.append({'skill': name, 'type': '全技能监护',
-                            'evidence': '无 scripts/flow.json(治理技能未登记自检项，"无人监察")'})
+                            'evidence': f'无 scripts/flow.json（本技能有 {len(_exec_assets)} 个可执行脚本，'
+                                        f'须登记自检项；说明型技能才可豁免）'})
             else:
                 try:
                     sc = json.load(open(ffp, encoding='utf-8')).get('self_check')
                     if not isinstance(sc, list) or len(sc) == 0:
+                        if not _exec_assets:
+                            _SIG_COVER_DECLARATIVE.append(name + '(self_check空)')
+                            continue
                         out.append({'skill': name, 'type': '全技能监护',
-                                    'evidence': 'flow.json 的 self_check 为空/缺失(治理技能须声明自检)'})
+                                    'evidence': f'flow.json 的 self_check 为空/缺失'
+                                                f'（本技能有 {len(_exec_assets)} 个可执行脚本，'
+                                                f'须声明自检项）'})
                 except Exception as e:
                     out.append({'skill': name, 'type': '全技能监护',
                                 'evidence': f'flow.json 损坏({type(e).__name__}: {e})'})
+    # 说明型名单挂在函数属性上，供 verify ⑫ 文案读取（局部变量出不了函数体）。
+    # 这是"豁免要留痕"的最小实现：不新增全局状态，也不改动函数签名。
+    _sig_skill_coverage.declarative = list(_SIG_COVER_DECLARATIVE)
     return out
 
 
@@ -6014,9 +6151,22 @@ def cmd_signal_check(args):
         ]
         _baseline_ids = {s for s, _ in _base_checks}
         _silent_exc = []
+        _direction_only = []      # 仅含「方向性」记录 → 不是缺陷
         for _sid, _fn in _base_checks:
             try:
-                if _fn():
+                _r = _fn()
+                if _r:
+                    # ★ S177 步9：区分「检测器恒报」与「检测器报出了真缺陷」。
+                    #   实测 12 个"无注入即报"里，A 类 4 项是真缺陷、C 类 3 项是判据前提立错。
+                    #   基线原先一律标成「可能恒报」，把真缺陷也涂成"检测器嫌疑"，
+                    #   结果是**真问题被当成噪音跳过**——比漏报更坏，因为它每天提醒你一次，你每天忽略一次。
+                    #   口径：如果返回项**全部**是 backlog方向性，那是"判据把方向性当归欠"，
+                    #   只记方向性、不进 fp_baseline。
+                    _items = _r if isinstance(_r, (list, tuple)) else []
+                    _kinds = {x.get('type') for x in _items if isinstance(x, dict)}
+                    if _items and _kinds == {'backlog方向性'}:
+                        _direction_only.append(_sid)
+                        continue
                     fp_baseline.append(_sid)
             except Exception as _e:
                 # ★ S155：探针崩了不得静默吞——"探针没人监察"根因之一。原 `except: pass`
@@ -6036,6 +6186,12 @@ def cmd_signal_check(args):
             #   故措辞改为「检测器在无注入时即报」，并明确"须先复核实为真还是误报"。
             print(f'  ⚠️ 假阳性基线：信号源 {",".join(fp_baseline)} 在无注入时即报'
                   f'（可能恒报，也可能是**真实缺陷**——须逐条复核，勿直接当作检测器有罪）')
+            print()
+        if _direction_only:
+            # 方向性记录：明确不叫"假阳性"，也不叫"缺陷"——它是 backlog 里
+            # 「等条件成熟再说」的那类，正常不该清零。留痕但不计红。
+            print(f'  ℹ️ 信号源 {",".join(_direction_only)} 报出的全部是**方向性记录**'
+                  f'（长期方向/条件成熟再做）——非欠账，不计入假阳性')
             print()
         if _silent_exc:
             # ★ S155：探针静默异常显式报警——"监测者自己"此前无人盯的缺口
@@ -8091,7 +8247,20 @@ def cmd_issues(rest):
         elif it['status'] == 'next':
             print(f"   🟡 {it['id']} {it['title']} → 下一环节：{it.get('next', '?')}")
         else:
-            print(f"   ✅ {it['id']} {it['title']}（{it['status']} {it['closed']}）")
+            # ★ S177 步9 实测修：原写 `{it['closed']}` —— **直接下标取值，缺字段就 KeyError**。
+            #   实测：`tvbox conductor issues` 完整崩在 KeyError: 'closed'，整个总览一条都看不到。
+            #   根因不是打印写错，是**数据结构没有约束**：早期版本登记已结项时不写 closed
+            #   （实测 P022–P027 共 6 条），后来加了字段却没有任何回填或校验。
+            #   这类"老数据缺新字段"是长期演进系统的必然，判据该容忍它；
+            #   但**不能静默显示空字符串**——那会让人以为"结案日期就是空"，与 M-R60 同型。
+            #   三态：有日期→照常显示；无该键→显式标「日期缺失」；键存在但为空→显式标「空」。
+            if 'closed' not in it:
+                _when = '⚠️结案日期缺失（旧记录未写该字段）'
+            elif not it.get('closed'):
+                _when = '⚠️结案日期为空'
+            else:
+                _when = it['closed']
+            print(f"   ✅ {it['id']} {it['title']}（{it['status']} {_when}）")
     if issues and not done:
         print('   · 全部未结——按 M-R73 逐环节清账')
     if not issues:

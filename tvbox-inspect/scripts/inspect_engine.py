@@ -2502,7 +2502,21 @@ def cmd_health(a):
         # 恒零判定（仅当有足够历史期数时）；proven 字段=S049 受控单测实证「判定器有效」，恒0=真实健康
         verdict = ''
         if exe == '✅' and periods >= 3 and hist_hits.get(x['id'], 0) == 0 and hits == 0:
-            if x.get('proven'):
+            # ★ S177 步9：**先看归档，再看待外部条件，最后看 proven**。
+            #   实测：M37/M38/M41 三项都带 `_archived_reason`（事已办完，明确写了闭环证据），
+            #   但本处只认 `proven` 字段，于是它们被当成"疑似判定失效"报进高危——
+            #   而且因为归档后没人会再去碰它，这条告警会**每期都报、永远不消**。
+            #   这类"永远消不掉的告警"比漏报更坏：人会开始习惯性略过整块高危列表，
+            #   真正的新告警也就一起被略过了（狼来了）。
+            #   `waiting_for` 是同一病的另一形态：M39 等次日首跑、M40 等 external API 放开，
+            #   条件不在我们手里，恒零是"还没到"，不是"判不了"。
+            #   四态：已归档 → ✅闭环 ｜ 待外部 → ⏳等待（不占高危位）｜ proven → ✅实证 ｜ 其余 → ⚠️
+            if x.get('_archived_reason'):
+                _ar = str(x['_archived_reason']).strip()
+                verdict = f'✅ 已归档闭环（{_ar[:40]}）' if _ar else '✅ 已归档闭环'
+            elif x.get('waiting_for'):
+                verdict = f'⏳ 待外部条件：{str(x["waiting_for"])[:46]}'
+            elif x.get('proven'):
                 verdict = f'✅ 历史恒零（已实证健康：{x["proven"]}）'
             else:
                 verdict = '⚠️ 历史恒零'
