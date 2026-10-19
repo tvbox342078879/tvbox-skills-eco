@@ -1,6 +1,6 @@
 {
  "version": "1.32.0",
- "updated": "2026-10-19",
+ "updated": "2026-10-20",
  "source_master": "/workspace/生态1015_TVBox生态全局规则.md",
  "stats": {
   "total": 130,
@@ -3781,6 +3781,14 @@
     "type": "manual",
     "cmd": "检查 plans/S177_施工进度板.md 的 R-BG01/R-BG02 存在"
    }
+  },
+  {
+   "id": "M-R07",
+   "primary_owner": "ecosys-conductor",
+   "summary": "前台禁止一切 sleep/等待：后台任务等通知再读，轮询用瞬时调用；「等」也是长任务",
+   "ask": "又卡了 / 切不进话 / 你在干嘛 / 回应我",
+   "status": "已固化",
+   "source": "S177 用户令 2026-10-20 三次截图取证"
   }
  ],
  "freeze": {
