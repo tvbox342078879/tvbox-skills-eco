@@ -683,9 +683,13 @@ def _mine_data(only_skill=''):
     return found, total_lines, len(skills)
 
 
-def discover_new_moves(min_skill=2):
+def discover_new_moves(min_skill=2, only_skill=''):
     """未归类挖掘：跨 ≥N 技能出现、但不在 SEED_MOVES 里的高频短语（候选新招式）。
-    只提示不自动入库（人工确认后补进 SEED_MOVES）。"""
+    只提示不自动入库（人工确认后补进 SEED_MOVES）。
+    S179 修：本函数原忽略 only_skill，导致 `--skill X` 时仍按全生态算，
+    六个不同技能打印出**一模一样**的候选清单——监视 M20/M21/M27/M32/M46/M47
+    因此无法按 skill 取证（dst Olay: 参数生效了一半 = 最容易被当真的假数据）。
+    修正：only_skill 非空时，只保留**该技能也在其中**的短语。"""
     phrase=defaultdict(set)
     for sk in _all_skills():
         if sk in MOVE_NOISE:
@@ -700,7 +704,9 @@ def discover_new_moves(min_skill=2):
                     phrase[p].add(sk)
     # 已归类招式名里的词剔除（近似）
     known=' '.join(v['name'] for v in SEED_MOVES.values())
-    cands=[(p,len(ss)) for p,ss in phrase.items() if len(ss)>=min_skill and p not in known]
+    cands=[(p,len(ss)) for p,ss in phrase.items()
+           if len(ss)>=min_skill and p not in known
+           and (not only_skill or only_skill in ss)]
     cands.sort(key=lambda x:-x[1])
     return cands[:12]
 
@@ -739,9 +745,11 @@ def cmd_mine(a):
         print(f'  [{tid}] {SEED_MOVES[tid]["name"]:32} 跨{n}技能 {hot}')
         print(f'        出处: {", ".join(sorted(d["skills"]))}')
     # 候选新招式
-    cands=discover_new_moves(mn)
+    # S179：--skill 时须把过滤传下去，否则候选清单仍是全生态的（见函数注释）
+    cands=discover_new_moves(mn, only_skill=a.skill or '')
     if cands:
-        print(f'\n  ⚠️ 候选新招式（跨≥{mn}技能但未归类，需人工确认后补入 SEED_MOVES）：')
+        scope=f'（限定 {a.skill}）' if a.skill else ''
+        print(f'\n  ⚠️ 候选新招式{scope}（跨≥{mn}技能但未归类，需人工确认后补入 SEED_MOVES）：')
         for p,n in cands[:8]:
             print(f'     · {p}（跨{n}技能）')
 
