@@ -1,0 +1,150 @@
+{
+ "name": "tvbox-interface-pipeline",
+ "version": "1.3.2",
+ "created": "2026-10-15",
+ "source": "规则54四化落地（SKILL.md §0-§8 的机器可读版；S022 盘点：interface 是生态入口却无机器可读流程）",
+ "route_decision": {
+  "online_url_or_local_package": "本流水线全链路 §0-§8",
+  "candidate_list_already_split": "交 tvbox-source-hub：tvbox ingest --candidates <file>（黑名单拦截→去重→入库→快照一步到位）",
+  "dirty_config": "先 parse_tvbox_config.py 解析，再按上面分流"
+ },
+ "steps": [
+  {
+   "no": 0,
+   "name": "触发判定",
+   "rule": "§0.1 宁触发勿漏：URL/本地包/语境词命中任一即开工，不等用户开口",
+   "cmd": null,
+   "artifact": null,
+   "action": "丢弃'先分析/先报告'冲动，直接进入开工三问"
+  },
+  {
+   "no": 1,
+   "name": "开工前三问",
+   "rule": "§1.1：终点/概念/可用性判据；只有1不明才问用户，2主动点破，3自行预检",
+   "cmd": null,
+   "artifact": "终点结论（整包/拆lives/可增删json）",
+   "action": "默认终点=生成可增删json并入库+登记；开工前跑 tvbox brief 看雷区（L3 开工读经验）"
+  },
+  {
+   "no": 2,
+   "name": "抓取",
+   "rule": "§2：必须 /usr/bin/curl 绝对路径；双UA比对md5；首字节判真身",
+   "cmd": "python3 scripts/pipeline.py fetch <URL> --out artifact/raw.bin",
+   "artifact": "raw.bin + 伪装形态结论",
+   "action": "存 artifact/ 下 .bin；JPEG嵌套/MIME障眼/BOM/TXT 按形态表处理"
+  },
+  {
+   "no": 3,
+   "name": "体系识别",
+   "rule": "§2.5：spider 真身是唯一权威依据（解zip看内部文件）；命名铁律 <体系><MMDD>_<站数>站；判不出标「待确认」请用户拍板",
+   "cmd": "python3 scripts/pipeline.py spider <spider路径或串> [--base <配置URL目录>]  # 解包定 A/B（权威判据）",
+   "artifact": "体系结论(A/B/C/D/E/🔞) + 成品包名 + 判据留痕",
+   "action": "先结构后内容；新体系自动建系(§2.5.4)"
+  },
+  {
+   "no": 4,
+   "name": "体检",
+   "rule": "§3：type分布/lives/spider相对路径必探/ext本地助手依赖扣除",
+   "cmd": "python3 scripts/pipeline.py health <raw>  # 体检 + 静态体系识别",
+   "artifact": "体检结论",
+   "action": "spider 相对路径→拿配置URL目录当base探测200；整包不转存知识库（download_url短时效）"
+  },
+  {
+   "no": 5,
+   "name": "分类拆分",
+   "rule": "§4.2：py/采集/直链/其他四类分开拆；lives 按组拆；parses 提取；18+ 同流程只多隔离",
+   "cmd": "python3 scripts/pipeline.py split <raw> --outdir <目录>",
+   "artifact": "分类候选 JSON（每类独立文件）",
+   "action": "sites的type0=直链，lives的type0=直播，看归属"
+  },
+  {
+   "no": 6,
+   "name": "全量去重",
+   "rule": "§4.5 入库前置闸：lives按name+url；站线按api+ext；parses按url；先拆分→再去重→后测活",
+   "cmd": "python3 scripts/pipeline.py dedup <raw>",
+   "artifact": "去重后候选 + dedup_*.txt",
+   "action": "去重记录落盘；跨包去重先下载对比"
+  },
+  {
+   "no": 7,
+   "name": "全量测活",
+   "rule": "§5：除站点外全量测，不允许抽样；判定活=200|206|301|302|303|307|308 且结构合法",
+   "cmd": "python3 scripts/pipeline.py probe <raw> --workers 12",
+   "artifact": "alive_<类型>_<来源>.txt + 纯可用版",
+   "action": "逐条✅/❌落盘；剔除确认死亡条目"
+  },
+  {
+   "no": 8,
+   "name": "归类入库",
+   "rule": "§4.4 归类表：采集/直链/py/其他/lives/parses/18+ 各归各库；§6.4 测活通过的线路必须抽进源总库",
+   "cmd": "tvbox ingest --candidates <file>",
+   "artifact": "底包库节点 + 源总库记录",
+   "action": "三段法上传(凭证→COS PUT→import)；§6.4 以api接口为键去重后批量写源总库"
+  },
+  {
+   "no": 9,
+   "name": "登记",
+   "rule": "§6.2/6.3：可用底包清单 lives 章节 + 索引·底包总库变更记录（倒序）",
+   "cmd": null,
+   "artifact": "两处登记完成",
+   "action": "插入锚点=最新表后置 Divider；一次插=Heading+Table"
+  },
+  {
+   "no": 10,
+   "name": "复盘闭环",
+   "rule": "§8 复盘四问 + §8.3 返工/澄清/步数≤上次；平台坑落④库、业务坑落③台账",
+   "cmd": "tvbox log / tvbox lib-log / tvbox snapshot",
+   "artifact": "EXPERIENCE.log + 台账/经验库记录 + 刷新快照",
+   "action": "§10 反面案例库开工前必看；收工必须 tvbox snapshot（规则47）"
+  }
+ ],
+ "iron_order": [
+  "触发",
+  "三问",
+  "抓取",
+  "体系识别",
+  "体检",
+  "拆分",
+  "去重",
+  "测活",
+  "入库",
+  "登记",
+  "复盘"
+ ],
+ "iron_rules": {
+  "定位": "生态**加工层**（整包坊）——接口/本地包 → 可用 json 流水线：抓取→体检→拆分→去重→测活→入库",
+  "守护": {
+   "M-R32": "装健康的哑巴——交付前自检『填进 TVBox 能跑出内容吗』，失败显式告警不静默",
+   "M-R38": "单一事实源——体系识别（spider 真身）唯一权威；分类判据与探源司 harvest 同口径（classify_line）",
+   "M-R57": "输出→判定三态——全量测活按三态（可用/失败/无法判定），无法判定不得折叠成失败误剔",
+   "P-R1": "合格线路源判据=真实可用——全量测活无抽样，非仅 HTTP 码；纯可用版才入库",
+   "L025": "配置藏在图片里（JPEG 图种）",
+   "L027": "固定双 UA 探测漏判（UA 分流）"
+  }
+ },
+ "self_check": [
+  "体系识别先于一切加工（spider真身唯一权威） （M-R38）",
+  "采集/直链/py/其他四类分开入库未混",
+  "全量去重先于测活（入库前置闸） （M-R32）",
+  "除站点外全量测活无抽样 （P-R1）",
+  "交付前自检过：填进TVBox能跑出内容吗（相对路径/jar/中文编码） （M-R32）",
+  "命名含体系+日期，18+已隔离带前缀",
+  "§6.4 提源进源总库做了（线路维度）",
+  "复盘四问真做且返工次数≤上次",
+  "平台坑落④库、业务坑落③台账（复盘双库对账） （M-R40）",
+  "收工 tvbox snapshot 已刷新（规则47）",
+  "pipeline.py spider 解包定 A/B（zip 内 assets/*guard* → B，仅 classes.dex → A）——体系识别有权威依据 （M-R38）",
+  "pipeline.py run 一把梭跑通抓→体检→拆分→去重→测活（真实 298 站包 3.5s 内完成） （M-R38）"
+ ],
+ "snapshot_refresh_rule": "本流水线整包入库/源库写入后，收工必须 tvbox snapshot；纯规则/文档变更不刷但复盘说明原因",
+ "backlog": [
+  "[已清零 2026-10-15] interface 已建 scripts/flow.json（11 步机器可读流程）；候选清单格式契约已就位（hub scripts/contracts.json candidate-list）——S022 盘点第②③项清零",
+  "[已清零 S092] 四类判据升为生态单一事实源：classify_site/classify_lives/classify_parses/classify_line 公开可复用（M-R38），供探源司 harvest 复用；_classify_site 保留别名，既有行为不变",
+  "[遗留 S110·正本] 采集缺包级字段：原作者包的 spider/jar 在抽取时被丢弃，导致 508 条 jar系 源无法溯源到 jar 下载地址。修复点在本技能抽取链路（补 spider/jar 字段落库）。收敛自 4 处影子：总账 becf9081fdbc / 5e79eeb5ba4f、probe-hub backlog[12][13]、legacy-watchdog backlog[20] ｜ sid=becf9081fdbc ｜ 下一步 补 tvbox-interface 抽取链路的 jar 字段"
+ ],
+ "sop_binding": {
+  "authority": "本技能 SKILL.md §0-§10（SSOT）+ EXPERIENCE.log（逐单复盘）",
+  "note": "本流程产出的候选清单交 hub ingest 消费，字段以 hub contracts.json 为准；复发症状先 tvbox 入口查 SOP：sync_sop.py route --symptom"
+ },
+ "pipeline_script": "scripts/pipeline.py（S068 建档：fetch/health/split/dedup/probe/spider/run 七命令，口径与 §0-§10 一致）"
+}

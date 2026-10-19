@@ -1,0 +1,84 @@
+{
+ "promises": [
+  {
+   "id": "C001",
+   "text": "测试：这条承诺故意不收口，用来验证判据⑧会红",
+   "owner": "ecosys-conductor",
+   "due": "2020-01-01",
+   "status": "done",
+   "opened": "2026-10-17",
+   "closed": "2026-10-17",
+   "evidence": "受控验证：确认超期承诺会导致 verify 判据⑧报红，注入已清理"
+  },
+  {
+   "id": "C002",
+   "text": "经验库 DB_LIB(XTuuj8mKtqZnSolDdeDxkq) 云端节点已失效(11510 not found)，需找到新库或重建，并同步 conductor 常量与所有引用",
+   "owner": "ecosys-conductor",
+   "due": "2026-10-24",
+   "status": "done",
+   "opened": "2026-10-17",
+   "closed": "2026-10-17",
+   "evidence": "误报·库健在。真因是 link_four.py 手抄 DB_LIB ID 第14~15位颠倒（XTuuj8mKtqZn vs 正本 XTuuj8mKtqnZ）。已改为从 conductor.py 派生（M-R38），实测台账/经验库双 True、dead=[]。对应欠账 f43d60dafc36 已 done"
+  },
+  {
+   "id": "C003",
+   "text": "S143 复盘JSON与线路源对话，探源司升级 v1.3.0（评分分层/上云回执判真/登记册真删/自检16组）",
+   "owner": "ecosys-conductor",
+   "due": "2026-10-20",
+   "status": "done",
+   "opened": "2026-10-17",
+   "closed": "2026-10-17",
+   "evidence": "已完成：1.3.0 落地，self-check 16/16、evolve scan 10/10、close link 4/4；CHANGELOG/SKILL §3.9/flow.json 17条三件套同步，manifest 84→88路由"
+  },
+  {
+   "id": "C004",
+   "text": "把交付物复盘1017_JSON与线路源_探源司v1.3.0升级.md 上传底包库归档",
+   "owner": "ecosys-conductor",
+   "due": "2026-10-20",
+   "status": "done",
+   "opened": "2026-10-17",
+   "closed": "2026-10-17",
+   "evidence": "已上传：https://www.workbuddy.cn/space/d/66Du5Kmvxvne21QHMRnR0c （KS_DOC_CREATE 0 failed / 0 fatal）"
+  },
+  {
+   "id": "C005",
+   "text": "[jar地址结构性缺口] 全生态 4 个库均无 jar 下载地址字段：原作者包的 spider/jar 在抽取阶段即被丢弃，导致 508 条 jar系 源无法溯源到 jar 下载地址。修复需在 tvbox-interface 抽取链路补包级字段采集（spider/jar 原样留档）+ 源库加字段 + 历史 620 条回填，属独立立项（S110 起挂账，S156 复核仍无数据源）",
+   "owner": "ecosys-conductor",
+   "due": "2026-11-30",
+   "status": "open",
+   "opened": "2026-10-18",
+   "closed": "",
+   "evidence": ""
+  },
+  {
+   "id": "C006",
+   "text": "S163-GitHub-token：用户配 GitHub token（教程已给：github.com/settings/tokens → Generate new token (classic) → Note 填 tvbox → Expiration 选 No expiration → 勾 repo → Generate → 复制 ghp_ 串）。token 到手后立即：①tvbox probe token --set <串> ②monitor check --all 把 6 仓库查成终态（重点 IPTV2/TVBox_live 被限流 2 个）③建立目录树基线供下次变更对比。匿名配额 08:32 已重置，等待期间不影响。",
+   "owner": "ecosys-conductor",
+   "due": "2026-10-22",
+   "status": "open",
+   "opened": "2026-10-19",
+   "closed": "",
+   "evidence": ""
+  },
+  {
+   "id": "C007",
+   "text": "会话编号两套体系需要统一：台账按序号自增（本轮 S113）、CHANGELOG 按会话顺序自报（本轮 S163），两者长期偏移且无固定差值（实测 S099→S113、S110→S158、S111→S111），导致同一轮工作在两处编号不同、靠 grep 首词反查历史会拿错号。建议：以台账「会话编号」字段为唯一权威，CHANGELOG 标题改用台账号，或加一列显式映射。",
+   "owner": "ecosys-conductor",
+   "due": "2026-10-22",
+   "status": "open",
+   "opened": "2026-10-19",
+   "closed": "",
+   "evidence": ""
+  },
+  {
+   "id": "C008",
+   "text": "P2：把'判据里不能有两个同侧变量'做成可查的校验——本轮三版判据全挂，根因都是拿 账本自身字段 互比（who vs it.owner 恒真、剥扩展名裸词误伤）。应在 audit 里加一条扫描：判据函数内若两侧变量同源（都来自被检对象），报警",
+   "owner": "ecosys-conductor",
+   "due": "2026-10-22",
+   "status": "open",
+   "opened": "2026-10-19",
+   "closed": "",
+   "evidence": ""
+  }
+ ]
+}

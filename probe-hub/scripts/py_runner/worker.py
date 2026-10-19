@@ -1,0 +1,227 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+py_runner/worker.py —— 单个 py spider 的沙箱真跑 worker（S116）。
+
+由 run_all.py 以子进程调用（隔离崩溃/挂起/端口占用）：
+  python3 worker.py <py文件绝对路径> <ext JSON字符串> <结果输出路径>
+
+流程：装 stub → exec 源码 → 实例化 Spider → init(extend) →
+      homeVideoContent() / categoryContent(首个分类) / searchContent 三路探口 →
+      任一返回非空片单 = 内容层真通过。
+
+三态（M-R60）：
+  通过   —— 真拉到非空片单（含 vod_id/vod_name 的条目）
+  失败   —— 代码跑通但片单全空 / 代码级异常（站点改版致解析崩）
+  无法判定 —— 网络层异常（连接/超时/SSL）或 worker 超时
+"""
+import importlib.util
+import json
+import sys
+import traceback
+
+
+def install_stubs():
+    """把 stub base.spider / com.github.catvod 注册进 sys.modules（相对本文件定位）。"""
+    import os
+    here = os.path.dirname(os.path.abspath(__file__))
+    stub_path = os.path.join(here, 'base_stub.py')
+    spec = importlib.util.spec_from_file_location('base.spider', stub_path)
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules['base.spider'] = mod
+    spec.loader.exec_module(mod)
+    base_pkg = importlib.util.module_from_spec(
+        importlib.util.spec_from_file_location('base', stub_path))
+    base_pkg.spider = mod
+    sys.modules['base'] = base_pkg
+    # com.github.catvod 惰性导入顶替（真机里来自 jar）
+    for name in ('com', 'com.github', 'com.github.catvod'):
+        m = type(sys)('x')
+        m.__path__ = []
+        sys.modules[name] = m
+    cg = sys.modules['com.github.catvod']
+
+    class _Proxy:
+        @staticmethod
+        def getUrl(*a, **k):
+            return (a[0] if a else '')
+
+        @staticmethod
+        def Proxy(*a, **k):
+            return ''
+    cg.Proxy = _Proxy
+    return mod
+
+
+def _list_of(result):
+    if not isinstance(result, dict):
+        return []
+    return result.get('list') or []
+
+
+def _valid(items):
+    """非空且至少一条像样条目（有 id 或 name）。"""
+    if not items:
+        return 0
+    n = 0
+    for it in items:
+        if isinstance(it, dict) and (it.get('vod_id') or it.get('vod_name')
+                                     or it.get('id') or it.get('name')):
+            n += 1
+    return n
+
+
+def _read_src(py_file):
+    """读源码：剥 BOM（utf-8-sig），GBK 兜底（部分老站源码非 UTF-8）。
+
+    S116 修复：LIBVIO 源码带 U+FEFF，直接 compile 炸 SyntaxError
+    「invalid non-printable character」，被误记成代码级失败。
+    """
+    raw = open(py_file, 'rb').read()
+    for enc in ('utf-8-sig', 'gbk', 'utf-16'):
+        try:
+            return raw.decode(enc)
+        except (UnicodeDecodeError, UnicodeError):
+            continue
+    return raw.decode('utf-8', 'replace')
+
+
+def main():
+    py_file, ext_json, out_path = sys.argv[1], sys.argv[2], sys.argv[3]
+    result = {'verdict': '无法判定', 'evidence': '', 'route': '', 'count': 0}
+    try:
+        stub = install_stubs()
+    except Exception as e:
+        result.update(verdict='无法判定', evidence=f'stub 安装失败: {type(e).__name__}')
+        json.dump(result, open(out_path, 'w'))
+        return
+    try:
+        src = _read_src(py_file)
+        ns = {'__name__': 'spider_under_test', '__file__': py_file}
+        exec(compile(src, py_file, 'exec'), ns)
+
+        cls = ns.get('Spider')
+        if cls is None:
+            # 退化：找任何继承自 stub Spider 的类
+            for v in ns.values():
+                if isinstance(v, type) and issubclass(v, stub.Spider) and v is not stub.Spider:
+                    cls = v
+                    break
+        if cls is None:
+            result.update(verdict='失败', evidence='源码中未找到 Spider 类')
+            json.dump(result, open(out_path, 'w'))
+            return
+
+        s = cls()
+        s.init(extend=ext_json or '')
+
+        # ① 首页推荐
+        try:
+            hv = s.homeVideoContent()
+            n = _valid(_list_of(hv))
+            if n:
+                result.update(verdict='通过', route='homeVideoContent',
+                              count=n, evidence=f'首页片单 {n} 条')
+                json.dump(result, open(out_path, 'w'))
+                return
+        except Exception as e:
+            if _is_net(e):
+                result.update(evidence=f'homeVideoContent 网络层: {_e(e)}')
+            else:
+                result.update(evidence=f'homeVideoContent 异常: {_e(e)}')
+
+        # ② 分类页（取 homeContent 首个分类）
+        try:
+            hc = s.homeContent(True) or {}
+            classes = hc.get('class') or []
+            tids = [c.get('type_id') for c in classes if isinstance(c, dict) and c.get('type_id')]
+        except Exception as e:
+            tids = []
+            result['evidence'] += f' | homeContent 异常: {_e(e)}'
+        for tid in tids[:3]:
+            try:
+                cc = s.categoryContent(tid, 1, False, '')
+                n = _valid(_list_of(cc))
+                if n:
+                    result.update(verdict='通过', route=f'categoryContent({tid})',
+                                  count=n, evidence=f'分类 {tid} 片单 {n} 条')
+                    json.dump(result, open(out_path, 'w'))
+                    return
+            except Exception as e:
+                if not _is_net(e):
+                    result.update(verdict='失败', evidence=f'categoryContent({tid}) 代码异常: {_e(e)}')
+                    json.dump(result, open(out_path, 'w'))
+                    return
+                result['evidence'] += f' | categoryContent({tid}) 网络层: {_e(e)}'
+                break
+
+        # ③ 搜索兜底
+        try:
+            sc = s.searchContent('电视剧', False)
+            n = _valid(_list_of(sc))
+            if n:
+                result.update(verdict='通过', route='searchContent',
+                              count=n, evidence=f'搜索结果 {n} 条')
+                json.dump(result, open(out_path, 'w'))
+                return
+        except Exception as e:
+            if not _is_net(e):
+                result.update(verdict='失败', evidence=f'searchContent 代码异常: {_e(e)}')
+                json.dump(result, open(out_path, 'w'))
+                return
+            result['evidence'] += f' | searchContent 网络层: {_e(e)}'
+
+        # 三路全空
+        if not result['evidence']:
+            # S116 修复：代码全程跑通、无任何异常，但三路片单全空——
+            # 这不是"无法判定"（没有任何网络层歧义），是明确的失败：
+            # 站点改版/空源，app 里同样看不到数据。旧代码在此分支漏改
+            # verdict，停在初始值"无法判定"，把 5 个改版站误送进待端测。
+            result.update(verdict='失败', evidence='代码跑通但三路片单全空（站点改版/空源）')
+        elif '网络层' in result['evidence']:
+            result.update(verdict='无法判定', evidence=result['evidence'] + '（网络层，非死）')
+        else:
+            result.update(verdict='失败', evidence=result['evidence'])
+    except Exception as e:
+        if _is_net(e):
+            result.update(verdict='无法判定', evidence=f'网络层: {_e(e)}（非死）')
+        else:
+            result.update(verdict='失败', evidence=f'顶层异常: {_e(e)}')
+    json.dump(result, open(out_path, 'w'))
+
+
+def _e(exc):
+    return f'{type(exc).__name__}: {str(exc)[:120]}'
+
+
+def _is_net(exc):
+    """仅「连接层」异常 → 无法判定（M-R60，沙箱网络 ≠ 用户端网络）。
+
+    S116 修复（误判实证）：旧版把 OSError 整类当网络层，而
+    requests 2.x 的 RequestException 继承 IOError（=OSError）——导致
+    JSONDecodeError（上游返 HTML，站点改版）/ InvalidSchema / MissingSchema
+    这些「代码/改版级」异常全被吞成无法判定。现收窄为：
+      - requests.ConnectionError（含 SSLError/ConnectTimeout/ProxyError）
+      - requests.Timeout（含 ReadTimeout）
+      - 内置 ConnectionError / TimeoutError / socket.gaierror(DNS)
+      - urllib3 连接族（裸用 urllib3 的 spider 会漏出来）
+    其余（JSONDecodeError/InvalidSchema/AttributeError/ValueError…）→ 失败。
+    """
+    import socket
+    net = [ConnectionError, TimeoutError, socket.gaierror, socket.timeout]
+    try:
+        import requests
+        net += [requests.ConnectionError, requests.Timeout]
+    except ImportError:
+        pass
+    try:
+        import urllib3.exceptions as ue
+        net += [ue.NewConnectionError, ue.ConnectTimeoutError,
+                ue.ReadTimeoutError, ue.ProtocolError]
+    except ImportError:
+        pass
+    return isinstance(exc, tuple(net))
+
+
+if __name__ == '__main__':
+    main()

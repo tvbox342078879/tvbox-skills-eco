@@ -1,0 +1,120 @@
+[
+  {
+    "date": "2026-10-16",
+    "overall": 100,
+    "scores": {
+      "cat_health": 100,
+      "cat_gain": 100,
+      "cat_noise": 100,
+      "cat_active": 100,
+      "cat_contract": 100,
+      "cat_biz": 0,
+      "cat_radar": 100
+    },
+    "metrics": {
+      "ready": "9/9",
+      "watchdog_ok": false,
+      "adopted": "12/12",
+      "retracted": 6,
+      "pending": 0,
+      "decided": 2
+    }
+  },
+  {
+    "date": "2026-10-17",
+    "overall": 100,
+    "scores": {
+      "cat_health": 100,
+      "cat_gain": 100,
+      "cat_noise": 100,
+      "noise_state": "green",
+      "cat_active": 100,
+      "cat_contract": 100,
+      "cat_biz": 0,
+      "cat_radar": 100
+    },
+    "metrics": {
+      "ready": "10/10",
+      "watchdog_ok": false,
+      "adopted": "12/12",
+      "retracted": 6,
+      "pending": 0,
+      "decided": 2
+    }
+  },
+  {
+    "date": "2026-10-18",
+    "overall": 91,
+    "scores": {
+      "cat_health": 100,
+      "cat_gain": 100,
+      "cat_noise": 100,
+      "noise_state": "green",
+      "cat_active": 100,
+      "cat_contract": 55,
+      "ver_state": "drift×5",
+      "ver_ok": 6,
+      "ver_total": 11,
+      "cat_biz": 0,
+      "cat_radar": 100
+    },
+    "metrics": {
+      "ready": "11/11",
+      "watchdog_ok": false,
+      "adopted": "12/12",
+      "retracted": 6,
+      "pending": 0,
+      "decided": 2
+    }
+  },
+  {
+    "date": "2026-10-19",
+    "overall": 100,
+    "scores": {
+      "cat_health": 100,
+      "cat_gain": 100,
+      "cat_noise": 100,
+      "noise_state": "green",
+      "cat_active": 100,
+      "cat_contract": 100,
+      "ver_state": "green",
+      "ver_ok": 13,
+      "ver_total": 13,
+      "cat_biz": 100,
+      "cat_radar": 100
+    },
+    "metrics": {
+      "ready": "13/13",
+      "watchdog_ok": true,
+      "adopted": "12/12",
+      "retracted": 6,
+      "pending": 0,
+      "decided": 2
+    }
+  },
+  {
+    "date": "2026-10-20",
+    "overall": 100,
+    "scores": {
+      "cat_health": 100,
+      "cat_gain": 100,
+      "cat_noise": 100,
+      "noise_state": "green",
+      "cat_active": 100,
+      "cat_contract": 100,
+      "ver_state": "green",
+      "ver_ok": 13,
+      "ver_total": 13,
+      "cat_biz": 100,
+      "cat_radar": 100
+    },
+    "metrics": {
+      "ready": "13/13",
+      "watchdog_ok": true,
+      "adopted": "12/12",
+      "retracted": 6,
+      "pending": 0,
+      "decided": 2
+    }
+  }
+]

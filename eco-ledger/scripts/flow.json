@@ -1,0 +1,100 @@
+{
+ "name": "eco-ledger-flow",
+ "version": "1.2.4",
+ "created": "2026-10-18",
+ "source": "S161 技能初建（用户：设计一个管账目的技能——监测/平账/库操作/全局联动）",
+ "route_decision": {
+  "记分录": "ledger.py post --voucher <台账号> --debit A --credit B --amount N --action X",
+  "查余额": "ledger.py balance（余额表+试算平衡按币种归零）",
+  "对账": "ledger.py reconcile（账实线+账账线；有凭证走 post，无凭证走 writeoff 进暂记）",
+  "结账": "ledger.py settle（日结快照；纪律 settle→post→close）",
+  "终验": "ledger.py finalcheck（五卡口：docsync/账实/版本/信号源/凭证完备）",
+  "建库删库": "ledger.py db create/retire（retire 强制 --archive 快照+回读 0）",
+  "并库": "ledger.py db merge --frm <源> --to <目标> --archive <快照>（八步顺序）",
+  "版本对账": "ledger.py sync-versions（版本户 vs SKILL.md，差额自动开版本升级分录）",
+  "自检": "ledger.py selftest（活体探针：注入已知差额→验证 reconcile 抓到→清理）"
+ },
+ "steps": [
+  {
+   "no": 0,
+   "name": "触发判定",
+   "rule": "触发词命中：对账/平账/账目/记账/结账/终验/余额/试算/分录/冲销/账房",
+   "cmd": null,
+   "action": "任何「动了库/版本/记录要留账」的场景均命中"
+  },
+  {
+   "no": 1,
+   "name": "记账",
+   "rule": "凭证号引用会话台账条目；分录借贷同额同币种",
+   "cmd": "ledger.py post",
+   "action": "幂等（凭证号+指纹）；写前过闸门预检；回读验证通过自动转已平"
+  },
+  {
+   "no": 2,
+   "name": "对账",
+   "rule": "账实线=资产户 vs 库实际行数；账账线=账面 vs 上期快照",
+   "cmd": "ledger.py reconcile",
+   "action": "读失败≠读空（三态）；差额处置分流 post/writeoff"
+  },
+  {
+   "no": 3,
+   "name": "平账",
+   "rule": "无凭证差额进「暂记·无主变动」，账龄 3 轮未认领升级高危",
+   "cmd": "ledger.py writeoff",
+   "action": "暂记余额=生态可控性体温计"
+  },
+  {
+   "no": 4,
+   "name": "结账",
+   "rule": "试算平衡按币种归零；不平=账本损坏最高优先级",
+   "cmd": "ledger.py settle",
+   "action": "纪律：settle→post→close（凭证在闸门关闭前落账）"
+  },
+  {
+   "no": 5,
+   "name": "终验",
+   "rule": "五卡口任一非绿即拦截，产出带凭证号的拦截清单",
+   "cmd": "ledger.py finalcheck",
+   "action": "终验相关分录未平直接亮红"
+  }
+ ],
+ "iron_rules": {
+  "守恒律": "任何时刻 Σ账户余额按币种=0；冲销=换借贷方向+正额（绝不叠加负额，S161 实证双重反转坑）",
+  "三态": "rows_of 返回 (rows, ok)，ok=False 调用方必须中止（M-R60）",
+  "SSOT": "库坐标唯一在 core_ledger.py（M-R38）；账户关联对象=唯一库 id 源",
+  "不改写": "分录永不修改内容，纠错只走红字冲销；废票删除仅限建账期且须留痕",
+  "删库三件套": "快照→删→回读 0，缺快照拒绝（S160 规则）"
+ },
+ "self_check": [
+  "post 幂等：同凭证号+指纹跳过（F 防重记账）",
+  "写前闸门预检：state!='open' 拒写并给放行指引（F01）",
+  "回读验证通过自动置已平/已验（S020 伪成功防御）",
+  "reconcile 读失败按『无法判定』报出，绝不折叠为 0 差额（M-R60）",
+  "selftest 注入已知差额必须被抓到 + 干净基线必须无假阳性（T-E/T-H）",
+  "retire/merge 缺 --archive 直接拒绝（S160）",
+  "改名回读用 list-nodes（get_database_schema 标题滞后，S161 实证）"
+ ],
+ "contracts": {
+  "gate_discipline": "settle → post → close：凭证必须在会话闸门关闭前落账（L160）",
+  "single_writer": "分录唯一入口 ledger.py post；绕行者由证证对账抓出",
+  "one_way_dependency": "账房只读检查器输出（docsync/version_guard/signal-check），检查器不调账房（防 F12 循环依赖）"
+ },
+ "backlog": [],
+ "resolved_backlog": [
+  {
+   "item": "db move 独立语义（当前=merge 单源）",
+   "resolved": "S156",
+   "note": "S156 已实现：cmd_db_move 独立语义（记录换家、账户身份不变、终态「已迁移」），与 merge 共用 _db_transfer 不复制"
+  },
+  {
+   "item": "register_eco 侧自动触发 sync-versions（当前手动）",
+   "resolved": "S156",
+   "note": "S156 已实现：evolve._ledger_sync_after_register 事件驱动，建技能后自动对齐版本户（实测 4 户入账）"
+  },
+  {
+   "item": "暂记账龄自动升级（当前靠人工盯）",
+   "resolved": "S156",
+   "note": "S156 已实现：cmd_aging 机械算账龄（≥21 天高危/≥7 天超期），故障注入实测抓到；高危自动登记监察司 M34；退出码可挂 verify"
+  }
+ ]
+}

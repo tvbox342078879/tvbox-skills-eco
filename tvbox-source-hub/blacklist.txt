@@ -1,0 +1,5 @@
+# 已实测判定为失效/伪装的源，永不入库（每行一条完整 api 接口）
+# 格式：<api>\t<判定原因>
+http://mytv6688.xyz/pyplugin/木兮.py	返回<title>welcome</title> HTML挂靠页，域名已停用，非真py源码
+https://pan.szfx.top/down.php/56ac2028f2dd8336dccad017927cbef1.py	解压后为 "key":"xxx","name":"xxx" 占位模板，非真源
+https://pan.szfx.top/down.php/14fce8ef9e7e8a40719c801ec3077b8c.jar	返回"404 Not Found"(13B)，spider已死

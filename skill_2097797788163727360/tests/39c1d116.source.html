@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>公众号预览 - fix-v6-02</title>
+<style>
+  body{margin:0;background:#ededed;font-family:-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;}
+  .bar{position:sticky;top:0;background:#07c160;color:#fff;padding:10px 16px;
+        font-size:14px;z-index:9;display:flex;align-items:center;justify-content:space-between;}
+  .bar button{background:#fff;color:#07c160;border:none;border-radius:14px;
+        padding:6px 14px;font-size:13px;font-weight:bold;cursor:pointer;}
+  .phone{width:375px;margin:16px auto 40px;background:#fff;min-height:667px;
+          padding:16px;box-sizing:border-box;border-radius:4px;}
+  .phone *{max-width:100%!important;box-sizing:border-box;}
+  .tip{max-width:375px;margin:0 auto;color:#999;font-size:12px;padding:0 4px 30px;}
+  #copied{color:#ffd;font-size:12px;margin-left:8px;}
+</style>
+</head>
+<body>
+  <div class="bar">
+    <span>📱 公众号移动端预览（375px）· 所见即所得</span>
+    <span><button onclick="copyContent()">📋 复制全文</button><span id="copied"></span></span>
+  </div>
+  <div class="phone" id="phone">
+  <div id="copy-target">
+<section id="content" style="font-size:15px;color:#3f3f3f;line-height:1.85;letter-spacing:.3px;font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;word-break:break-word;"><section style="font-size:15px;color:#3f3f3f;line-height:1.85;font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;word-break:break-word">
+<h1 style="font-size:22px;line-height:1.4;margin:0 0 16px 0;color:#2c3e50;font-weight:bold">你删掉的"重复"数据，可能是AI最需要的训练素材</h1>
+<section style="background-color:#f5576c;color:white;padding:16px;margin:16px 0;text-align:center">
+<section>💡 核心洞察</section>
+<section>去重 ≠ 删重复<br/>去重 = 识别"同一件事的不同讲法"</section>
+</section>
+<hr style="border:none;border-top:1px solid #eee;margin:26px 0"/>
+<blockquote style="border-left:4px solid #ff6b6b;padding:12px 16px;margin:16px 0;background-color:#fff9f9;color:#555;border-radius:6px">
+<p style="margin:8px 0;line-height:1.9">你是不是也这样——发现训练数据里有三句差不多的话，果断删掉两句？</p>
+</blockquote>
+<p style="margin:8px 0;line-height:1.9">恭喜你，你可能把最有价值的数据删掉了。</p>
+<h2 style="color:#fff;background-color:#667eea;padding:10px 16px;margin:24px 0 16px 0;font-size:17px;display:inline-block;font-weight:bold;padding-left:12px;border-left:5px solid #667eea;line-height:1.4">🌱 一幅漫画的启示</h2>
+<p style="margin:8px 0;line-height:1.9">想象一部热血少年漫画的同一场战斗：</p>
+<section style="background-color:#f8f9ff;padding:14px 16px;margin:12px 0;border-left:4px solid #667eea">
+<section style="font-size:13px;color:#667eea;font-weight:bold;margin-bottom:6px">分镜 ① — 克制型决心</section>
+<section style="color:#444;font-size:14px;line-height:1.8">画面：主角握拳，指节发白<br/>台词："我要赢！"</section>
+</section>
+<section style="background-color:#f8f9ff;padding:14px 16px;margin:12px 0;border-left:4px solid #667eea">
+<section style="font-size:13px;color:#667eea;font-weight:bold;margin-bottom:6px">分镜 ② — 爆发前夜</section>
+<section style="color:#444;font-size:14px;line-height:1.8">画面：主角怒吼，青筋暴起<br/>台词："没有人能阻止我！"</section>
+</section>
+<section style="background-color:#f8f9ff;padding:14px 16px;margin:12px 0;border-left:4px solid #667eea">
+<section style="font-size:13px;color:#667eea;font-weight:bold;margin-bottom:6px">分镜 ③ — 破釜沉舟</section>
+<section style="color:#444;font-size:14px;line-height:1.8">画面：主角出拳，慢镜头特写<br/>台词："这是我的……最后一击！"</section>
+</section>
+<p style="margin:8px 0;line-height:1.9">三个分镜，激烈程度依次递增——但它们都在说同一件事：</p>
+<blockquote style="border-left:4px solid #ff6b6b;padding:12px 16px;margin:16px 0;background-color:#fff9f9;color:#555;border-radius:6px">
+<p style="margin:8px 0;line-height:1.9"><strong style="color:#e74c3c">"主角下定决心，全力以赴"</strong></p>
+</blockquote>
+<p style="margin:8px 0;line-height:1.9">简单去重会怎么做？</p>
+<blockquote style="border-left:4px solid #ff6b6b;padding:12px 16px;margin:16px 0;background-color:#fff9f9;color:#555;border-radius:6px">
+<p style="margin:8px 0;line-height:1.9">→ 删掉两个，剩一个 ❌</p>
+</blockquote>
+<p style="margin:8px 0;line-height:1.9">但这三种"讲法"都是不同的表达强度：<br/>① 是<strong style="color:#e74c3c">克制型决心</strong> ③ 是<strong style="color:#e74c3c">破釜沉舟式爆发</strong></p>
+<p style="margin:8px 0;line-height:1.9">删掉任何一张，AI就学不到"如何描写不同烈度的决心"——数据质量反而下降。</p>
+<hr style="border:none;border-top:1px solid #eee;margin:26px 0"/>
+<h2 style="color:#fff;background-color:#667eea;padding:10px 16px;margin:24px 0 16px 0;font-size:17px;display:inline-block;font-weight:bold;padding-left:12px;border-left:5px solid #667eea;line-height:1.4">🌿 二、语义去重的真正逻辑</h2>
+<table style="width:100%;border-collapse:collapse;margin:16px 0;font-size:14px">
+<tr><th style="background-color:#764ba2;color:white;padding:10px 10px;text-align:left;font-size:14px;background-color:#667eea;font-weight:600">维度</th><th style="background-color:#764ba2;color:white;padding:10px 10px;text-align:left;font-size:14px;background-color:#667eea;font-weight:600">表面去重 ❌</th><th style="background-color:#764ba2;color:white;padding:10px 10px;text-align:left;font-size:14px;background-color:#667eea;font-weight:600">语义去重 ✅</th></tr>
+<tr><td style="padding:9px 10px;border-bottom:1px solid #f0f0f0;font-size:14px;border:1px solid #eee;color:#333">识别对象</td><td style="padding:9px 10px;border-bottom:1px solid #f0f0f0;font-size:14px;border:1px solid #eee;color:#333">相同文件</td><td style="padding:9px 10px;border-bottom:1px solid #f0f0f0;font-size:14px;border:1px solid #eee;color:#333">等价信息</td></tr>
+<tr><td style="padding:9px 10px;border-bottom:1px solid #f0f0f0;font-size:14px;border:1px solid #eee;color:#333">判断方式</td><td style="padding:9px 10px;border-bottom:1px solid #f0f0f0;font-size:14px;border:1px solid #eee;color:#333">"这句话我见过，删！"</td><td style="padding:9px 10px;border-bottom:1px solid #f0f0f0;font-size:14px;border:1px solid #eee;color:#333">"这句话背后的意思我已经有足够表达了，删！"</td></tr>
+<tr><td style="padding:9px 10px;border-bottom:1px solid #f0f0f0;font-size:14px;border:1px solid #eee;color:#333">核心问题</td><td style="padding:9px 10px;border-bottom:1px solid #f0f0f0;font-size:14px;border:1px solid #eee;color:#333">只看形式，不看内容</td><td style="padding:9px 10px;border-bottom:1px solid #f0f0f0;font-size:14px;border:1px solid #eee;color:#333">看内容够不够丰富</td></tr>
+</table>
+<h3 style="color:#667eea;font-size:16px;margin-top:20px;font-weight:600;margin:22px 0 12px">具体例子：训练数据中的重复表达</h3>
+<blockquote style="border-left:4px solid #ff6b6b;padding:12px 16px;margin:16px 0;background-color:#fff9f9;color:#555;border-radius:6px">
+<p style="margin:8px 0;line-height:1.9"><strong style="color:#e74c3c">A.</strong> "他冷冷地看着她。"<br/>
+<strong style="color:#e74c3c">B.</strong> "他的目光如刀锋般锐利。"<br/>
+<strong style="color:#e74c3c">C.</strong> "他没说话，眼神却让人后背发凉。"</p>
+</blockquote>
+<p style="margin:8px 0;line-height:1.9">表面去重：保留A，删B、C<br/>语义去重：三条都保留——它们是<strong style="color:#e74c3c">同一情绪的不同表达强度</strong></p>
+
+<hr style="border:none;border-top:1px solid #eee;margin:26px 0"/>
+<h2 style="color:#fff;background-color:#667eea;padding:10px 16px;margin:24px 0 16px 0;font-size:17px;display:inline-block;font-weight:bold;padding-left:12px;border-left:5px solid #667eea;line-height:1.4">🌳 三、漫画思维的应用</h2>
+<p style="margin:8px 0;line-height:1.9">同一个人物、同一个场景——<br/>不同角度 = 不同信息量<br/>不同情绪烈度 = 不同的表达风格</p>
+<p style="margin:8px 0;line-height:1.9">AI训练需要的不只是"正确答案"，<br/>还需要"正确答案的不同讲法"。</p>
+<blockquote style="border-left:4px solid #ff6b6b;padding:12px 16px;margin:16px 0;background-color:#fff9f9;color:#555;border-radius:6px">
+<p style="margin:8px 0;line-height:1.9">这就像教小孩认猫：<br/>不能只给他看一只猫的照片，<br/>要给他看不同品种、不同姿势、不同光线下的小猫。</p>
+</blockquote>
+<section style="background-color:#fcb69f;color:#c04800;padding:16px;margin:20px 0;text-align:center;font-size:14px">
+<p style="margin:8px 0;line-height:1.9">🎨 漫画思维 × 数据工程 · 每周一更新<br/>关注我，看更多AI × 创作的人话解读</p>
+</section>
+</section></section>
+  </div>
+  </div>
+  <div class="tip">说明：渐变/阴影等公众号不支持的样式已退化为兼容写法。点击「复制全文」后，到公众号编辑器 Ctrl+V 即可。</div>
+<script>
+/* ========== 公众号粘贴兼容层（复制前自动 sanitize）==========
+   修复已知 bug：
+   A) 工具栏(.bar)被误复制 → 用专用 #copy-target 容器隔离复制范围
+   B) 内容太窄(375px手机宽) → sanitize 时剥离 width/max-width 固定像素约束
+   C) 嵌套 html/body → unwrap 拆除
+   D) <div> 不认容器样式 → 转为 <section>
+   E) 渐变/阴影不支持 → 退化实色/删除
+=========================================================== */
+function sanitizeForWechat(html) {
+  var d = document.createElement('div');
+  d.innerHTML = html;
+  /* Step 0: 剥离 UI 铬层（工具栏/按钮/提示）
+     输入可能是旧版 _preview.html，文章内容里已嵌了 .bar / button 等预览元素。
+     不剥离的话这些会当正文复制进公众号。 */
+  var chromeSelectors = '.bar, .tip, #copied, button, [id^="copied"]';
+  d.querySelectorAll(chromeSelectors).forEach(function(el) {
+    el.parentNode.removeChild(el);
+  });
+  /* Step 1: 拆除嵌套的 <html>/<head>/<body>，保留子元素 */
+  var bad = d.querySelectorAll('html, head, body');
+  bad.forEach(function(el) {
+    while (el.firstChild) { el.parentNode.insertBefore(el.firstChild, el); }
+    el.parentNode.removeChild(el);
+  });
+  /* Step 2: <div> → <section>（公众号 ProseMirror 白名单不认 div 的容器样式） */
+  d.querySelectorAll('div').forEach(function(el) {
+    var s = document.createElement('section');
+    s.setAttribute('style', el.getAttribute('style') || '');
+    s.className = el.className;
+    while (el.firstChild) { s.appendChild(el.firstChild); }
+    el.parentNode.replaceChild(s, el);
+  });
+  /* Step 3: 渐变 → 实色 + 剥离不支持的属性 + 剥离固定像素宽度 */
+  d.querySelectorAll('[style]').forEach(function(el) {
+    var style = el.getAttribute('style') || '';
+    /* 3a: 渐变 → 实色 */
+    style = style.replace(/background\s*:\s*linear-gradient\([^)]*\)/gi,
+      function(m) {
+        var colors = m.match(/#[a-fA-F0-9]{3,8}/g) || ['667eea'];
+        return 'background-color:' + colors[0];
+      });
+    /* 3b: 移除公众号不支持的属性 */
+    var drop = [
+      'border-radius', 'box-shadow', 'text-shadow', 'transform',
+      'transition', 'animation', 'filter', '-webkit-', '-moz-'
+    ];
+    drop.forEach(function(prop) {
+      var re = new RegExp(prop + "[^;']*", "gi");
+      style = style.replace(re, '');
+    });
+    /* 3c: 剥离固定像素宽度约束（解决"粘贴后太窄像手机版"问题）
+         公众号编辑器有自己的布局宽度，不需要预览层的 375px 约束。
+         保留百分比值（如 width:100%），只删 px 固定值。 */
+    style = style.replace(/(max-)?width\s*:\s*[0-9]+px(\s*!important)?\s*/gi, '');
+    /* 清理空 style 和多余分号 */
+    style = style.replace(/;\s*;/g, ';').replace(/^\s*;|;\s*$/g, '').trim();
+    if (!style) { el.removeAttribute('style'); }
+    else { el.setAttribute('style', style); }
+  });
+  return d.innerHTML;
+}
+
+function copyContent(){
+  /* 关键修复：始终从 #copy-target 取内容，绝不取 .bar 或 #phone 容器 */
+  var node = document.getElementById('copy-target');
+  if (!node) { node = document.getElementById('content') || document.getElementById('phone'); }
+  var rawHtml = node.innerHTML;
+  var html = sanitizeForWechat(rawHtml);
+  var plain = node.innerText;
+  function ok(msg){var c=document.getElementById('copied');if(c)c.textContent=msg;}
+  try {
+    if (navigator.clipboard && window.ClipboardItem) {
+      var htmlBlob = new Blob([html], {type:'text/html'});
+      var textBlob = new Blob([plain], {type:'text/plain'});
+      navigator.clipboard.write([new ClipboardItem({'text/html':htmlBlob,'text/plain':textBlob})]).then(function(){ok('已复制 ✅');}).catch(function(){fallback();});
+      return;
+    }
+  } catch(e) {}
+  fallback();
+  function fallback(){
+    var tmp = document.createElement('div');
+    tmp.style.position='fixed';tmp.style.left='-9999px';
+    tmp.innerHTML = html;
+    document.body.appendChild(tmp);
+    try{
+      var r=document.createRange(); r.selectNodeContents(tmp);
+      var s=window.getSelection(); s.removeAllRanges(); s.addRange(r);
+      document.execCommand('copy'); ok('已复制 ✅');
+    }catch(e){ok('复制失败，请手动 Ctrl+A');}
+    s.removeAllRanges();
+    document.body.removeChild(tmp);
+  }
+}
+</script>
+</body>
+</html>

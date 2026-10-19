@@ -1,0 +1,13 @@
+/* minimal — 极简黑白灰（适合观点/随笔） */
+body{font-size:15px;color:#2b2b2b;line-height:2;letter-spacing:.2px;font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Songti SC','Microsoft YaHei',serif;}
+h1{font-size:20px;color:#111;font-weight:bold;margin:24px 0 16px;}
+h2{font-size:18px;color:#111;font-weight:bold;margin:28px 0 14px;padding-bottom:8px;border-bottom:2px solid #111;}
+h3{font-size:16px;color:#111;font-weight:600;margin:20px 0 10px;}
+p{margin:0 0 18px;line-height:2;}
+blockquote{background:#f5f5f5;border-left:4px solid #999;padding:14px 16px;margin:18px 0;color:#555;font-style:italic;}
+table{width:100%;border-collapse:collapse;margin:18px 0;font-size:14px;}
+th{background:#2b2b2b;color:#fff;padding:10px 12px;text-align:left;}
+td{border:1px solid #ddd;padding:9px 12px;color:#333;}
+hr{border:none;border-top:1px solid #ddd;margin:26px 0;}
+.callout{background:#f5f5f5;padding:14px 16px;border-radius:6px;margin:16px 0;color:#444;}
+.note{background:#f0f0f0;padding:14px 16px;border-radius:8px;margin:16px 0;color:#555;}

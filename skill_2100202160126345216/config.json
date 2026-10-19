@@ -1,0 +1,15 @@
+{
+  "name": "mdskill-web",
+  "displayName": "公众号排版 视觉美化 一键成稿",
+  "encoding_fallback": [
+    "utf-8",
+    "gbk",
+    "gb18030"
+  ],
+  "features": [
+    "cli",
+    "selftest",
+    "dry-run",
+    "error-handling"
+  ]
+}

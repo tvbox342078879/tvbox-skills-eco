@@ -1,0 +1,708 @@
+{
+  "meta": {
+    "name": "做JSON标准流程SOP（可溯源·可成长）",
+    "doc_id": "SOP-MAKEJSON",
+    "version": "1.0.0",
+    "created": "2026-10-15",
+    "owner": "tvbox-source-hub",
+    "purpose": "把做TVBox JSON的全过程标准化：症状直达已验证解法→不通走标准主流程→步内备选路径按序尝试；新问题/新解法按成长协议自动同步进本文件，md文档为本文件的投影渲染",
+    "data_sources": {
+      "台账": "TO4LwsjVVdR8JRAUlkejk3（S001-S018）",
+      "经验库": "XTuuj8mKtqnZSolDdeDxkq（L001-L019）",
+      "流程雏形": "scripts/flow.json（入库11步）",
+      "技能规则": "SKILL.md §8.10 端到端十步 / §8.14 对比分析套路 / 规则45-53"
+    },
+    "render_target": "/workspace/标准1015_做JSON标准流程SOP.md",
+    "growth_protocol": {
+      "trigger": "每次做JSON任务复盘闭环时（规则52四动作之'记'）必须执行一次同步",
+      "command": "python3 scripts/sync_sop.py add-case --file case.json（或交互录入）",
+      "auto_actions": [
+        "去重检查（症状关键词+场景相似度），已覆盖则增强对应步骤的pitfalls/fallbacks而非新增",
+        "全新症状→进growth.pending_queue待分级，并给出升级建议（出现≥3次→升级为步骤/脚本/规则）",
+        "写入后自动render刷新md投影，保证人读文档与权威源永一致"
+      ],
+      "promote_rules": {
+        "to_step_fallback": "同一症状复发≥2次且解法稳定→写入对应步骤fallbacks",
+        "to_script": "解法可代码化→进scripts/并回填command字段",
+        "to_rule": "跨任务通用约束→提议立/并规则（走规则52三级固化）"
+      }
+    }
+  },
+  "router": {
+    "usage": "遇到问题先在这里查症状：命中→直接执行verified_solution（出处可溯源）；未命中→走steps标准主流程对应步；步内不通→该步fallbacks按序尝试",
+    "symptoms": [
+      {
+        "id": "SY01",
+        "symptom": "database写入报『records[0] 校验后为空，无有效字段』",
+        "root_cause": "值写成裸字符串，未用PropertyValue包装",
+        "verified_solution": "值必须包装：{'text':..}/{'select':..}/{'multi_select':[..]}/{'date':..}/{'number':..}",
+        "source": "L001+S018复现",
+        "step": "S9"
+      },
+      {
+        "id": "SY02",
+        "symptom": "results[].success=true 但记录实际没写入（伪成功）",
+        "root_cause": "接口可返回success而记录未落库",
+        "verified_solution": "写完必须get_database_content读回核对行数；批量更新后核对空值数",
+        "source": "L004",
+        "step": "S9",
+        "alias": [
+          "接口返回成功但是库里没有",
+          "返回成功却没落库"
+        ]
+      },
+      {
+        "id": "SY03",
+        "symptom": "批量更新拿不到record_id",
+        "root_cause": "get_database_content只给CSV无id",
+        "verified_solution": "query_database_record --page-size 100 --start-cursor 分页拉全量；cursor不前进即跳出防死循环",
+        "source": "L005",
+        "step": "S9",
+        "alias": [
+          "更新记录时没有record_id",
+          "批量更新拿不到id"
+        ]
+      },
+      {
+        "id": "SY04",
+        "symptom": "add_database_field加列报字段非法",
+        "root_cause": "config少了类型层包装",
+        "verified_solution": "config包类型：{'multi_select':{'options':[{'id':'s1','text':'..'}]}}；新增select选项前先确认字段已有该选项",
+        "source": "L006",
+        "step": "S9",
+        "alias": [
+          "添加字段说不合法",
+          "新增字段报非法"
+        ]
+      },
+      {
+        "id": "SY05",
+        "symptom": "library_upload对本地路径返回403 path not allowed",
+        "root_cause": "工具调API前做本地路径白名单校验",
+        "verified_solution": "space_api三段法：get-upload-credential→curl PUT uploadUrl（带全部headers）→import-local-file；.md例外用create-doc --markdown",
+        "source": "L002",
+        "step": "S8",
+        "alias": [
+          "上传本地文件报403",
+          "本地上传403拒绝"
+        ]
+      },
+      {
+        "id": "SY06",
+        "symptom": "submit_doc_edit报『禁止直接写TableRow/TableCell』",
+        "root_cause": "①表内容多行缩进被误判②同批insert_after+delete被误判",
+        "verified_solution": "①紧凑单行re.sub(r'>\\s+<','><')②拆两次提交：先插新表→读回→再单独删旧表",
+        "source": "L003",
+        "step": "S8",
+        "alias": [
+          "编辑表格说不能直接写行",
+          "表格不让写行"
+        ]
+      },
+      {
+        "id": "SY07",
+        "symptom": "insert_after多个顶层块被合并成1个巨型Paragraph",
+        "root_cause": "多块字符串拼接中间无换行分隔",
+        "verified_solution": "顶层块之间必须\\n\\n分隔，统一'\\n\\n'.join(blocks)",
+        "source": "L007",
+        "step": "S8",
+        "alias": [
+          "插入的块都变成一个超大段落",
+          "多个块被合并成一段"
+        ]
+      },
+      {
+        "id": "SY08",
+        "symptom": "脚本生成的页面刷新后id变化，文档里写死的id指针失效",
+        "root_cause": "硬编码了会被重建页面的node id",
+        "verified_solution": "不写死id，改『取标题为X的最新一份（旧份自动改名❌已废弃_日期）』；有效id只存脚本可读的snapshot_id.txt",
+        "source": "L008",
+        "step": "S8",
+        "alias": [
+          "刷新之后id变了引用失效",
+          "页面刷新后id失效"
+        ]
+      },
+      {
+        "id": "SY09",
+        "symptom": "第三方TVBox配置JSON解析失败（json.loads报错）",
+        "root_cause": "//注释行+尾随逗号+超长行 / ####注释语法+双spider键 / ,ext\"缺引号等手工瑕疵",
+        "verified_solution": "①剥//注释行②剥####前缀（留意双spider键，Python取后者）③正则补键引号re.sub(r',(\\w+)\":',r',\"\\1\":')④仍失败走parse_tvbox_config.py外科式解析（括号匹配定位数组→逐顶层对象切分→单对象json5）",
+        "source": "L013+L019+§8.14",
+        "step": "S2",
+        "alias": [
+          "配置文件解析不了",
+          "在线json解析报错",
+          "json loads失败",
+          "json.loads失败",
+          "json解析失败"
+        ]
+      },
+      {
+        "id": "SY10",
+        "symptom": "类名Jaccard很高但线路搬过去失效（误判同体系）",
+        "root_cause": "类名风格兼容≠jar实现相同",
+        "verified_solution": "枝判定铁律：只看spider/jar地址相同或md5相同；csp类线仅同枝可平移，直链/lives/drpy全系通用",
+        "source": "L019+规则53",
+        "step": "S8",
+        "alias": [
+          "jar搬过去失效",
+          "jar相同线路失效",
+          "线路搬过去失效",
+          "误判同体系",
+          "类名相似jar不同",
+          "类名很像但是搬过去不能用"
+        ]
+      },
+      {
+        "id": "SY11",
+        "symptom": "rename-node返回体无success字段，误判失败",
+        "root_cause": "接口只回显nodeId+title",
+        "verified_solution": "rename后重新list-nodes核对标题确认",
+        "source": "L014",
+        "step": "S8"
+      },
+      {
+        "id": "SY12",
+        "symptom": "导出下载链接报SignatureDoesNotMatch",
+        "root_cause": "URL在shell里被引号拆解",
+        "verified_solution": "改用Python urllib直接取JSON里的download_url，不经shell传URL",
+        "source": "L014",
+        "step": "S2",
+        "alias": [
+          "下载链接签名错误",
+          "导出链接签名不对"
+        ]
+      },
+      {
+        "id": "SY13",
+        "symptom": "evolve recurring台账侧关键词从不参与聚类（静默bug）",
+        "root_cause": "凭记忆写字段名（summary/pit/reuse），实际字段是任务摘要/踩坑/可复用点",
+        "verified_solution": "读库取字段前必须先get_database_content看一行确认真实字段名；select字段只能取schema既有选项值（触发类型6选项/反哺状态4选项）",
+        "source": "L015+S018",
+        "step": "S10"
+      },
+      {
+        "id": "SY14",
+        "symptom": "XML文档导出ET.parse失败（not well-formed/junk after element）",
+        "root_cause": "导出含未转义token",
+        "verified_solution": "定位块id三步：grep -n拿目标行→向上回溯最近块开始标签→打印id行到目标行区间验证无跨块",
+        "source": "L018",
+        "step": "S8",
+        "alias": [
+          "文档xml解析失败",
+          "xml导出解析报错"
+        ]
+      },
+      {
+        "id": "SY15",
+        "symptom": "在线托管地址失效后索引文档静默腐烂",
+        "root_cause": "dpaste等托管7天失效，无定期验活",
+        "verified_solution": "在线地址定期curl验活；失效即重新托管并同步索引（当前待办：guard1013 dpaste 404）",
+        "source": "L019",
+        "step": "S10",
+        "alias": [
+          "在线链接失效了索引没更新",
+          "在线地址失效",
+          "托管地址腐烂",
+          "在线地址烂了"
+        ]
+      },
+      {
+        "id": "SY16",
+        "symptom": "交付物缺项，用户连续追问才发现",
+        "root_cause": "缺交付清单自检+缺复盘闭环",
+        "verified_solution": "交付四项强制（轻量可编辑版/源候选/类目标准/说明md）+规则51命名+进底包库交代node id+复盘四问落库 ｜ 补充（S020复盘实证）：S10复盘checklist加④库对账：本次任务若踩到平台操作坑(读写/上传/表格/节点)，必须lib-log落④；check时对比③台账新增条数与④库新增条数",
+        "source": "L011+L012+规则50+S020复盘实证",
+        "step": "S9",
+        "alias": [
+          "交付的东西不全被追问",
+          "交付缺项被追问"
+        ]
+      },
+      {
+        "id": "SY17",
+        "symptom": "同源包集合比对命中率畸低（如87/164）",
+        "root_cause": "站点名分隔符风格不统一（qist仓库版『•』vs定制版『｜』）",
+        "verified_solution": "规范化分隔符re.sub(r'\\s*[•｜|]\\s*','|')后再比对；同源结论要api级交叉验证",
+        "source": "S018",
+        "step": "S3",
+        "alias": [
+          "同源包比对畸低",
+          "集合比对命中率低"
+        ]
+      },
+      {
+        "id": "SY18",
+        "symptom": "规则/文档条目膨胀互相矛盾",
+        "root_cause": "逐条保留不做归并",
+        "verified_solution": "顶部加主题章归并索引做去重；数字只存唯一权威源；复发≥3用evolve create自动成技能",
+        "source": "L009",
+        "step": "S10",
+        "alias": [
+          "规则太多互相矛盾",
+          "规则条目矛盾"
+        ]
+      },
+      {
+        "id": "SY19",
+        "symptom": "写库成功但读回验证谎报『未查到』，独立读回却发现记录已在库（缓存伪信号）",
+        "root_cause": "invalidate(db)只清db_id键，rows_of经api()读整表的缓存键是('api',script,args)另一套，写后读回命中api层旧缓存；次要根因：服务端写入延迟",
+        "verified_solution": "core.invalidate双清：db键+args含该db_id的api键一并pop；读回验证未查到时短重试3次(间隔0.6s)；仍失败用独立进程(新python)读回复核，禁信单一进程内信号",
+        "source": "S020+CHANGELOG1015修复条目复发",
+        "step": "S9",
+        "alias": [
+          "写完了读回说没写到但是其实写了",
+          "读回说没写实际写了"
+        ]
+      }
+    ]
+  },
+  "steps": [
+    {
+      "id": "S1",
+      "name": "需求判定与开工三问",
+      "source": "S009/S010/S011/L011",
+      "operations": [
+        "明确交付形态：整包入库/轻量化版/对比溯源表/源候选（用户说'做个json'时按§0.1宁触发勿漏）",
+        "开工三问（1和3不明才问）：①这是什么包/接口②要做成什么形态③交付清单含哪些",
+        "体系预判：在线域名/仓库特征初判A/B/C/D/🔞（终判在S3）"
+      ],
+      "products": [
+        "需求判定结论（形态+交付清单）"
+      ],
+      "pitfalls": [
+        {
+          "sym": "SY16",
+          "note": "形态/清单不问清=交付缺项被追问的根因"
+        }
+      ],
+      "fallbacks": [
+        "用户表述模糊→先给2-3个常见形态选项让用户选（AskUserQuestion）",
+        "完全新形态→先做最小可用版再迭代，禁一次到位"
+      ]
+    },
+    {
+      "id": "S2",
+      "name": "抓取与解析",
+      "source": "L013/L019/S018",
+      "operations": [
+        "curl下载在线接口（保留原始字节，先落盘再解析）",
+        "解析顺序：剥//注释行→剥####前缀→正则补键引号→json.loads",
+        "仍失败→parse_tvbox_config.py外科式解析（括号匹配定位sites/lives→逐顶层对象切分→单对象json5.loads，单对象坏不影响整体）",
+        "结构初体检：sites/lives/parses/rules/ads/flags/doh计数+spider字段登记（jar地址+md5）"
+      ],
+      "products": [
+        "原始json落盘",
+        "结构统计",
+        "spider jar指纹"
+      ],
+      "pitfalls": [
+        {
+          "sym": "SY09",
+          "note": "三连坑：//注释+####语法+双spider键+,ext缺引号"
+        },
+        {
+          "sym": "SY12",
+          "note": "下载URL不经shell传"
+        }
+      ],
+      "fallbacks": [
+        "在线地址404/超时→试备用域名/github代理（ghproxy/moeyy）→仍失败登记失效",
+        "解析后交叉核对：站点数vs索引登记值vs在线实测md5（作者可能静默更新jar）"
+      ]
+    },
+    {
+      "id": "S3",
+      "name": "体系识别与命名",
+      "source": "S012/S018/规则51/规则53",
+      "operations": [
+        "体系判定：类名风格+jar血缘→A/B/C/D/🔞；判不出标『待确认』并给猜测依据",
+        "枝判定（规则53铁律）：spider/jar地址相同或md5相同=同枝；类名Jaccard只作辅助不作判据",
+        "命名：体系/类别标签+MMDD+描述（规则51：能判血缘优先用体系字母）",
+        "同源验证（做对比类任务时）：站点名规范化分隔符后再集合比对+api级交叉验证"
+      ],
+      "products": [
+        "体系归属结论（含jar指纹）",
+        "标准命名"
+      ],
+      "pitfalls": [
+        {
+          "sym": "SY10",
+          "note": "Jaccard骗人：easy999↔bbm116 0.69但jar不同"
+        },
+        {
+          "sym": "SY17",
+          "note": "分隔符不统一致集合比对失真"
+        }
+      ],
+      "fallbacks": [
+        "jar无md5声明→下载实测md5",
+        "体系判不出→标待确认+列猜测（A系/C系常见误判点已归档S016）"
+      ]
+    },
+    {
+      "id": "S4",
+      "name": "体检与拆解",
+      "source": "S001/S009/S011",
+      "operations": [
+        "站点分层：csp/drpy-js/py/http直链/type1采集分别计数",
+        "lives拆线：直播源单独拆包（归来源枝保血缘，lives段实际全系通用）",
+        "py线标记：壳无Python引擎的轻量化场景优先剔除并登记",
+        "采集/直链站标记playerType/playUrl等特殊字段"
+      ],
+      "products": [
+        "分层统计",
+        "lives拆线包（如需要）"
+      ],
+      "pitfalls": [
+        {
+          "sym": "SY09",
+          "note": "拆解前必须确认解析完整（站点数对得上）"
+        }
+      ],
+      "fallbacks": [
+        "sites为list结构异常→按对象切分后逐层解析",
+        "lives与点播混排→按key字段（name/url）分流"
+      ]
+    },
+    {
+      "id": "S5",
+      "name": "测活与可用性判定",
+      "source": "S006/§8.12",
+      "operations": [
+        "并发实测http直连源（probe_src.py）",
+        "可用性判定先查§8.12八症状快查表再排查（新症状补行）",
+        "状态标注：正常/停用/待查，零空值"
+      ],
+      "products": [
+        "测活结果",
+        "状态标注"
+      ],
+      "pitfalls": [
+        {
+          "note": "停用213条的包：停用≠删，登记状态供后续复活检测"
+        }
+      ],
+      "fallbacks": [
+        "单源超时→换UA/加header重试→仍失败标停用",
+        "csp类线无法http测活→标待查（类线活性取决于jar端）"
+      ]
+    },
+    {
+      "id": "S6",
+      "name": "去重与黑名单拦截",
+      "source": "S002/flow铁律",
+      "operations": [
+        "host去重（规则30/31）：同host多api只留最优",
+        "黑名单拦截：命中失效域→失效库，不进源库（必须在去重/入库之前）",
+        "跨包去重：与源库既有行比对"
+      ],
+      "products": [
+        "去重后线路集",
+        "失效库归档记录"
+      ],
+      "pitfalls": [
+        {
+          "note": "拦截顺序错（先去重后拦截）会导致失效线路混入源库"
+        }
+      ],
+      "fallbacks": [
+        "host相同api不同→按可用性+类型优先级留一",
+        "疑似失效域不在黑名单→先标停用观察，复现2次再入黑名单"
+      ]
+    },
+    {
+      "id": "S7",
+      "name": "轻量化与定制",
+      "source": "S018/easy999链/规则50",
+      "operations": [
+        "删减策略按序评估：py线（壳不支持）→App限次线（需token）→伪站（warningText承载）→重复采集站",
+        "保留率意识：每次删减记录 原版数→轻量数（交付时给百分比）",
+        "品牌化定制（如需要）：logo/公众号/命名风格统一",
+        "轻量版保留spider/parses/rules/ads/flags等基础设施（除非重度裁剪场景明示）"
+      ],
+      "products": [
+        "轻量版json",
+        "删减清单（含被删项完整配置）"
+      ],
+      "pitfalls": [
+        {
+          "note": "box式重度裁剪（parses/rules/ads全删）必须显式告知功能损失，禁静默裁剪"
+        }
+      ],
+      "fallbacks": [
+        "删多了用户要还原→被删项完整配置必须留在交付物（Sheet2模式）",
+        "在线版更新带入新站→登记为新增而非遗漏"
+      ]
+    },
+    {
+      "id": "S8",
+      "name": "入库与归枝",
+      "source": "S017/规则53/L019",
+      "operations": [
+        "源库：link.py ingest L7管线（黑名单→去重→入库，状态列零空值）",
+        "底包库：读spider判枝→命中归枝文件夹/未命中create_folder建枝→move-node归位",
+        "云端上传：JSON走drive upload_drive_file.py，MD走create-doc，都到底包库根GCLJWbFGS1BmYbj6JCX9it",
+        "索引文档同步：《索引·底包总库》对照表加行+改名后同步旧名引用"
+      ],
+      "products": [
+        "源库记录",
+        "底包库节点+node id",
+        "索引文档更新"
+      ],
+      "pitfalls": [
+        {
+          "sym": "SY05",
+          "note": "upload 403走三段法"
+        },
+        {
+          "sym": "SY06",
+          "note": "表格编辑紧凑单行+分批"
+        },
+        {
+          "sym": "SY11",
+          "note": "rename后list-nodes复核"
+        },
+        {
+          "sym": "SY14",
+          "note": "XML定位块id三步法"
+        }
+      ],
+      "fallbacks": [
+        "move-node失败→重试→检查目标文件夹存在→换parent重试",
+        "doc编辑落空→读回验证块id→重配（先用--dry-run）"
+      ]
+    },
+    {
+      "id": "S9",
+      "name": "交付四项",
+      "source": "L011/L012/规则50/51",
+      "operations": [
+        "四项强制：①轻量可编辑版json②源候选json③类目标准csv/json④说明md",
+        "命名：体系/类别+MMDD+描述；进底包库并交代node id",
+        "数据表类交付（如对比溯源表）：recalc校验公式+aigc_label打标+保留率等计算列用活公式",
+        "present_files交付+文字摘要（含关键数字）"
+      ],
+      "products": [
+        "/workspace交付物集",
+        "底包库node id清单"
+      ],
+      "pitfalls": [
+        {
+          "sym": "SY01",
+          "note": "台账写入PropertyValue包装"
+        },
+        {
+          "sym": "SY02",
+          "note": "伪成功读回核对"
+        },
+        {
+          "sym": "SY03",
+          "note": "record_id分页取"
+        },
+        {
+          "sym": "SY04",
+          "note": "加列config包类型"
+        }
+      ],
+      "fallbacks": [
+        "某项做不出→在说明md写明原因+替代形态，禁静默缺失",
+        "公式引擎缺失→uv pip install --system formulas（numpy冲突用uv不用pip）",
+        "[SY19] core.invalidate双清：db键+args含该db_id的api键一并pop；读回验证未查到时短重试3次(间隔0.6s)；仍失败用独立进程(新python)读回复核，禁信单一进程内信号"
+      ]
+    },
+    {
+      "id": "S10",
+      "name": "复盘闭环与成长同步",
+      "source": "S013/S014/规则48/52",
+      "operations": [
+        "复盘四问：成果/不足/改进/进化，落③台账+④经验库",
+        "坑→解法固化（规则52）：记→固化（脚本/规则/④库三级）→直达→改进",
+        "★本SOP成长同步：sync_sop.py add-case登记新案例（自动去重/分级/渲染）",
+        "快照刷新（规则47主动触达）：sync.py刷新唯一权威快照",
+        "在线地址验活：curl登记在索引里的托管地址"
+      ],
+      "products": [
+        "S台账记录",
+        "L经验库记录",
+        "SOP案例登记",
+        "快照刷新"
+      ],
+      "pitfalls": [
+        {
+          "sym": "SY13",
+          "note": "字段名以get_database_content实际一行为准"
+        },
+        {
+          "sym": "SY15",
+          "note": "在线地址定期验活"
+        },
+        {
+          "sym": "SY18",
+          "note": "规则膨胀先归并再加"
+        }
+      ],
+      "fallbacks": [
+        "新症状无法归类→进growth.pending_queue，标注建议升级方向",
+        "同一解法复发≥3次→evolve recurring触发自动成技能"
+      ]
+    }
+  ],
+  "cases": [
+    {
+      "id": "C01",
+      "time": "2026-10-14 18:18",
+      "title": "云端读写四连坑（L001-L006）",
+      "problem": "写库报校验后为空/伪成功/拿不到id/加列非法/upload403",
+      "process": "逐个换方式试错→定位服务端校验规则→形成PropertyValue包装+读回核对+分页取id+config包类型+三段法上传",
+      "final": "SKILL.md §4 database写入铁律表+preflight.py写前预检",
+      "trace": "L001/L002/L004/L005/L006→S015→§8.11"
+    },
+    {
+      "id": "C02",
+      "time": "2026-10-14 18:35",
+      "title": "表格编辑三坑（L003/L007）",
+      "problem": "禁止写TableRow/多块合并巨型Paragraph",
+      "process": "多行缩进误判→改紧凑单行；同批插删误判→拆两次提交；块间无分隔→\\n\\n join",
+      "final": "表格一律紧凑单行；删除与插入分批；多块\\n\\n.join",
+      "trace": "L003/L007"
+    },
+    {
+      "id": "C03",
+      "time": "2026-10-14 18:35",
+      "title": "页面id失效（L008）",
+      "problem": "硬编码node id，页面重建后指针全失效",
+      "process": "改标题+最新份引用；有效id只存snapshot_id.txt",
+      "final": "凡会被脚本重建的页面，引用一律用标题不用id",
+      "trace": "L008"
+    },
+    {
+      "id": "C04",
+      "time": "2026-10-14 19:48",
+      "title": "jsm拆解入库首轮缺项（L011/S009）",
+      "problem": "体系类目没入规/轻量json未交付/缺复盘闭环，用户连续追问",
+      "process": "补齐三类JSON交付物；规则49类目入规；规则50交付四项+复盘闭环",
+      "final": "每次交付收尾必跑复盘四问并落库③+④+evolve",
+      "trace": "L011→S010→规则49/50"
+    },
+    {
+      "id": "C05",
+      "time": "2026-10-14 19:59",
+      "title": "命名与入库二轮缺项（L012/S012）",
+      "problem": "懒命名jsm.xxx.json+只落workspace没进底包库没交代",
+      "process": "规则51命名=体系/类别+MMDD+描述；铁律=必须进底包库+交代node id；JSON走drive/MD走doc",
+      "final": "41文件+4云端节点全量改名零遗漏",
+      "trace": "L012→S012→规则51"
+    },
+    {
+      "id": "C06",
+      "time": "2026-10-14 20:10",
+      "title": "box_bh脏JSON解析（L013/S011）",
+      "problem": "FongMi/jar型配置//与#注释+尾随逗号+2601字符超长行，json/json5双失败；手写剥注释状态机误截http://",
+      "process": "parse_tvbox_config.py外科式解析：括号匹配定位数组→逐顶层对象切分→单对象json5；单对象坏不影响整体",
+      "final": "parse_config/extract_hosts可import复用，适用所有jar型/注释型配置",
+      "trace": "L013→parse_tvbox_config.py"
+    },
+    {
+      "id": "C07",
+      "time": "2026-10-15 00:29-01:57",
+      "title": "全量复盘驱动两轮技能升级（S014/S015/S016）",
+      "problem": "从压缩摘要提取历史只能拿部分指令；第1轮SOP自身有4处不可执行点",
+      "process": "四路数据源交叉（转录+任务清单+③④库+CHANGELOG）；第1轮复盘任务→产出流程，第2轮复盘流程→修订终版",
+      "final": "§8.10端到端十步+flow.json；preflight.py；§8.12八症状快查表",
+      "trace": "S014/S015→§8.10/§8.11/§8.12"
+    },
+    {
+      "id": "C08",
+      "time": "2026-10-15 02:28",
+      "title": "规则53枝级判定（S017/L019）",
+      "problem": "体系级分类答不了'线路能否平移'；Jaccard骗人；在线地址7天腐烂",
+      "process": "下载13底包+2在线包→spider相同分组+Jaccard交叉→发现spider相同=同枝铁律；42节点move-node归位17枝",
+      "final": "规则53三级结构+可平移性矩阵+jar指纹分析法",
+      "trace": "S017→§8.13→标准1015_底包细分类体系"
+    },
+    {
+      "id": "C09",
+      "time": "2026-10-15 02:30",
+      "title": "索引文档同步三坑（L018）",
+      "problem": "XML非well-formed致ET.parse失败；行号回溯误配表格内Paragraph；块id错配编辑落空",
+      "process": "grep -n拿行→向上回溯块开始标签→区间验证无跨块；先用--dry-run",
+      "final": "定位块id三步法+改节点名必同步旧名引用",
+      "trace": "L018"
+    },
+    {
+      "id": "C10",
+      "time": "2026-10-15 11:35",
+      "title": "轻量化对比溯源表（S018）",
+      "problem": "box原版三连坑（####+双spider键+,ext缺引号）；easy999 jar静默更新；jsm站点名分隔符失真；台账select枚举外取值整条被拒",
+      "process": "剥注释+补引号解析；规范化分隔符后集合比对；下载jar实测md5；查schema选项后重写",
+      "final": "§8.14对比分析套路+五步法；7维度溯源表4sheet",
+      "trace": "S018→§8.14→标准1015_接口轻量化对比溯源表"
+    },
+    {
+      "id": "C11",
+      "time": "2026-10-15 12:10-13:27",
+      "title": "本SOP建立与两轮进化（S019→S020）",
+      "problem": "做json经验散落台账+经验库+SKILL多章节，缺单一入口标准流程且新经验无自动同步机制；初版即带缺陷：render对纯note坑条目KeyError、promote半拉子（承诺写fallbacks未实现）、route相似度被长root_cause稀释",
+      "process": "v1.0.11建三件套（权威源JSON+sync_sop.py五命令+md投影），成长协议全链路实测（add-case去重/pending分级/自动渲染）；v1.0.12全局复盘驱动修复render兜底+promote补fallbacks+similarity三路比对(症状/根因/alias)与子串强命中，并用SOP自身走add-case→promote完成自举（缓存伪信号→SY19）",
+      "final": "症状直达→标准主流程→步内备选三级路由；成长协议=登记→去重→分级→渲染；SOP经一轮真实全局复盘考研（自举成功），遗留项：route阈值0.45待校准集验证",
+      "trace": "S019/S020→SOP-MAKEJSON"
+    },
+    {
+      "id": "C12",
+      "time": "2026-10-15 13:12",
+      "title": "缓存伪信号二次复发（S020全局复盘）",
+      "problem": "同症状第二次不同根因复发：首次=绕过core未invalidate；二次=invalidate未覆盖api二级缓存键，读回验证误报导致误判写入失败",
+      "process": "S019落库时link.py报『读回验证未查到/累计18条』，独立get_database_content读回证实S019已在库(19条)；回溯core.py缓存键设计定位双键缺陷",
+      "final": "invalidate(db)遍历清api层含db_id键+cmd_log/cmd_liblog读回3次重试；铁律升级：写后验证信号本身也要被验证(独立进程复核)",
+      "trace": "S020+CHANGELOG1015修复条目复发"
+    },
+    {
+      "id": "C13",
+      "time": "2026-10-15 13:12",
+      "title": "④库漏落实证（S020全局复盘）",
+      "problem": "S018/S019两轮大任务的平台坑(select枚举拒写/缓存伪信号)只进了CHANGELOG和SOP，④库停在L019近3小时无新增",
+      "process": "全局复盘统计④库19条类型分布时发现末条=L019；对照③台账S018/S019确认漏落",
+      "final": "复盘四问的『沉淀』项双库对账：③按任务类型、④按操作类型，各落各的",
+      "trace": "S020复盘实证"
+    },
+    {
+      "id": "C14",
+      "time": "2026-10-18 03:36",
+      "title": "原仓库的相对地址(./py/*.py)和csp类名能不能用、",
+      "problem": "原仓库的相对地址(./py/*.py)和csp类名能不能用、能照搬哪些、怎么才能用",
+      "process": "见solution",
+      "final": "mount_judge.py挂载判定器: 相对地址逐个base活体探测200则转绝对保留(§4.2c不硬编); csp看ext内联+jar含同名类; http待测活。harvest lightjson --base <主机>接入, 不传向后兼容(S113)",
+      "trace": "S113"
+    }
+  ],
+  "growth": {
+    "pending_queue": [
+      {
+        "symptom": "原仓库的相对地址(./py/*.py)和csp类名能不能用、能照搬哪些、怎么才能用",
+        "scene": "做json/原仓库处理",
+        "root_cause": "探源司lightjson对本地相对地址一刀切剔除、对csp只看ext不判断作者jar挂载，缺挂载决定论判定",
+        "solution": "mount_judge.py挂载判定器: 相对地址逐个base活体探测200则转绝对保留(§4.2c不硬编); csp看ext内联+jar含同名类; http待测活。harvest lightjson --base <主机>接入, 不传向后兼容(S113)",
+        "source": "S113",
+        "step": "S2抓取解析",
+        "queued_at": "2026-10-18T03:36:42",
+        "suggest": "出现≥2次且解法稳定→promote为正式symptom并写入步骤fallbacks"
+      }
+    ],
+    "stats": {
+      "symptoms": 19,
+      "steps": 10,
+      "cases": 14,
+      "last_sync": "2026-10-18T03:36:42"
+    },
+    "next_review": "下次做JSON任务复盘时检查pending_queue并尝试promote",
+    "route_calibration": {
+      "calibrated_at": "2026-10-15T13:40:00Z",
+      "method": "19症状×2口语化变体(正样本38) + 7无关/边缘查询(负样本)；指标=正确/错配/漏报/误报",
+      "result": "阈值0.45与0.50同为 38/38 正确、0错配、0误报；定标 0.45（留口语化余量，rival提示兜底）",
+      "algorithm": "包含关系0.9；强子串0.75+min(0.12,LCS*0.01)（中文子串≥5/纯ASCII≥7，tvbox类5字符领域词不强命中）；gram覆盖率兜底；top2分差<0.15输出rival疑似提示",
+      "note": "校准集变体已沉淀为各症状alias；新增症状时应同步补alias并重跑校准"
+    }
+  }
+}

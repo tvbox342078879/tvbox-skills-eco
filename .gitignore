@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+*.pyo
+*.log
+# 大体积运行日志与快照，进 git 会撑爆
+**/activity_log.json
+**/daily_snapshot.json
+**/findings_history.json
+**/search_results.json

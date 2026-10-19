@@ -1,0 +1,104 @@
+{
+ "name": "tvbox-janitor-flow",
+ "version": "1.2.5",
+ "created": "2026-10-16",
+ "source": "S104 技能初建（用户：删不了的统一放一个文件夹，专门管整理）",
+ "route_decision": {
+  "discovered_redundant_node": "janitor.py add --node <ID> --reason <R>（移入收件箱 + 登记）",
+  "ensure_inbox": "janitor.py inbox（幂等建/确认收件箱）",
+  "sweep_marked_nodes": "janitor.py scan（扫全空间找废弃/待删标记节点）",
+  "produce_delete_list": "janitor.py list（生成 md + csv 清单）"
+ },
+ "steps": [
+  {
+   "no": 0,
+   "name": "触发判定",
+   "rule": "触发词命中：待删/清理/删除不了/收件箱/清道夫/整理/废弃节点/冗余节点；或任何技能发现「该删但 AI 删不掉」的节点",
+   "cmd": null,
+   "artifact": null,
+   "action": "清道夫是「清理动作的最后一公里」——上游技能报出的冗余节点都投递到本技能"
+  },
+  {
+   "no": 1,
+   "name": "确认收件箱",
+   "rule": "收件箱=底包库根下的「🗑 待删收件箱」文件夹（tBlgSL4SPEFMrsyTBTg03c）",
+   "cmd": "tvbox janitor inbox",
+   "artifact": "收件箱 folder id（落 janitor_state.json）",
+   "action": "幂等：已存在直接复用，绝不重复建"
+  },
+  {
+   "no": 2,
+   "name": "投递节点",
+   "rule": "对该删节点：先校验存在→move-node 进收件箱→登记清单（含原因）",
+   "cmd": "tvbox janitor add --node <ID> --reason <R>",
+   "artifact": "节点物理移入收件箱 + 清单 +1 行",
+   "action": "只移动不删除；移动失败显式告警但清单仍保留（标未移动）"
+  },
+  {
+   "no": 3,
+   "name": "生清单",
+   "rule": "输出 /workspace/S104_<MMDD>_待删清单.md（表格）+ .csv（可勾选/打印）",
+   "cmd": "tvbox janitor list",
+   "artifact": "S104_<MMDD>_待删清单.md / .csv",
+   "action": "用户照单在收件箱里逐项删；删完整箱即空"
+  },
+  {
+   "no": 4,
+   "name": "全局扫描·自动投递",
+   "rule": "从空间超根 gZ4xP6kXXeCpTlsH2CN9tJ 递归（覆盖整个空间），识别【废弃标记/空文件夹/重复】并发现即自动投递收件箱；排除收件箱子树",
+   "cmd": "tvbox janitor scan（--dry-run 仅预览）",
+   "artifact": "全空间垃圾自动入箱 + 待删清单刷新",
+   "action": "扫到即收（不再只报不搬）；重复节点仅告警"
+  },
+  {
+   "no": 5,
+   "name": "误投补救",
+   "rule": "若节点被误投（如 KW 过宽误判正常业务表），从收件箱移回原位",
+   "cmd": "tvbox janitor restore --node <ID>（旧版项用 --target <父ID>）",
+   "artifact": "节点物理移回原父节点 + 清单移除该项",
+   "action": "add 时已记录 origin_parent（全树反查，不依赖不可信的 node-info）；无记录时由 --target 指定回退目标"
+  }
+ ],
+ "iron_order": [
+  "触发",
+  "确认收件箱",
+  "投递节点",
+  "生清单",
+  "补漏扫描",
+  "误投补救"
+ ],
+ "iron_rules": {
+  "定位": "生态**清理层**（清道夫）——把云端库中 AI 删不掉的冗余节点**移动**到统一收件箱，用户按清单删除",
+  "守护": {
+   "M-R32": "装健康的哑巴——移动失败须显式告警且清单仍保留（标未移动），不漏项",
+   "M-R57": "输出→判定三态——state 三态无折叠：janitor_state.json 损坏→报错退出，绝不当『空收件箱』",
+   "M-R60": "数据基座读取三态化——state 基座损坏态不得折叠成空态（本技能已实证）",
+   "T-D": "[招式:skill_local] 移动替代删除——无删除 API 时降维（只移不删）"
+  }
+ },
+ "self_check": [
+  "收件箱幂等：已存在直接复用，绝不重复建（防多箱分裂）",
+  "投递前节点存在性已校验；移动失败→显式告警且清单仍保留（标未移动），不漏项 （M-R32）",
+  "只移动不删除：绝不在无删除 API 的前提下尝试物理删除 （T-D）",
+  "清单与收件箱实际内容一致（清单行 ↔ 箱内节点可对账） （M-R38）",
+  "state 三态无折叠：janitor_state.json 损坏 → 报错退出，绝不当『空收件箱』（M-R60）",
+  "收到上游（core.file_to_janitor）投递时写入原因，原因不丢",
+  "补漏扫描 ≤4 层递归；新标记节点回流到投递步骤，无遗漏",
+  "与监察司边界：本技能只做『清理最后一公里』，不做监测发现（那属 tvbox-inspect）",
+  "误投可回退：add 移动前记录 origin_parent（全树反查），restore 移回原位并移除清单项，不破坏原位结构"
+ ],
+ "snapshot_refresh_rule": "本技能只移动节点（move-node）不删不写 DB_SRC/DB_DEAD → 无需刷快照；变更仅落 janitor_state.json 与收件箱",
+ "sop_binding": {
+  "authority": "本技能 SKILL.md（SSOT）+ janitor.py",
+  "note": "收件箱与清单状态以 janitor_state.json 为准；上游投递经 core.file_to_janitor 门面进入"
+ },
+ "contracts": {
+  "no_delete_api": "WorkBuddy 云端无删除节点 API → 删除必是人工",
+  "move_is_the_tool": "用 move-node 把待删节点集中到收件箱，降维成「打开一个文件夹按单删」",
+  "no_silent_loss": "节点不存在/移动失败→显式告警，清单不漏项",
+  "state_corrupt_guard": "janitor_state.json 损坏→报错退出，不当空收件箱（M-R60）"
+ },
+ "backlog": [
+  "[清账司派单 2026-10-26] 云端第 ⑤ 源目前只扫本地缓存 `core_db_rows.json`；真实云端读失败由信号源 17/23 兜。 若要让清账司自己直连云端扫「待跟进」，需先解决 DB_LIB 失效问题（已登记 C00 ｜ sid=19ceb5857c46 ｜ 下一步 tvbox janitor scan"
+ ]
+}

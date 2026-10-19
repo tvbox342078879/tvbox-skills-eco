@@ -1,0 +1,114 @@
+[
+  {
+    "name": "360 | 采集",
+    "url": "https://360zy.com/api.php/provide/vod/",
+    "kind": "vod",
+    "verdict": "通过",
+    "evidence": "HTTP 200·JSON·有真实播放地址·第01集$https:\\/\\/vod1.maowushi.com\\/20261009\\/jSC2PN1X\\/index.m3u8#第02集$https:\\/\\/"
+  },
+  {
+    "name": "豆瓣 | 采集",
+    "url": "https://caiji.dbzy5.com/api.php/provide/vod/",
+    "kind": "vod",
+    "verdict": "通过",
+    "evidence": "HTTP 200·JSON·有真实播放地址·全集完结 $https:\\/\\/vodcnd17.ajupf.com\\/20261017\\/DhLtHCAS\\/index.m3u8$$$ 全集完结$https"
+  },
+  {
+    "name": "创享 | 采集",
+    "url": "https://ys.cxkjg.cn/api/provide/vod/",
+    "kind": "vod",
+    "verdict": "通过",
+    "evidence": "HTTP 200·JSON·有真实播放地址·第1集$https://hd.kuktxu.com/play/dG69KP8b/index.m3u8#第2集$https://hd.kuktxu.com/pla"
+  },
+  {
+    "name": "索尼 | 采集 ",
+    "url": "https://suoniapi.com/api.php/provide/vod/",
+    "kind": "vod",
+    "verdict": "通过",
+    "evidence": "HTTP 200·JSON·有真实播放地址·全集$https:\\/\\/v13.rstu6.com\\/202610\\/18\\/YHXauhv8Gn27\\/video\\/index.m3u8"
+  },
+  {
+    "name": "量子 | 采集",
+    "url": "https://cj.lziapi.com/api.php/provide/vod/",
+    "kind": "vod",
+    "verdict": "通过",
+    "evidence": "HTTP 200·JSON·有真实播放地址·第01集$https:\\/\\/v.lzcdn31.com\\/share\\/01a2f2129e2c141325090c48fa415000#第02集$https"
+  },
+  {
+    "name": "非凡 | 采集",
+    "url": "https://cj.ffzyapi.com/api.php/provide/vod/",
+    "kind": "vod",
+    "verdict": "通过",
+    "evidence": "HTTP 200·JSON·有真实播放地址·第01集$https:\\/\\/vod.feifei-kan.com\\/share\\/241393669823fc88e479a88090df91c6#第02集$"
+  },
+  {
+    "name": "无尽 | 采集",
+    "url": "https://api.wujinapi.net/api.php/provide/vod/",
+    "kind": "vod",
+    "verdict": "通过",
+    "evidence": "HTTP 200·JSON·有真实播放地址·第01集$https:\\/\\/v4.ppqrrs.com\\/wjv4\\/202609\\/27\\/a9pmbeDfTk94\\/video\\/index.m3u8#"
+  },
+  {
+    "name": "金鹰 | 采集",
+    "url": "https://jyzyapi.com/api.php/provide/vod/",
+    "kind": "vod",
+    "verdict": "通过",
+    "evidence": "HTTP 200·JSON·有真实播放地址·第1集$https:\\/\\/hd.kuktxu.com\\/play\\/b68mzgQe#第2集$https:\\/\\/hd.kuktxu.com\\/play\\/e"
+  },
+  {
+    "name": "新浪 | 采集",
+    "url": "https://api.xinlangapi.com/xinlangapi.php/provide/vod/",
+    "kind": "vod",
+    "verdict": "通过",
+    "evidence": "HTTP 200·JSON·有真实播放地址·第1集$https:\\/\\/play.xluuss.com\\/play\\/axkV6Yle#第2集$https:\\/\\/play.xluuss.com\\/pla"
+  },
+  {
+    "name": "速播 | 采集",
+    "url": "https://subocaiji.com/api.php/provide/vod/",
+    "kind": "vod",
+    "verdict": "通过",
+    "evidence": "HTTP 200·JSON·有真实播放地址·第1集$https:\\/\\/play.xluuss.com\\/play\\/axkV6Yle#第2集$https:\\/\\/play.xluuss.com\\/pla"
+  },
+  {
+    "name": "优质 | 采集",
+    "url": "https://api.yyzy-tv.vip/inc/apijson.php",
+    "kind": "vod",
+    "verdict": "通过",
+    "evidence": "HTTP 200·JSON·有真实播放地址·20221016\\u671f$https:\\/\\/yzzy.play-cdn6.com\\/20221017\\/20484_9f63df54\\/index.m3u"
+  },
+  {
+    "name": "樱花 | 采集",
+    "url": "https://m3u8.apiyhzy.com/api.php/provide/vod/",
+    "kind": "vod",
+    "verdict": "通过",
+    "evidence": "HTTP 200·JSON·有真实播放地址·全集$https:\\/\\/vod12.wgslsw.com\\/20261018\\/RmqyLLsFzC90\\/index.m3u8"
+  },
+  {
+    "name": "天堂 | 采集",
+    "url": "http://caiji.dyttzyapi.com/api.php/provide/vod/",
+    "kind": "vod",
+    "verdict": "通过",
+    "evidence": "HTTP 200·JSON·有真实播放地址·第01-02集$https:\\/\\/vip.dytt-tvs.com\\/share\\/4f9fcbf18f62c9f0be2a96dfe3708bc4#第03集"
+  },
+  {
+    "name": "暴風 | 采集",
+    "url": "https://bfzyapi.com/api.php/provide/vod/",
+    "kind": "vod",
+    "verdict": "通过",
+    "evidence": "HTTP 200·JSON·有真实播放地址·HD$https:\\/\\/v.fengbao14.com\\/video\\/ItsPresenceBetweenUs\\/9c2c9a6f1f7e\\/index.m"
+  },
+  {
+    "name": "艾旦 | 采集",
+    "url": "https://www.lovedan.net/api.php/provide/vod/",
+    "kind": "vod",
+    "verdict": "通过",
+    "evidence": "HTTP 200·JSON·有真实播放地址·第01集$https:\\/\\/v14.yaaabc.com\\/yyv14\\/202610\\/09\\/s5W1xZhc8827\\/video\\/index.m3u"
+  },
+  {
+    "name": "茅台 | 采集",
+    "url": "https://mtzy.me/api.php/provide/vod/",
+    "kind": "vod",
+    "verdict": "通过",
+    "evidence": "HTTP 200·JSON·有真实播放地址·第20261018期$https:\\/\\/vodcnd17.uvjtih.cn\\/20261018\\/NCklp6Ey\\/index.m3u8$$$第20261"
+  }
+]

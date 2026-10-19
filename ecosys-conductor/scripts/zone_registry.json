@@ -1,0 +1,172 @@
+{
+  "name": "生态区域归属登记表（S158·缝治理）",
+  "version": "1.0.0",
+  "created": "2026-10-18",
+  "session": "S158",
+  "authority": "ecosys-conductor/references/eco_layers.md",
+  "why": "用户 S158 原话：「感觉生态有问题，还没真正联动起来，查，图中这个归谁管，我强调几遍依然没动作」。实测 507 个节点里 315 个（71%）没有任何技能认领——不是没人想动，是**从来没登记过谁负责**。本表把「谁管哪一块」从口头变成可查询的数据，成为 janitor.census 的归属判定依据。",
+  "rule": "登记原则：只登记**确实会往里写东西**的技能。只是路过读一下的库不登记（登记=声称负责）。无主的区必须显式写 owner=null + plan，禁止留空装作已解决。",
+  "layers": {
+    "L0": "整个空间 8w5cnqCqQJ0wNoF2Hb6efH 全部节点",
+    "L1": "某一技能声明拥有的子树",
+    "L2": "技能目录内部"
+  },
+  "zones": [
+    {
+      "top": "📁 配置·配置维护知识库",
+      "node_id": "rr8WVTwkD4SzsQAhRPtjNo",
+      "nodes": 230,
+      "owner": "tvbox-interface",
+      "co_owner": "ecosys-conductor",
+      "plan": "S159",
+      "why": "内含 4 个真库（TVBox技能生态登记库 DB_ECO / 资料库操作经验库 DB_LIB / 会话台账 DB_SESS×2）与 52 个底包/整合包/工具脚本，是 tvbox-interface 与 conductor 的主要产出地，但两者都只写不认。归属给 tvbox-interface（业务侧容器主人），conductor 为共管（治理三库在此）。",
+      "first_action": "把 100+ 个 `❌已废弃_快照_*` 一次性搬走（它们已标废弃、内容被新版取代），再单独整理 `📚 线路总库_四档` 与重复的 `🔗 会话台账（三方联动）`×2"
+    },
+    {
+      "top": "生态遗留趋势留档（跨设备）",
+      "node_id": null,
+      "nodes": 24,
+      "owner": "legacy-watchdog",
+      "plan": "S158 已改",
+      "why": "产出一方是 legacy-watchdog report / conductor backup 的趋势留档。旧版每轮新建一份，23 份同名。**S158：janitor scan 默认去重阈值改为 >2 份即投递**，多余的 22 份已可自动投递收件箱。写侧需改为「同名即覆盖更新」而非新建。",
+      "first_action": "janitor scan（不加 --dedup 参数即生效）投递 22 份冗余副本",
+      "match_prefix": [
+        "生态遗留趋势留档",
+        "生态1018_遗留问题监测报告"
+      ]
+    },
+    {
+      "top": "生态1015_遗留问题监测报告",
+      "node_id": null,
+      "nodes": 19,
+      "owner": "legacy-watchdog",
+      "plan": "S158 已改",
+      "why": "同上。19 份同名报告，实际信息量=1 份最新。",
+      "first_action": "janitor scan 投递 18 份冗余副本",
+      "match_prefix": [
+        "生态1015_遗留问题监测报告"
+      ]
+    },
+    {
+      "top": "生态1016_遗留问题监测报告",
+      "node_id": null,
+      "nodes": 8,
+      "owner": "legacy-watchdog",
+      "plan": "S158 已改",
+      "why": "同上。8 份同名。",
+      "first_action": "janitor scan 投递 7 份冗余副本",
+      "match_prefix": [
+        "生态1016_遗留问题监测报告"
+      ]
+    },
+    {
+      "top": "📁 工具·工具网盘库",
+      "node_id": "IDo7yoJhiaEJUXvqQLkwJ7",
+      "nodes": 15,
+      "owner": "tvbox-interface",
+      "plan": "S159",
+      "why": "内含 go_proxy 工具、跨体系打包件、底包备用库交付区——全部是 tvbox-interface 加工链路的输入输出物料。该技能只往云端底包库写，从未认领这个「工具网盘」容器。",
+      "first_action": "确认 go_proxy_video 的 4 个副本（x86_64 ①②③ + arm64）是否都需保留；`📄 学习资料·初中语文…` 与本生态无关，移出或投递"
+    },
+    {
+      "top": "🗄 生态备份区",
+      "node_id": "zEYBoLq5G58Rdw7g3ADBnn",
+      "nodes": 1,
+      "owner": "ecosys-conductor",
+      "plan": "S158 已修",
+      "why": "`conductor backup` 的落点。**S158 实锤事故**：20261017/20261018 两个备份夹的真实 parentId 都是收件箱 tBlgSL4S…，备份区是空的——每天把备份传进「待删」箱。修法：backup 每次校验父节点，非备份区即改投并告警；两个备份夹已迁回，回读确认 backup 区 total=2。",
+      "first_action": "已闭环（下方 verification 记录）"
+    },
+    {
+      "top": "📁 学习·Ai学习",
+      "node_id": "5PVSnAO9QWu8dgS8HLLetn",
+      "nodes": 3,
+      "owner": null,
+      "plan": "待用户裁定",
+      "why": "与本生态业务无关（AI 学习资料）。**不建议**强行指派给某个技能——那只会制造名义归属。",
+      "first_action": "由用户决定：保留为个人资料 / 移出 / 投递"
+    },
+    {
+      "top": "📁 运维·剔除线路库",
+      "node_id": "ynhAAbYnXSnqTM3wrhMgiX",
+      "nodes": 2,
+      "owner": "tvbox-source-blacklist",
+      "plan": "S159",
+      "why": "「剔除线路」正是黑名单技能的职责语义，但它只维护失效源库/block_archive，没有认领这个云端容器。",
+      "first_action": "确认该容器与失效源库 92dSuG6u… 的关系（是否重复），重复则合并"
+    },
+    {
+      "top": "📁 安全·敏感信息库",
+      "node_id": "KGfkuihXOte6sizZTxQCLZ",
+      "nodes": 2,
+      "owner": null,
+      "plan": "待用户裁定",
+      "why": "内含 `功夫资源库`（drive）。敏感信息不该由业务技能自动处理，也不该无人看管。",
+      "first_action": "由用户裁定归属；建议至少标注「禁止 AI 自动移动」"
+    },
+    {
+      "top": "📄 入口·资料库总链接索引",
+      "node_id": "OjeKbAsQe4rBSxJQNktKq6",
+      "nodes": 1,
+      "owner": "ecosys-conductor",
+      "plan": "S159",
+      "why": "与 `📁 入口·常用入口索引`（elOV0tlJ…，已归 conductor）是同一用途的两处入口——**入口索引分裂成两处**，本身就是 M-R38 说的「清单散落」。",
+      "first_action": "合并到 📁 入口·常用入口索引，根层级这一份投递"
+    },
+    {
+      "top": "📄 入口·和 Agent 一起用资料库",
+      "node_id": "0VE4LN3sUvYVQv6vD5b5C9",
+      "nodes": 1,
+      "owner": "ecosys-conductor",
+      "plan": "S159",
+      "why": "平台自带说明文档，落在空间根。应归入入口索引区。",
+      "first_action": "移入 📁 入口·常用入口索引"
+    },
+    {
+      "top": "🌐 公众号文章归档阅读器",
+      "node_id": "CqS02Kqel0sEyMtAAxWdSb",
+      "nodes": 1,
+      "owner": null,
+      "plan": "待用户裁定",
+      "why": "web 类节点，与本生态无关。",
+      "first_action": "由用户决定保留或投递"
+    },
+    {
+      "top": "🧪 账房并库演练·T2",
+      "node_id": "sI5tV5ySNWjn1luWnozE97",
+      "nodes": 1,
+      "owner": "eco-ledger",
+      "plan": "S158 已登记",
+      "why": "账房技能的并库演练产物，名字带「演练」但它是活跃的测试库，不属于垃圾。",
+      "first_action": "eco-ledger 决定：留作回归测试基线，或演练结束后自行投递"
+    },
+    {
+      "top": "RULES / 生态1015_TVBox生态全局规则 / 生态1016_生态指挥家技能设计 / 复盘1017_* / A1015_easyzz_*",
+      "node_id": "",
+      "nodes": 8,
+      "owner": "ecosys-conductor",
+      "plan": "S159",
+      "why": "全部是治理类文档，散落在空间根。规则正本在 `📘 规则·规则总览（RULES）`（配置知识库内），根层级这份 `RULES` 是旧副本——**副本与正本同名并存**，正是 M-R74 禁的形态。",
+      "first_action": "核对根层级 `RULES` 与配置知识库内 RULES 的内容差异，旧副本投递；其余 7 份产出报告移入对应技能文档区",
+      "match_prefix": [
+        "RULES",
+        "生态1015_TVBox生态全局规则",
+        "生态1016_生态指挥家技能设计",
+        "复盘1017_",
+        "A1015_"
+      ]
+    }
+  ],
+  "verification": {
+    "at": "2026-10-18",
+    "items": [
+      "备份夹 T7Bd0ukQ4dnnTAYMy2ktLq / xEiZLGulVg80N1jKfamb7B 已迁出收件箱，回读 parentId=zEYBoLq5G58Rdw7g3ADBnn（备份区），备份区 total=2",
+      "conductor backup 实跑：收集件数 43→74（全量收 .md 后补齐 31 份报告）",
+      "conductor sync-version 回读：DB_ECO version=1.69.0 末次升级=2026-10-18T13:31:58Z（修复前该字段恒为空）",
+      "janitor census：L1 责任田 124 / 缝 315（S158 基线，后续每轮可比）",
+      "janitor scan 护栏：非空容器与「像备份」的空夹一律拒收（返回码 4），dry-run 零异常"
+    ]
+  },
+  "model_note": "★ 归属模型两种挂法：①容器型 → 用 node_id，整棵子树归该技能；②根层级散落组 → 用 match_prefix，按标题前缀匹配根层级直接子节点。两种都在 census 的 load_territory 里统一消费，不许只在表里写好听的话。",
+  "updated": "2026-10-18"
+}

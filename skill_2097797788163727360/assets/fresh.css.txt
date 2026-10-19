@@ -1,0 +1,14 @@
+/* fresh — 紫蓝清新风（适配科技/工具类内容） */
+body{font-size:15px;color:#3f3f3f;line-height:1.9;letter-spacing:.3px;font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;}
+h1{font-size:21px;color:#222;font-weight:bold;margin:24px 0 16px;line-height:1.4;}
+h2{font-size:19px;color:#222;font-weight:bold;padding-left:12px;border-left:5px solid #667eea;margin:28px 0 16px;line-height:1.4;}
+h3{font-size:16px;color:#333;font-weight:600;margin:22px 0 12px;}
+p{margin:0 0 16px;line-height:1.9;}
+blockquote{background:#f7f8fc;border-left:4px solid #667eea;padding:14px 16px;margin:18px 0;color:#555;border-radius:6px;}
+table{width:100%;border-collapse:collapse;margin:18px 0;font-size:14px;}
+th{background:#667eea;color:#fff;padding:10px 12px;text-align:left;font-weight:600;}
+td{border:1px solid #eee;padding:9px 12px;color:#333;}
+tr:nth-child(even) td{background:#fafbff;}
+hr{border:none;border-top:1px solid #eee;margin:26px 0;}
+.callout{background:#f9f9f9;border-left:4px solid #667eea;padding:14px 16px;border-radius:8px;margin:16px 0;color:#555;}
+.note{background:#fff8e6;border:1px solid #ffe08a;border-radius:10px;padding:14px 16px;margin:16px 0;color:#8a6d3b;}

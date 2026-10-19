@@ -1,0 +1,54 @@
+[
+  {
+    "ts": "2026-10-16T07:45:55",
+    "n": 1,
+    "items": [
+      {
+        "api接口": "https://dead-host-test.invalid/api.txt",
+        "名称": "合成测试-应拦截",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "dead-host-test.invalid"
+      }
+    ]
+  },
+  {
+    "ts": "2026-10-16T11:20:36",
+    "n": 1,
+    "items": [
+      {
+        "api接口": "https://dead-host-test.invalid/api.txt",
+        "名称": "合成测试-应拦截",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "dead-host-test.invalid"
+      }
+    ]
+  },
+  {
+    "ts": "2026-10-16T11:20:36",
+    "n": 1,
+    "items": [
+      {
+        "api接口": "https://dead-host-test.invalid/api.txt",
+        "名称": "合成测试-应拦截",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "dead-host-test.invalid"
+      }
+    ]
+  },
+  {
+    "ts": "2026-10-16T11:20:36",
+    "n": 1,
+    "items": [
+      {
+        "api接口": "https://dead-host-test.invalid/api.txt",
+        "名称": "合成测试-应拦截",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "dead-host-test.invalid"
+      }
+    ]
+  }
+]

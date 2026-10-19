@@ -1,0 +1,91 @@
+{
+  "name": "tvbox-eco-contracts",
+  "version": "1.0.4",
+  "created": "2026-10-15",
+  "source": "规则54·联动生态化（S022 盘点：interface→hub 候选清单格式无书面契约，字段只存在于代码）",
+  "principle": "契约不是文档装饰，是消费方的真 schema；实现与契约不一致时以契约为准修实现（实证：guard 丢失分组类目→ingest 类目全落缺省配置，已修）",
+  "contracts": [
+    {
+      "id": "candidate-list",
+      "title": "候选源清单（interface/解析器 → blk guard → ingest）",
+      "producer": "tvbox-interface §4 分类拆分 / parse_tvbox_config.py / split_jsm.py / split_box.py",
+      "consumer": "blk.py guard（第一道闸）→ link.py ingest（入源总库）",
+      "top_level": "JSON 数组；或对象含 records/items 键（ingest 自动解包）",
+      "fields": {
+        "api接口": "string 必填 —— guard 与 ingest 均硬取，缺失即 KeyError；host 型填 URL，csp 型填类名",
+        "名称": "string 选填 —— 缺省取 api 截断 80 字",
+        "分组类目": "string 选填 —— 缺省 '配置'；取值须符合规则49 类目表；guard 透传（v1.0.4 修复前此字段到不了 ingest）",
+        "内容分类": "array 选填 —— 站点 json 的 sites[].categories（内容分类数组，如 ['动作片','伦理片']）；ingest 据此算「内容分级」（纯净/全量/18/未知，规则56）；缺省则判『未知』（不进纯净版）"
+      },
+      "dedup_key": "api接口（源总库唯一键）；§4.5 全量去重在 producer 侧先做",
+      "verify": "tvbox ingest --candidates <file> --dry（干跑不写库，核对拦截/放行拆分）"
+    },
+    {
+      "id": "session-log",
+      "title": "会话台账写入（任一技能收工 → ③会话台账）",
+      "producer": "任一技能 S10 复盘闭环",
+      "consumer": "③ 会话台账 TO4LwsjVVdR8JRAUlkejk3",
+      "cmd": "tvbox log --summary <必填> --type <新接口处理|整包入库|扫描归源库|规则维护|查询答疑|纠错返工> --pit --fix --reuse --pkg --nsrc N --status <已闭环(默认)|已同步源库|已同步底包|待同步>",
+      "rule": "业务坑/任务成果落③（按任务类型）；默认已闭环（S022 决策：后续 log 一律直接写已闭环，半闭环仅用于反哺未走完的中间态）；写后读回验证三级（hub §8.16）"
+    },
+    {
+      "id": "lib-log",
+      "title": "资料库经验写入（平台坑 → ④经验库）",
+      "producer": "任一技能操作资料库时",
+      "consumer": "④ 资料库操作经验库 XTuuj8mKtqnZSolDdeDxkq",
+      "cmd": "tvbox lib-log --scene <必填> --type <上传入库|表格编辑|字段管理|记录读写|分页查询|节点移动改名|建库建夹|链接分享> --pit --fix --reuse --sev <阻断|耗时|轻微>",
+      "rule": "平台操作坑（记录读写/上传/表格/节点/分页/字段）必须落④；③④各落各的（复盘双库对账）"
+    },
+    {
+      "id": "snapshot",
+      "title": "唯一权威快照读数（snapshot → 全体引用方）",
+      "producer": "tvbox snapshot（任一极数量/结构变动时）",
+      "consumer": "全体技能与文档（回答'现在多少条/什么状态'）",
+      "rule": "以快照页为唯一权威，禁凭记忆回答；文档不写死快照 id（刷新会重建），当前有效 id 由 hub/snapshot_id.txt 维护",
+      "refresh": "凡对源库/失效库的写操作（ingest/block 归档/状态回填）收工必刷；纯规则/命名/文档变更不刷但复盘说明原因"
+    },
+    {
+      "id": "blacklist-field",
+      "title": "失效登记字段（任一方 → 失效源库 → blk guard 拦截）",
+      "producer": "ingest 拦截归档 / blk.py mark 实测批次 / 人工补登",
+      "consumer": "blk.py blocked_set → is_blocked（入库前第一道闸）",
+      "fields": {
+        "host": "string 必填 —— 必须与 guard 口径一致 urlparse(api).netloc（含端口，如 rihou.cc:88）；不带端口的域名永不命中",
+        "拉黑范围": "select 必填 —— 整域(host全灭) | 单条(部分失效) | 单条(host为空)",
+        "样例api": "string 必填 —— 幂等去重键（截前180字符），同 api 不可重复登记",
+        "复测结果": "select —— 待复测 | 已复活 | 仍失效"
+      },
+      "rule": "登记前先按 host/样例api 查库内既存记录；已存在则 batch-update 追加复测证据（复测时间+备注），禁新增重复行（S025 实证：host 缺端口导致写了等于没写）。【S026 增补】通用转发代理型 host（URL 内嵌第二层 http(s)://，或属 gh-proxy/ghfast/gitmirror 等代理域名族）禁做整域(host全灭)拉黑——其可达性由被代理目标决定，整域会误伤同域正常源；只能单条拉黑。实现：blk.py is_proxy_api()"
+    },
+    {
+      "id": "janitor-handoff",
+      "title": "待删节点投递（任一技能 → 清道夫收件箱）",
+      "producer": "任一技能发现「该删但 AI 删不掉」的云端节点",
+      "consumer": "tvbox-janitor（janitor.py add / core.file_to_janitor）",
+      "top_level": "函数调用：core.file_to_janitor(node_id, reason)（永不抛异常，失败返回 False）",
+      "fields": {
+        "node_id": "string 必填 —— 待删节点的云端 id",
+        "reason": "string 建议填 —— 为什么该删（用户删前核实）",
+        "quiet": "bool 选填 —— True 时失败也静默（默认 True，清理是旁路）"
+      },
+      "dedup_key": "node_id（重复投递幂等，不重复登记）",
+      "verify": "tvbox janitor list（清单含该节点=投递成功）",
+      "note": "云端无删除 API（只有 create/rename/move/publish/unpublish）→ 清道夫用 move-node 把待删节点集中到「🗑 待删收件箱」，用户一处按单删。这是清理动作的最后一公里。"
+    },
+    {
+      "id": "inspect-handoff",
+      "title": "检查器/监测面登记（任一技能 → 监察司）",
+      "producer": "任一技能发现「新风险面」或「需要被监测的东西」",
+      "consumer": "tvbox-inspect（inspect.py add-monitor / core.register_monitor）",
+      "top_level": "函数调用：core.register_monitor(risk_face, check_type, desc)（永不抛异常，失败返回 False）",
+      "fields": {
+        "risk_face": "string 必填 —— 风险面名称（如「废弃节点堆积」）",
+        "check_type": "string 必填 —— 检查器类型（内置类型名，或登记后补实现）",
+        "desc": "string 建议填 —— 检查什么/何时报警/下一步动作"
+      },
+      "dedup_key": "risk_face（同名幂等，不重复登记）",
+      "verify": "tvbox inspect monitors（登记册含该监测项=登记成功）",
+      "note": "监察司=发现层，加监测项只改 monitors.json 登记册不改引擎代码；未实现的 check 类型允许先登记后补（scan 会提示）。新风险从「被发现」到「被登记上车」的自动接手闭环。"
+    }
+  ]
+}

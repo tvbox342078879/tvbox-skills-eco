@@ -1,0 +1,122 @@
+<!--
+  小红书九宫格模板 · 9 张 1080×1080 方图
+  ───────────────────────────────────────────
+  用法：
+  1. 把下面 9 个 <section class="card ..."> 的文案改成你自己的（kicker/h1/h2/body）。
+  2. 配图：把 3 张图放到与本文同级的目录（默认 verify/promo_imgs/），改 <img src> 路径。
+     没图就删掉对应 <div class="imgbox">…</div>，卡片会自动变纯文字版。
+  3. 渲染（只出 9 张方图，不强制金句卡/长图）：
+     python scripts/html_to_image.py 本文件 --outdir 输出目录 \
+       --width 1080 --split 1080 --scale 2 \
+       --chrome "C:/Program Files/Google/Chrome/Application/chrome.exe"
+  4. 输出 reading-coach-xhs_分段_01..09.png，按顺序在小红书发九宫格。
+
+  配色：紫蓝主题（与 fresh 主题一致）。.dark=深紫渐变，.light=浅紫底。
+  想换色改 .dark/.light 的 background 即可。
+-->
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  .card {
+    width:1080px; height:1080px; overflow:hidden;
+    padding:72px; position:relative;
+    font-family:-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;
+    display:flex; flex-direction:column;
+  }
+  .card.center { justify-content:center; }
+  .card.top { justify-content:flex-start; }
+  .dark { background:linear-gradient(135deg,#5b4bd6 0%,#8b5cf6 100%); color:#fff; }
+  .light { background:#f5f3ff; color:#2d2a4a; }
+  .kicker { font-size:26px; letter-spacing:3px; font-weight:700; opacity:.9; margin-bottom:30px; }
+  .dark .kicker { color:#e9e3ff; }
+  .light .kicker { color:#7c3aed; }
+  .h1 { font-size:78px; font-weight:800; line-height:1.12; margin-bottom:26px; }
+  .h2 { font-size:54px; font-weight:800; line-height:1.22; margin-bottom:30px; }
+  .body { font-size:32px; line-height:1.72; font-weight:500; }
+  .light .body { color:#4a4768; }
+  .imgbox { width:100%; height:360px; border-radius:26px; overflow:hidden; margin-bottom:34px; }
+  .imgbox img { width:100%; height:100%; object-fit:cover; display:block; }
+  .foot { position:absolute; left:72px; right:72px; bottom:54px;
+    display:flex; justify-content:space-between; font-size:24px; font-weight:600; opacity:.85; }
+  .dark .foot { color:#e9e3ff; }
+  .light .foot { color:#8b5cf6; }
+  .badge { display:inline-flex; align-items:baseline; gap:10px; margin-bottom:26px; }
+  .badge b { font-size:120px; font-weight:800; line-height:1; color:#fff; }
+  .badge span { font-size:34px; font-weight:700; color:#e9e3ff; }
+</style>
+
+<!-- 01 封面：圈人 + 痛点 + 收益 -->
+<section class="card dark center">
+  <div class="kicker">读书循环 · 01 / 09</div>
+  <div class="h1">年读 200 本，<br>却越读越虚？</div>
+  <div class="body">9 步「读书循环」，把书架<br>炼成你的能力坐标。<br><br>读了很多 ≠ 真的拥有。</div>
+  <div class="foot"><span>读书循环</span><span>reading-capability-coach</span></div>
+</section>
+
+<!-- 02 痛点1：配图 -->
+<section class="card light top">
+  <div class="imgbox"><img src="verify/promo_imgs/scene.jpg" alt=""></div>
+  <div class="kicker">痛点 01</div>
+  <div class="h2">书架是「已读坟墓」</div>
+  <div class="body">读完即归档，从不回看。<br>三百本和三十本，<br>对你没区别——<br>因为没有任何机制<br>把「读过」变成「能用」。</div>
+  <div class="foot"><span>读书循环</span><span>02 / 09</span></div>
+</section>
+
+<!-- 03 痛点2：无图 -->
+<section class="card dark center">
+  <div class="kicker">痛点 02</div>
+  <div class="h2">没有能力坐标系</div>
+  <div class="body">选书靠榜单、朋友圈、<br>「这本书好像很有名」。<br><br>却没人先问：<br>我此刻缺哪块能力？<br><br>没有坐标，读书 = 随机游走。</div>
+  <div class="foot"><span>读书循环</span><span>03 / 09</span></div>
+</section>
+
+<!-- 04 痛点3 + 反常识：配图 -->
+<section class="card light top">
+  <div class="imgbox"><img src="verify/promo_imgs/scene.jpg" alt=""></div>
+  <div class="kicker">痛点 03 · 反常识</div>
+  <div class="h2">读懂与否，全凭感觉</div>
+  <div class="body">合上书那一刻的<br>「我懂了」最不可靠。<br><br>心理学叫「熟练度错觉」：<br>划线的瞬间以为掌握，<br>其实只是眼熟。</div>
+  <div class="foot"><span>读书循环</span><span>04 / 09</span></div>
+</section>
+
+<!-- 05 机制 7维：配图 -->
+<section class="card dark top">
+  <div class="imgbox"><img src="verify/promo_imgs/rising.jpg" alt=""></div>
+  <div class="kicker">机制 · 7 维能力矩阵</div>
+  <div class="h2">给能力装一套坐标</div>
+  <div class="body">财务 / 认知决策 / 科学身心<br>内容表达 / 商业战略<br>技术AI / 人文审美<br><br>先标「理想坐标」<br>再比「现状得分」。</div>
+  <div class="foot"><span>读书循环</span><span>05 / 09</span></div>
+</section>
+
+<!-- 06 9步闭环：配图 -->
+<section class="card light top">
+  <div class="imgbox"><img src="verify/promo_imgs/rising.jpg" alt=""></div>
+  <div class="kicker">机制 · 9 步闭环</div>
+  <div class="h2">把读书变成「练级」</div>
+  <div class="body">拉书架 → 建矩阵 → 读完即测<br>→ 实测打分 → 看 gap<br>→ 拿建议 → 路由下一本<br>→ 达标判定 → 回写书架</div>
+  <div class="foot"><span>读书循环</span><span>06 / 09</span></div>
+</section>
+
+<!-- 07 真实案例 -->
+<section class="card dark top">
+  <div class="badge"><b>80</b><span>/ 100</span></div>
+  <div class="kicker">真实测评 · 《噪声》</div>
+  <div class="h2">实测 80 分，暴露了什么</div>
+  <div class="body">gap：把「噪声分类」用到<br>复杂决策时掉链子。<br><br>系统建议：重读 6、7 章，<br>下次重要决策前<br>先列标准清单。<br><br>——不是感觉，是证据。</div>
+  <div class="foot"><span>读书循环</span><span>07 / 09</span></div>
+</section>
+
+<!-- 08 局限：无图 -->
+<section class="card light center">
+  <div class="kicker">诚实的边界</div>
+  <div class="h2">它不替你做的事</div>
+  <div class="body">· 是校准器，不是替代者<br>· 依赖你诚实作答<br>· 初始要花功夫建坐标<br>· 只覆盖微信读书里的书<br><br>它治不了「不读」，<br>但能治「读了白读」。</div>
+  <div class="foot"><span>读书循环</span><span>08 / 09</span></div>
+</section>
+
+<!-- 09 CTA：无图 -->
+<section class="card dark center">
+  <div class="kicker">现在开始 · 09 / 09</div>
+  <div class="h2">让书架真正属于你</div>
+  <div class="body">去 WorkBuddy skillhub<br>搜 reading-capability-coach<br><br>配套「微信读书助手」<br>一键拉取你的真实书架。</div>
+  <div class="foot"><span>读书循环</span><span>把读过的书炼成能力</span></div>
+</section>

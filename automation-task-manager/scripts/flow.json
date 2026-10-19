@@ -1,0 +1,63 @@
+{
+  "skill": "automation-task-manager",
+  "version": "1.4.1",
+  "updated": "2026-10-19",
+  "note": "S176b 补建。此前本技能无 flow.json，inspect 报「缺 flow.json」阻断（M-R07/M-R19）。本文件登记的 must_run 命令均取自 scripts/scheduler-api.sh 实际支持的 action（create/list/get/update/delete），不含幽灵命令。",
+  "entry": "scripts/scheduler-api.sh",
+  "prefer_when_available": {
+    "tool": "automation_update",
+    "mcp_server": "scheduler-assistant",
+    "rule": "工具存在时必须优先用它，不走本脚本；不得混用"
+  },
+  "must_run": [
+    {
+      "id": "tam-list",
+      "action": "list",
+      "cmd": "bash scripts/scheduler-api.sh list",
+      "kind": "read",
+      "confirm": false,
+      "why": "列任务；只读无需确认"
+    },
+    {
+      "id": "tam-get",
+      "action": "get",
+      "cmd": "bash scripts/scheduler-api.sh get --id <task_id>",
+      "kind": "read",
+      "confirm": false,
+      "why": "取单任务现状，用于展示变更前状态"
+    },
+    {
+      "id": "tam-create",
+      "action": "create",
+      "cmd": "bash scripts/scheduler-api.sh create --name <名称> --cron <表达式> --instruction <指令>",
+      "kind": "write",
+      "confirm": true,
+      "why": "写操作：必须先预览、等用户确认后再执行"
+    },
+    {
+      "id": "tam-update",
+      "action": "update",
+      "cmd": "bash scripts/scheduler-api.sh update --id <task_id> ...",
+      "kind": "write",
+      "confirm": true,
+      "why": "写操作：先 get 出变更前状态并预览"
+    },
+    {
+      "id": "tam-delete",
+      "action": "delete",
+      "cmd": "bash scripts/scheduler-api.sh delete --id <task_id>",
+      "kind": "write",
+      "confirm": true,
+      "why": "写操作：不可逆，必须二次确认"
+    }
+  ],
+  "guards": [
+    "CODEBUDDY_SESSION_TYPE=automation 时严禁加载本技能（会与调度系统自触发打架）",
+    "写操作前必须展示预览并获明确肯定回复，否则不执行",
+    "automation_update 存在时不得回落到脚本，避免重复创建任务"
+  ],
+  "backlog": [
+    "[扩展点] 长期方向：MCP automation_update 完全替代脚本后，本技能的脚本通道可降级为兜底"
+  ],
+  "items": []
+}

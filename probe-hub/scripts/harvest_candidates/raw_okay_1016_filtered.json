@@ -1,0 +1,98 @@
+[
+  {
+    "api接口": "https://cj.lziapi.com/api.php/provide/vod/from/liangzi/at/xml/",
+    "名称": "🔥量子🔥",
+    "分组类目": "采集",
+    "测活证据": "HTTP 200·有vod_play_url·含vod_play_url"
+  },
+  {
+    "api接口": "http://caiji.dyttzyapi.com/api.php/provide/vod/at/xml/",
+    "名称": "电影天堂",
+    "分组类目": "采集",
+    "测活证据": "HTTP 200·有vod_play_url·含vod_play_url"
+  },
+  {
+    "api接口": "https://api.xinlangapi.com/xinlangapi.php/provide/vod/from/xlyun/at/xml/",
+    "名称": "新浪云",
+    "分组类目": "采集",
+    "测活证据": "HTTP 200·有vod_play_url·含vod_play_url"
+  },
+  {
+    "api接口": "http://api.ffzyapi.com/api.php/provide/vod/from/feifan/at/xml/",
+    "名称": "非凡",
+    "分组类目": "采集",
+    "测活证据": "HTTP 200·有vod_play_url·含vod_play_url"
+  },
+  {
+    "api接口": "https://www.huyaapi.com/api.php/provide/vod/from/hyyun/at/xml/",
+    "名称": "虎牙云",
+    "分组类目": "采集",
+    "测活证据": "HTTP 200·有vod_play_url·含vod_play_url"
+  },
+  {
+    "api接口": "https://api.guangsuapi.com/api.php/provide/vod/from/gsyun/at/xml/",
+    "名称": "光速云",
+    "分组类目": "采集",
+    "测活证据": "HTTP 200·有vod_play_url·含vod_play_url"
+  },
+  {
+    "api接口": "https://jszyapi.com/api.php/provide/vod/from/jsyun/at/xml",
+    "名称": "极速",
+    "分组类目": "采集",
+    "测活证据": "HTTP 200·有vod_play_url·含vod_play_url"
+  },
+  {
+    "api接口": "https://www.hongniuzy2.com/api.php/provide/vod/from/hnyun/at/xml/",
+    "名称": "红牛云",
+    "分组类目": "采集",
+    "测活证据": "HTTP 200·有vod_play_url·含vod_play_url"
+  },
+  {
+    "api接口": "https://suoniapi.com/api.php/provide/vod/?ac=list",
+    "名称": "索尼",
+    "分组类目": "采集",
+    "测活证据": "HTTP 200·有vod_play_url·第01集$https:\\/\\/v14.rstu6.com\\/202609\\/25\\/dE3vnEk49c27\\/video\\/index.m3u8#第02集$h"
+  },
+  {
+    "api接口": "https://api.ukuapi88.com/api.php/provide/vod/?ac=list",
+    "名称": "U酷",
+    "分组类目": "采集",
+    "测活证据": "HTTP 200·有vod_play_url·第20260731期先导片$https:\\/\\/ukzy.ukubf3.com\\/share\\/i9WYzhMHIJ#第20260731期$https:\\/\\/"
+  },
+  {
+    "api接口": "https://caiji.kuaichezy.org/api.php/provide/vod/?ac=list",
+    "名称": "快车",
+    "分组类目": "采集",
+    "测活证据": "HTTP 200·有vod_play_url·国语$https:\\/\\/v14.kuaichezym3u8.com\\/yyv14\\/202610\\/16\\/YPcze76uEj27\\/video\\/inde"
+  },
+  {
+    "api接口": "https://api.niuniuzy.me/api.php/provide/vod/from/nnm3u8/at/xml",
+    "名称": "牛牛",
+    "分组类目": "采集",
+    "测活证据": "HTTP 200·有vod_play_url·含vod_play_url"
+  },
+  {
+    "api接口": "https://hhzyapi.com/api.php/provide/vod/from/hhyun/at/xml",
+    "名称": "豪华",
+    "分组类目": "采集",
+    "测活证据": "HTTP 200·有vod_play_url·含vod_play_url"
+  },
+  {
+    "api接口": "https://www.mdzyapi.com/api.php/provide/vod/?ac=list",
+    "名称": "魔都",
+    "分组类目": "采集",
+    "测活证据": "HTTP 200·有vod_play_url·全集$https:\\/\\/play.modujx17.com\\/20261016\\/IntzXane\\/index.m3u8"
+  },
+  {
+    "api接口": "https://subocj.com/api.php/provide/vod/from/subyun/at/json",
+    "名称": "速播",
+    "分组类目": "采集",
+    "测活证据": "HTTP 200·有vod_play_url·第1集$https:\\/\\/play.xluuss.com\\/play\\/e73A9Ywe#第2集$https:\\/\\/play.xluuss.com\\/pla"
+  },
+  {
+    "api接口": "https://api.wsyzy.net/api.php/provide/vod/?ac=list",
+    "名称": "无水印",
+    "分组类目": "采集",
+    "测活证据": "HTTP 200·有vod_play_url·第01集$https:\\/\\/v14.wsyzym3u8.com\\/202610\\/09\\/s5W1xZhc8827\\/video\\/index.m3u8#第0"
+  }
+]

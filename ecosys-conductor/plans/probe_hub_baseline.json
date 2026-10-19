@@ -1,0 +1,205 @@
+{
+ "created": "2026-10-20T00:03:06",
+ "files": {
+  "CHANGELOG.md": {
+   "sha256": "ebee6517c2a4375e03abad52cc33d0bc08ca0ffd9cb1cf6f9fe16d1c42336179",
+   "size": 137872
+  },
+  "SKILL.md": {
+   "sha256": "b73f2e7b4f29817ed2161701e34a0c2e385c6a9ece66f197391879ef9dab56ad",
+   "size": 34346
+  },
+  "scripts/__init__.py": {
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "size": 0
+  },
+  "scripts/livecheck.py": {
+   "sha256": "94169859d46e921b46c398986181994e996f0d0dcf1bef82a2167ffc78aa2aca",
+   "size": 47228
+  },
+  "scripts/armor.py": {
+   "sha256": "a71dec8f807f2358a1d7888a219ed5b1bdb72cef5f6eb742c021b223717dbc87",
+   "size": 41102
+  },
+  "scripts/spider_verify.py": {
+   "sha256": "9599c085914d0d280cc0d58255bd08cfb2f3de2632d80ccacde3d2ad1492770d",
+   "size": 17250
+  },
+  "scripts/mount_judge.py": {
+   "sha256": "163f8edfff9ac875fa344730c144017c1b613f4af74599312e9ccd2f931fd921",
+   "size": 19430
+  },
+  "scripts/content_probe.py": {
+   "sha256": "07e4e7aecce962c57d2a5f9a0e6300fd5031c9cfdf3380c6ec262e49d7d2ccb6",
+   "size": 13146
+  },
+  "scripts/rebuild_from_origin.py": {
+   "sha256": "55012371bbe1676e3f4100f5c40e432a899bd7e5e11e7db54aca52db0409387b",
+   "size": 13477
+  },
+  "scripts/rebuild_b1018_s116.py": {
+   "sha256": "03f481f9601506cfed0fab4542b439f7b5c7666983d37ee7dbeb7b781139d118",
+   "size": 32911
+  },
+  "scripts/retry_lives_parses.py": {
+   "sha256": "19cb81e5a8252857805eda041f89876d18efb4b566caf568c2feed23b5152ab7",
+   "size": 2284
+  },
+  "scripts/dedup_1018_1247.json": {
+   "sha256": "dac688300f486432d9614e711e01f2319e94cf76bbf370a23cd23240fd236a64",
+   "size": 21021
+  },
+  "scripts/quality.py": {
+   "sha256": "b21403f3ff06446b3bded50b9a7ff477c7b48800aef6c38855fa1bdf33827175",
+   "size": 14507
+  },
+  "scripts/quality_batch.py": {
+   "sha256": "7949901bdeac460c01f65e612be6fc216c86edb7f7a603f4266d177dd86a4601",
+   "size": 10402
+  },
+  "scripts/forge.py": {
+   "sha256": "8a7014cf1dc65455a79a2428b8a34b16ed52af29e1cc2906a925d59bbe0f25c8",
+   "size": 17122
+  },
+  "scripts/flow.json": {
+   "sha256": "70e9a4e6e75ce295b27dcce8f21deda66ac00a2b90925f9cdf9b80d0cfeba2ad",
+   "size": 22657
+  },
+  "scripts/monitor_targets.json": {
+   "sha256": "c54be1194b361c89821025f24eb1f8af8340b01cbf50b9b5af062d9c1e4f1af0",
+   "size": 4703
+  },
+  "scripts/probe.py": {
+   "sha256": "58e41dd504a1d3f47847c975c817ae0201289af65a901312c14aa6def1e5e4ed",
+   "size": 399556
+  },
+  "scripts/probe_parse_inject.py": {
+   "sha256": "24362e3bcb987c61aafbc9a237103edf3d0780ba8c455546ce250208bba3c607",
+   "size": 5000
+  },
+  "scripts/activity_log.json": {
+   "sha256": "a5a5c00e6c5cf022823bd0728ec5feae7c58097f2d5b3005fce1d4bede4b7785",
+   "size": 735388
+  },
+  "scripts/search_results.json": {
+   "sha256": "939c55742521e9e9f045dcd7e7e24bb6f6ac473d13c3784bd7ba9e5a1c2e492a",
+   "size": 23386
+  },
+  "scripts/harvest_candidates/raw_okay_1016.json": {
+   "sha256": "d6afb302ab7b9d0cbef7803b407a5a8b9f28c6ead6f1756bdc68e0e024356f28",
+   "size": 3795
+  },
+  "scripts/harvest_candidates/raw_okay_1016_filtered.json": {
+   "sha256": "4727503982fe1b56652c4272520ca48f56e25398db17f8263a85c325f8747df9",
+   "size": 3805
+  },
+  "scripts/harvest_candidates/repack_1017_1712.json": {
+   "sha256": "df067fcf57fc7ee4085a92d895a73571ea5f49074c62f942f32703b350b21352",
+   "size": 81329
+  },
+  "scripts/harvest_candidates/repack_1017_1713.json": {
+   "sha256": "53788868967e51fad80ce1da9146b89531d6fefdf6338fdef9e8f2bb24920f78",
+   "size": 84427
+  },
+  "scripts/harvest_candidates/pull_1017.json": {
+   "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+   "size": 2
+  },
+  "scripts/harvest_candidates/repack_1017_1720.json": {
+   "sha256": "53788868967e51fad80ce1da9146b89531d6fefdf6338fdef9e8f2bb24920f78",
+   "size": 84427
+  },
+  "scripts/harvest_candidates/raw_tvbox_1017.json": {
+   "sha256": "172cb4ee575bcee1bc1ec203ca336fe314301962f094e81c4a61784b76f038f1",
+   "size": 22048
+  },
+  "scripts/harvest_candidates/live_1018_16pass.json": {
+   "sha256": "81fcb037d65b190d218ea9e4612b36eb1aaf255634aacac2bf47da54519c4505",
+   "size": 6027
+  },
+  "scripts/harvest_candidates/livecheck_live_1018_16pass.json": {
+   "sha256": "9a406f6956d5691249d5feda86c6a6ac0f629c6ec4f642aa9a04d83d4b6d5e85",
+   "size": 4637
+  },
+  "scripts/harvest_candidates/parse_candidates_1019.json": {
+   "sha256": "9681b5f8821707544aa6ae712e18e090cd1b6af31309ad6c4ab87b869aef7f2b",
+   "size": 7389
+  },
+  "scripts/py_runner/base_stub.py": {
+   "sha256": "23bde75f082923d9d9b56b19bbc962121537aae9b0b55ae09b03bb244c0eb95d",
+   "size": 3089
+  },
+  "scripts/py_runner/worker.py": {
+   "sha256": "dc6e27a06d8838a2a1ead9acfe22f77e9b0ad239ddf72d4d83bf2f9b978371d8",
+   "size": 8896
+  },
+  "scripts/py_runner/run_all.py": {
+   "sha256": "3c56ae4fbb052ed5cfe38207b82391b67a58d72d670203f05d8243cb80349ade",
+   "size": 5383
+  },
+  "references/S143_三处假绿定案.md": {
+   "sha256": "266a904fc5b1013f84424e35ed778a1e4bace08ff28f9398d4c0fe7bb99b1bf9",
+   "size": 2684
+  },
+  "references/S109_lightjson溯源对照.md": {
+   "sha256": "8d4b487ab300cfc1dd3380e5918889f9223ed4efea7a97a8c35297f6d580694a",
+   "size": 839
+  },
+  "references/S161_写源模块.md": {
+   "sha256": "1127946fab0e433cf21963d19bacbc5b1dd08e8678193e81c9fc0d65595aa38d",
+   "size": 8722
+  },
+  "references/S109_采料去向与D包换路线.md": {
+   "sha256": "afb0d83e87eb7b21a0b04b5e3d7cb38c8646e0660b0630430fd79e31b887655a",
+   "size": 2714
+  },
+  "references/S101_分类完整性检测.md": {
+   "sha256": "fc0f4dda17f5f1e6e5de63dd8faf19e272a68460c2d24a5e59f0a40b7e34d57e",
+   "size": 1901
+  },
+  "references/S110_质量评测.md": {
+   "sha256": "9f49ded4d3debd9d16cb3c30b1be28f1ecd4a67a62caa7d795d54aed12b3c114",
+   "size": 3493
+  },
+  "references/S169_监测台静默缺陷.md": {
+   "sha256": "1ee79bb7931cf26628aeb08d7d5c399848d48e56b6a501d7f56eecc5bcde5817",
+   "size": 7124
+  },
+  "references/S169_黑名单误杀三根因.md": {
+   "sha256": "8c13410171b70d1085249581d938006b4f452a773dc23d8a1a52fe39f56b6b0e",
+   "size": 8271
+  },
+  "docs/外置_黑名单主键与三层分级.md": {
+   "sha256": "f569c42042ff7563df8bfbdffcefccb4142434c3de4d6ab525a14a3cf109a57c",
+   "size": 7251
+  },
+  "docs/外置_原生态保留与段位落点.md": {
+   "sha256": "422a067f141a664b0d48c92fe8c19b9527ee0e0717aa71355cf91564dc3e5278",
+   "size": 4015
+  },
+  "docs/外置_网盘分享取料.md": {
+   "sha256": "e57f40052b440df99b7583cdd4ab8e36a4dbd641f8c98f011ff3631b714048ab",
+   "size": 11820
+  },
+  "docs/外置_判据必须落在执行路径.md": {
+   "sha256": "30d8cbcfac248922adeed56f37f2f87ba6affad3f258585f42e3748b43182787",
+   "size": 5880
+  },
+  "docs/外置_原仓库转轻量json链路.md": {
+   "sha256": "3bf3444c5ef8bfd00958645c221088dc489deea54b06cad9907a0c874f82b953",
+   "size": 4181
+  },
+  "sources/README.md": {
+   "sha256": "8dbc8657e764a5ce6e8a8e4da459655d76a358a546eee7d96ee88d196b0e8a48",
+   "size": 4979
+  },
+  "sources/yyzy_vip.py": {
+   "sha256": "1ca0759e8105ed5232d1e86c9e243d574d0dd4b13a9c9e881c1658f74fce4022",
+   "size": 8382
+  },
+  "sources/index.json": {
+   "sha256": "b38ecb94b1a976cb8c271b7db0a0e4b8fd941d13a0841e129991c1639817bc7c",
+   "size": 1139
+  }
+ }
+}

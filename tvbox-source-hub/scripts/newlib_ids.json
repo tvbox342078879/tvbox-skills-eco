@@ -1,0 +1,36 @@
+{
+  "root": "ftHhGQ4c6EbEN62WVPMdTh",
+  "space": "8w5cnqCqQJ0wNoF2Hb6efH",
+  "tables": {
+    "全量版": "Gx2pP8c3rTYIb3TYwgi1n1",
+    "纯净版": "BJCCeJPkCifYdhs0QwklKp",
+    "18版": "53htuXyjvtm9YAjxLl2obP",
+    "产出json": "GVP5OkLnHCgTke3nVdNcNF"
+  },
+  "folders": {
+    "全量版": "qC9tyYw6eXvTMTYmE5BtS4",
+    "纯净版": "v6FE9tyXn5F9OKzQ5IQnFz",
+    "18版": "ffKNxyu17Ar9kn9uzmbLad",
+    "产出json": "zsciT3SKwqyplZkVPKxIyc"
+  },
+  "docs": {
+    "全量版": "Q1XJbpqjtNir9Sfjq17a9M",
+    "纯净版": "GeSGblakX74WzL9WvnGz6l",
+    "18版": "IFkH1hVOPBDeTas3AB4yZh",
+    "产出json": "ms9PFIGnivLLmCJxAUqbEL"
+  },
+  "_duplicates": {
+    "重复说明文档": [
+      "1sYSnO2s8kLppMTPjTjhMi",
+      "T5urDvXKnNccFFXU3MWb20",
+      "MTHfCHTbG2fgFhTzAwBUrj",
+      "xYNfS1Lfnw5O3fPptD8ntt"
+    ],
+    "测试文档": [
+      "4tuuDfqSWSawderUWwhSmX"
+    ],
+    "废弃根": [
+      "uvzK9aZaP8c2DwWaJCERsS"
+    ]
+  }
+}

@@ -1,0 +1,10 @@
+{
+ "_note": "S132 P007 归一：本文件不再是登记册正本，仅作历史指针保留。",
+ "name": "legacy-watchdog/monitors.json（已归一，非正本）",
+ "version": "2.0.0",
+ "superseded_by": "tvbox-inspect/monitors.json",
+ "superseded_at": "2026-10-17",
+ "superseded_session": "S132",
+ "reason": "旧副本为 inspect 版真子集(18/28)，无任何代码读取；唯一差异是缺 proven 字段=纯滞后。保留副本会造成双份定义漂移(M-R38)。",
+ "monitors": []
+}

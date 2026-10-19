@@ -1,0 +1,146 @@
+[
+ {
+  "名称": "360 | 采集",
+  "api接口": "https://360zy.com/api.php/provide/vod/",
+  "源类型": "直链·采集",
+  "真实测活": "通过",
+  "测活证据": "通过：HTTP 200·JSON·有真实播放地址·第01集$https:\\/\\/vod1.maowushi.com\\/20250116\\/Y19co9am\\/index.m3u8#第02集$https:\\/\\/",
+  "来源仓库": "cluntop/tvbox",
+  "状态": "可用"
+ },
+ {
+  "名称": "豆瓣 | 采集",
+  "api接口": "https://caiji.dbzy5.com/api.php/provide/vod/",
+  "源类型": "直链·采集",
+  "真实测活": "通过",
+  "测活证据": "通过：HTTP 200·JSON·有真实播放地址·全集完结 $https:\\/\\/vodcnd17.ajupf.com\\/20261017\\/MPtRzplx\\/index.m3u8$$$全集完结 $https",
+  "来源仓库": "cluntop/tvbox",
+  "状态": "可用"
+ },
+ {
+  "名称": "创享 | 采集",
+  "api接口": "https://ys.cxkjg.cn/api/provide/vod/",
+  "源类型": "直链·采集",
+  "真实测活": "通过",
+  "测活证据": "通过：HTTP 200·JSON·有真实播放地址·第1集$https://hd.kuktxu.com/play/dwproMRe/index.m3u8#第2集$https://hd.kuktxu.com/pla",
+  "来源仓库": "cluntop/tvbox",
+  "状态": "可用"
+ },
+ {
+  "名称": "索尼 | 采集 ",
+  "api接口": "https://suoniapi.com/api.php/provide/vod/",
+  "源类型": "直链·采集",
+  "真实测活": "通过",
+  "测活证据": "通过：HTTP 200·JSON·有真实播放地址·国语$https:\\/\\/v14.rstu6.com\\/202610\\/18\\/nvGMGSRrF127\\/video\\/index.m3u8",
+  "来源仓库": "cluntop/tvbox",
+  "状态": "可用"
+ },
+ {
+  "名称": "量子 | 采集",
+  "api接口": "https://cj.lziapi.com/api.php/provide/vod/",
+  "源类型": "直链·采集",
+  "真实测活": "通过",
+  "测活证据": "通过：HTTP 200·JSON·有真实播放地址·20220722$https:\\/\\/vip.lz-cdn11.com\\/share\\/3da972c3ec85b6f3cc5306acf034fd23#202",
+  "来源仓库": "cluntop/tvbox",
+  "状态": "可用"
+ },
+ {
+  "名称": "非凡 | 采集",
+  "api接口": "https://cj.ffzyapi.com/api.php/provide/vod/",
+  "源类型": "直链·采集",
+  "真实测活": "通过",
+  "测活证据": "通过：HTTP 200·JSON·有真实播放地址·HD中字$https:\\/\\/vip.ffzy-play10.com\\/share\\/c6214f02db0edfe59c186028c730e3d4$$$HD",
+  "来源仓库": "cluntop/tvbox",
+  "状态": "可用"
+ },
+ {
+  "名称": "无尽 | 采集",
+  "api接口": "https://api.wujinapi.net/api.php/provide/vod/",
+  "源类型": "直链·采集",
+  "真实测活": "通过",
+  "测活证据": "通过：HTTP 200·JSON·有真实播放地址·20240614$https:\\/\\/v1.ppqrrs.com\\/wjv1\\/202406\\/15\\/qMEjxYq6JB85\\/video\\/index.m",
+  "来源仓库": "cluntop/tvbox",
+  "状态": "可用"
+ },
+ {
+  "名称": "金鹰 | 采集",
+  "api接口": "https://jyzyapi.com/api.php/provide/vod/",
+  "源类型": "直链·采集",
+  "真实测活": "通过",
+  "测活证据": "通过：HTTP 200·JSON·有真实播放地址·正片$https:\\/\\/hd.kuktxu.com\\/play\\/eVO50Koa$$$正片$https:\\/\\/hd.kuktxu.com\\/play\\/e",
+  "来源仓库": "cluntop/tvbox",
+  "状态": "可用"
+ },
+ {
+  "名称": "新浪 | 采集",
+  "api接口": "https://api.xinlangapi.com/xinlangapi.php/provide/vod/",
+  "源类型": "直链·采集",
+  "真实测活": "通过",
+  "测活证据": "通过：HTTP 200·JSON·有真实播放地址·正片$https:\\/\\/play.xluuss.com\\/play\\/dR6M5Dwd$$$正片$https:\\/\\/play.xluuss.com\\/pla",
+  "来源仓库": "cluntop/tvbox",
+  "状态": "可用"
+ },
+ {
+  "名称": "速播 | 采集",
+  "api接口": "https://subocaiji.com/api.php/provide/vod/",
+  "源类型": "直链·采集",
+  "真实测活": "通过",
+  "测活证据": "通过：HTTP 200·JSON·有真实播放地址·正片$https:\\/\\/play.xluuss.com\\/play\\/dBB8Rjod$$$正片$https:\\/\\/play.xluuss.com\\/pla",
+  "来源仓库": "cluntop/tvbox",
+  "状态": "可用"
+ },
+ {
+  "名称": "优质 | 采集",
+  "api接口": "https://api.yyzy-tv.vip/inc/apijson.php",
+  "源类型": "直链·采集",
+  "真实测活": "通过",
+  "测活证据": "通过：HTTP 200·JSON·有真实播放地址·20231022\\u671f$https:\\/\\/cdn.yzzy30-play.com\\/20261018\\/60569_7881243c\\/index.m3",
+  "来源仓库": "cluntop/tvbox",
+  "状态": "可用"
+ },
+ {
+  "名称": "樱花 | 采集",
+  "api接口": "https://m3u8.apiyhzy.com/api.php/provide/vod/",
+  "源类型": "直链·采集",
+  "真实测活": "通过",
+  "测活证据": "通过：HTTP 200·JSON·有真实播放地址·全集$https:\\/\\/vod12.wgslsw.com\\/20261018\\/RmqyLLsFzC90\\/index.m3u8",
+  "来源仓库": "cluntop/tvbox",
+  "状态": "可用"
+ },
+ {
+  "名称": "天堂 | 采集",
+  "api接口": "http://caiji.dyttzyapi.com/api.php/provide/vod/",
+  "源类型": "直链·采集",
+  "真实测活": "通过",
+  "测活证据": "通过：HTTP 200·JSON·有真实播放地址·第01集$https:\\/\\/vip.dytt-tvs.com\\/share\\/6aa7ed58002a17aa719e565537c1006c$$$第01集$",
+  "来源仓库": "cluntop/tvbox",
+  "状态": "可用"
+ },
+ {
+  "名称": "暴風 | 采集",
+  "api接口": "https://bfzyapi.com/api.php/provide/vod/",
+  "源类型": "直链·采集",
+  "真实测活": "通过",
+  "测活证据": "通过：HTTP 200·JSON·有真实播放地址·第1集$https:\\/\\/v.fengbao14.com\\/video\\/xiuxuelvxingshibeifenjinliaohebulaidezudie",
+  "来源仓库": "cluntop/tvbox",
+  "状态": "可用"
+ },
+ {
+  "名称": "艾旦 | 采集",
+  "api接口": "https://www.lovedan.net/api.php/provide/vod/",
+  "源类型": "直链·采集",
+  "真实测活": "通过",
+  "测活证据": "通过：HTTP 200·JSON·有真实播放地址·第01集$https:\\/\\/cdn.vvvip-plays33.cc\\/20260907\\/19295_0104a01d\\/index.m3u8#第02集$h",
+  "来源仓库": "cluntop/tvbox",
+  "状态": "可用"
+ },
+ {
+  "名称": "茅台 | 采集",
+  "api接口": "https://mtzy.me/api.php/provide/vod/",
+  "源类型": "直链·采集",
+  "真实测活": "通过",
+  "测活证据": "通过：HTTP 200·JSON·有真实播放地址·全集完结$https:\\/\\/vodcnd17.uvjtih.cn\\/20261017\\/swLEaCZa\\/index.m3u8$$$全集完结$https:\\",
+  "来源仓库": "cluntop/tvbox",
+  "状态": "可用"
+ }
+]

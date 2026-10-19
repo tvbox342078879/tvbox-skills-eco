@@ -1,0 +1,661 @@
+{
+  "source": "云端库 8JBrhSwsJ3pnPYtoGLo9XV",
+  "keep": [
+    {
+      "api": "https://cj.lziapi.com/api.php/provide/vod",
+      "名称": "🌺量子资源",
+      "分组类目": "影视",
+      "record_id": "AIEB4QugfCxdyMQ4WUXX3L"
+    },
+    {
+      "api": "https://360zy.com/api.php/provide/vod",
+      "名称": "🌺360资源",
+      "分组类目": "影视",
+      "record_id": "HyY92AtUHEOzbOSxzpxBMO"
+    },
+    {
+      "api": "https://tyyszy.com/api.php/provide/vod",
+      "名称": "🌺天涯资源",
+      "分组类目": "影视",
+      "record_id": "3VYbaWFO7Tk7BaaWk0SEmT"
+    },
+    {
+      "api": "https://bfzyapi.com/api.php/provide/vod",
+      "名称": "🌺暴风资源",
+      "分组类目": "影视",
+      "record_id": "oukGTzu27vwvg8pykZ1zjO"
+    },
+    {
+      "api": "https://xsd.sdzyapi.com/api.php/provide/vod",
+      "名称": "🌺索尼-闪电资源",
+      "分组类目": "影视",
+      "record_id": "xDYqOmIPX7sPaSwMZndAUq"
+    },
+    {
+      "api": "https://suoniapi.com/api.php/provide/vod",
+      "名称": "🌺索尼资源",
+      "分组类目": "影视",
+      "record_id": "4W2wNzuR2r7yfArsC1R4Rh"
+    },
+    {
+      "api": "https://www.hongniuzy2.com/api.php/provide/vod",
+      "名称": "🌺红牛资源",
+      "分组类目": "影视",
+      "record_id": "B4qpXy3JA0ZvW37tgteiVn"
+    },
+    {
+      "api": "https://caiji.maotaizy.cc/api.php/provide/vod",
+      "名称": "🌺茅台资源",
+      "分组类目": "影视",
+      "record_id": "L2QQkie46hVWlW1RUjJxgK"
+    },
+    {
+      "api": "https://www.huyaapi.com/api.php/provide/vod",
+      "名称": "🌺虎牙资源",
+      "分组类目": "影视",
+      "record_id": "TJrIpj2tsDiBEaS7uuo8Zg"
+    },
+    {
+      "api": "https://dbzy.tv/api.php/provide/vod",
+      "名称": "🌺豆瓣资源2",
+      "分组类目": "影视",
+      "record_id": "vF5k5FWQykHOTA6WBfodIq"
+    },
+    {
+      "api": "https://caiji.dbzy5.com/api.php/provide/vod/from/dbm3u8/at/josn",
+      "名称": "🌺豆瓣资源3",
+      "分组类目": "影视",
+      "record_id": "KDWyOesphuWH4EQfKgmU3U"
+    },
+    {
+      "api": "https://hhzyapi.com/api.php/provide/vod",
+      "名称": "🌺豪华资源",
+      "分组类目": "影视",
+      "record_id": "m4Z2mqK927xvAQwaMxMzr8"
+    },
+    {
+      "api": "https://ckzy.me/api.php/provide/vod",
+      "名称": "🌺CK资源",
+      "分组类目": "影视",
+      "record_id": "2Ot9MbQxXhrnGkgOXhDe4Y"
+    },
+    {
+      "api": "https://api.ukuapi88.com/api.php/provide/vod",
+      "名称": "🌺U酷资源2",
+      "分组类目": "影视",
+      "record_id": "LHHcq22xx3teUfyTMur4tn"
+    },
+    {
+      "api": "https://api.wujinapi.cc/api.php/provide/vod",
+      "名称": "🌺wujinapi无尽",
+      "分组类目": "影视",
+      "record_id": "cYQiGGNZ1izP4sFjV7WQFo"
+    },
+    {
+      "api": "https://cj.yayazy.net/api.php/provide/vod",
+      "名称": "🌺丫丫点播",
+      "分组类目": "影视",
+      "record_id": "N8YyOoIIdYWWMP50Ds26TU"
+    },
+    {
+      "api": "https://api.guangsuapi.com/api.php/provide/vod",
+      "名称": "🌺光速资源",
+      "分组类目": "影视",
+      "record_id": "QoFGLZ3Wgjkbs8n64DlHQt"
+    },
+    {
+      "api": "https://api.xinlangapi.com/xinlangapi.php/provide/vod",
+      "名称": "🌺新浪点播",
+      "分组类目": "影视",
+      "record_id": "zJ2im1kEkt3xiTPGaXnHhr"
+    },
+    {
+      "api": "https://api.wujinapi.com/api.php/provide/vod",
+      "名称": "🌺无尽资源",
+      "分组类目": "影视",
+      "record_id": "tzuydcuPASwgQQWvgbdFx9"
+    },
+    {
+      "api": "https://api.wujinapi.me/api.php/provide/vod",
+      "名称": "🌺无尽资源2",
+      "分组类目": "影视",
+      "record_id": "AGg8gaZ3p67X06p1rIAzks"
+    },
+    {
+      "api": "https://api.wujinapi.net/api.php/provide/vod",
+      "名称": "🌺无尽资源3",
+      "分组类目": "影视",
+      "record_id": "bvC7l2Ba0FSjXYmqt5jJ9a"
+    },
+    {
+      "api": "http://zuidazy.me/api.php/provide/vod",
+      "名称": "🌺最大点播",
+      "分组类目": "影视",
+      "record_id": "Id673YIHH8wlHx2fCoofE1"
+    },
+    {
+      "api": "https://api.zuidapi.com/api.php/provide/vod",
+      "名称": "🌺最大资源",
+      "分组类目": "影视",
+      "record_id": "MHmQBBWUeKBrGjIOu1cri0"
+    },
+    {
+      "api": "https://m3u8.apiyhzy.com/api.php/provide/vod",
+      "名称": "🌺樱花资源",
+      "分组类目": "影视",
+      "record_id": "CQto7AWgFmDT6FXTRQ7GNF"
+    },
+    {
+      "api": "https://api.yparse.com/api/json",
+      "名称": "🌺步步高资源",
+      "分组类目": "影视",
+      "record_id": "gOliDeTcOlFKHlDmWIQopD"
+    },
+    {
+      "api": "https://api.niuniuzy.me/api.php/provide/vod",
+      "名称": "🌺牛牛点播",
+      "分组类目": "影视",
+      "record_id": "wBqeCfU6B9030PReMwI7mq"
+    },
+    {
+      "api": "https://api.apibdzy.com/api.php/provide/vod",
+      "名称": "🌺百度云资源",
+      "分组类目": "影视",
+      "record_id": "FI8oHVxDE8alJZNU7xWQoI"
+    },
+    {
+      "api": "https://subocaiji.com/api.php/provide/vod",
+      "名称": "🌺速博资源",
+      "分组类目": "影视",
+      "record_id": "YcHaKufxO7L1dImzme5kSF"
+    },
+    {
+      "api": "https://jinyingzy.com/api.php/provide/vod",
+      "名称": "🌺金鹰点播",
+      "分组类目": "影视",
+      "record_id": "uusflnfO8sImIl9XnPFDJb"
+    },
+    {
+      "api": "https://jyzyapi.com/api.php/provide/vod",
+      "名称": "🌺金鹰资源",
+      "分组类目": "影视",
+      "record_id": "cHW1wsNMuj8a8MTREzioEU"
+    },
+    {
+      "api": "https://sdzyapi.com/api.php/provide/vod",
+      "名称": "🌺閃電资源",
+      "分组类目": "影视",
+      "record_id": "JrC7cNIzxE4opI4k7hyr5m"
+    },
+    {
+      "api": "https://cj.ffzyapi.com/api.php/provide/vod",
+      "名称": "🌺非凡资源",
+      "分组类目": "影视",
+      "record_id": "KsFebCDI1ir4YrX9KCZGyJ"
+    },
+    {
+      "api": "https://p2100.net/api.php/provide/vod",
+      "名称": "🌺飘零资源",
+      "分组类目": "影视",
+      "record_id": "gD0iZIj3NpczAj5vOIyg1y"
+    },
+    {
+      "api": "https://caiji.moduapi.cc/api.php/provide/vod",
+      "名称": "🌺魔都动漫",
+      "分组类目": "影视",
+      "record_id": "GGeOVUkDldosvzof9DH6jI"
+    },
+    {
+      "api": "https://www.mdzyapi.com/api.php/provide/vod",
+      "名称": "🌺魔都资源",
+      "分组类目": "影视",
+      "record_id": "IZdvPsFVyC3yVubl33ravZ"
+    },
+    {
+      "api": "https://lzizy1.com/api.php/provide/vod",
+      "名称": "❁直链004℗量子❁",
+      "分组类目": "直链",
+      "record_id": "xRXOCZTVp5sB5uZid2kR4W"
+    },
+    {
+      "api": "https://cj.rytvapi.com/api.php/provide/vod/from/rym3u8/at/json/",
+      "名称": "❁直链009℗如意2❁",
+      "分组类目": "直链",
+      "record_id": "motsXNt9OZUDkJWBDIEG7n"
+    },
+    {
+      "api": "http://by.bfzyapi.com/api.php/provide/vod/at/json/",
+      "名称": "❁直链011℗暴风3❁",
+      "分组类目": "直链",
+      "record_id": "tFs0JoAXayA1tamYJiXpmT"
+    },
+    {
+      "api": "https://lovedan.net/api.php/provide/vod",
+      "名称": "❁直链012℗爱蛋❁",
+      "分组类目": "直链",
+      "record_id": "2JPJblhLnZSqAAeL9HMDpi"
+    },
+    {
+      "api": "http://ffzy5.tv/api.php/provide/vod",
+      "名称": "❁直链014℗非凡❁",
+      "分组类目": "直链",
+      "record_id": "j0Jc0VqE2l3IJQn0DEsvoZ"
+    },
+    {
+      "api": "http://ffzy.tv/api.php/provide/vod",
+      "名称": "❁直链016℗非凡3❁",
+      "分组类目": "直链",
+      "record_id": "b5XeZcdcUSNUJPg48tWMJk"
+    },
+    {
+      "api": "https://jszyapi.com/api.php/provide/vod",
+      "名称": "❁直链018℗极速2❁",
+      "分组类目": "直链",
+      "record_id": "ty2GkU5HMOUI1pzw0OfPQ9"
+    },
+    {
+      "api": "https://huyazy.net/api.php/provide/vod/from/hym3u8/",
+      "名称": "❁直链020℗虎牙3❁",
+      "分组类目": "直链",
+      "record_id": "0hXntmG9xcPKyQMp9zTYoN"
+    },
+    {
+      "api": "https://cdn.dzzyapi.com/api.php/provide/vod",
+      "名称": "❁直链022℗冬瓜❁",
+      "分组类目": "直链",
+      "record_id": "3iZ0QcDkJy0zl1StLxLW4Z"
+    },
+    {
+      "api": "https://suonizy.com/api.php/provide/vod/from/snm3u8/",
+      "名称": "❁直链023℗索尼6❁",
+      "分组类目": "直链",
+      "record_id": "QEOqcphy0IZL06D5L5sONd"
+    },
+    {
+      "api": "https://xgzy.tv/api.php/provide/vod",
+      "名称": "❁直链026℗西瓜❁",
+      "分组类目": "直链",
+      "record_id": "0LTr6SB8c1zLbTNAEG6jED"
+    },
+    {
+      "api": "https://caiji.xgzyapi.com/api.php/provide/vod/from/xiguam3u8/at/json/",
+      "名称": "❁直链027℗西瓜2❁",
+      "分组类目": "直链",
+      "record_id": "y7HqYZDT3MN4I5YbEzIO5H"
+    },
+    {
+      "api": "https://okzyw.cc/api.php/provide/vod/from/okm3u8/",
+      "名称": "❁直链029℗资源2❁",
+      "分组类目": "直链",
+      "record_id": "Rz0pQQOjMPF5f65moAFzvh"
+    },
+    {
+      "api": "http://pg.cttv.vip/api.php/provide/vod",
+      "名称": "❁直链030℗刺桐❁",
+      "分组类目": "直链",
+      "record_id": "x7pIXJK1bXGtkC0U7DL2r6"
+    },
+    {
+      "api": "https://www.zuidazy.co/api.php/provide/vod/from/zuidam3u8/",
+      "名称": "❁直链033℗最大3❁",
+      "分组类目": "直链",
+      "record_id": "M3Xi9oyym4kKdya0bN6xZz"
+    },
+    {
+      "api": "https://huohuzy.com/api.php/provide/vod/from/hhm3u8/",
+      "名称": "❁直链036℗豪华❁",
+      "分组类目": "直链",
+      "record_id": "ijQ4eDDN971iFGDNpuIlM7"
+    },
+    {
+      "api": "https://api.maoyanapi.top/api.php/provide/vod",
+      "名称": "❁直链037℗猫眼❁",
+      "分组类目": "直链",
+      "record_id": "nLrPem8GLWbyM1p3mK0Hrt"
+    },
+    {
+      "api": "https://vod38.com/api.php/provide/vod",
+      "名称": "❁直链041℗三八❁",
+      "分组类目": "直链",
+      "record_id": "2OSqxcuPb0f4BmbellTofA"
+    },
+    {
+      "api": "https://api.yyzy-tv.vip/inc/api_mac10_all.php",
+      "名称": "❁直链014℗优质❁",
+      "分组类目": "直链",
+      "record_id": "JMH0rGCDg9Q7AwT0lckBpS"
+    },
+    {
+      "api": "https://api.yyzy-tv.vip/inc/apijson.php/",
+      "名称": "❁直链047℗优质2❁",
+      "分组类目": "直链",
+      "record_id": "4ZAocFJSBGS1i7gSwVcueX"
+    },
+    {
+      "api": "https://api.wsyzy.net/api.php/provide/vod",
+      "名称": "❁直链049℗4K❁",
+      "分组类目": "直链",
+      "record_id": "PMof2m390uycUooZh7kx3H"
+    },
+    {
+      "api": "https://feikuai.in/api.php/provide/vod",
+      "名称": "❁直链052℗飞快❁",
+      "分组类目": "直链",
+      "record_id": "9J90fA4wjUSyv2jpagQWXK"
+    },
+    {
+      "api": "https://cnb.cool/fish2035/xs/-/git/raw/main/js/drpy2.min.js",
+      "名称": "❁动漫009℗去看❁",
+      "分组类目": "动漫",
+      "record_id": "MVjcT2OWIQIazSambJAnqS"
+    },
+    {
+      "api": "https://iqiyizyapi.com/api.php/provide/vod",
+      "名称": "❁直链072℗爱奇❁",
+      "分组类目": "直链",
+      "record_id": "2YyVgmT4TpG4hAzkNvCgdY"
+    },
+    {
+      "api": "http://154.219.117.232:9981/jacloudapi.php/provide/vod",
+      "名称": "❁直链078℗建安❁",
+      "分组类目": "直链",
+      "record_id": "wnWisADG5lPbmw6AdzcOCg"
+    },
+    {
+      "api": "https://tyyszyapi.com/api.php/provide/vod",
+      "名称": "❁直链089℗天涯海角❁",
+      "分组类目": "直链",
+      "record_id": "DkpddY1oLhGWkM7BT9B1bO"
+    },
+    {
+      "api": "https://www.hongniuzy3.com/api.php/provide/vod",
+      "名称": "❁直链098℗红牛资源❁",
+      "分组类目": "直链",
+      "record_id": "EmI2W2R6iyk3wNmefrfTAX"
+    },
+    {
+      "api": "https://yjzy.me/api.php/provide/vod/from/mtm3u8/",
+      "名称": "❁直链123℗影剧资源❁",
+      "分组类目": "直链",
+      "record_id": "vkOF0JAgCmiXKNIMkOgvCA"
+    },
+    {
+      "api": "https://www.iqiyizy.com/api.php/provide/vod/from/iqym3u8/",
+      "名称": "❁直链125℗爱奇艺资源❁",
+      "分组类目": "直链",
+      "record_id": "zHMCjhsxK24ogkq9WjA6pz"
+    },
+    {
+      "api": "https://www.wyvod.com/api.php/provide/vod",
+      "名称": "❁直链164℗无忧资源❁",
+      "分组类目": "直链",
+      "record_id": "dcD5ZEEJ7xxZhxxHmHnHfH"
+    },
+    {
+      "api": "https://api.zeqaht.com/api.php/provide/vod",
+      "名称": "❁直链165℗秒播资源❁",
+      "分组类目": "直链",
+      "record_id": "vGZM474fUQOGeRsapZhIvE"
+    },
+    {
+      "api": "https://zy.zhouqm.ggff.net/wsyzy/api.php/provide/vod/?ac=list",
+      "名称": "❁直链168℗无水印❁",
+      "分组类目": "直链",
+      "record_id": "mhhjkWAejcwvH1PxKX2atd"
+    },
+    {
+      "api": "https://subocj.com/api.php/provide/vod/at/json",
+      "名称": "❁直链169℗速播❁",
+      "分组类目": "直链",
+      "record_id": "mQ0RukhXvx2FbqicMTID5G"
+    },
+    {
+      "api": "https://gitlab.com/fantaiying/ext/-/raw/main/drpy2.min.js",
+      "名称": "🏀┃体育┃直播",
+      "分组类目": "直播",
+      "record_id": "hbRQxsdsEpuTmlxgDW6YHH"
+    },
+    {
+      "api": "https://easyzz.dpdns.org/js/drpy2.min.js",
+      "名称": "❁js001℗腾讯❁",
+      "分组类目": "直链",
+      "record_id": "t1imGDRDo7ur0GmWKi8pDQ"
+    },
+    {
+      "api": "https://git.yylx.win/https://raw.githubusercontent.com/fantaiying7/EXT/refs/heads/main/drpy2.min.js",
+      "名称": "🐯虎牙┃直播",
+      "分组类目": "直播",
+      "record_id": "fISaMBIjdUWePzjbZ6ynjR"
+    },
+    {
+      "api": "https://api.ffzyapi.com/api.php/provide/vod",
+      "名称": "🍀非凡API",
+      "分组类目": "直链",
+      "record_id": "LvQcu1yHXYOreJw85ZskPq"
+    },
+    {
+      "api": "https://mtzy.me/api.php/provide/vod",
+      "名称": "❁直链075℗茅台❁",
+      "分组类目": "直链",
+      "record_id": "RnvN4mcKFyAnFuatxj5BUY"
+    },
+    {
+      "api": "https://clun.top/lib/drpy2.min.js",
+      "名称": "❁js999℗歌厅❁",
+      "分组类目": "直链",
+      "record_id": "w0G23H47Y8jIurcz4S7NFL"
+    },
+    {
+      "api": "https://cdn.jsdmirror.com/gh/ouhaibo1980/tvbox@main/js/drpy2.min.js",
+      "名称": "💽采集｜合集💽",
+      "分组类目": "直链",
+      "record_id": "IMvCyxDRzs98wkbtxgPtqq"
+    },
+    {
+      "api": "https://caiji.kuaichezy.org/api.php/provide/vod",
+      "名称": "🌻快车资源🌻",
+      "分组类目": "直链",
+      "record_id": "wruNyJjzJvzEohsWIxwLEK"
+    },
+    {
+      "api": "https://caiji.dyttzyapi.com/api.php/provide/vod",
+      "名称": "🌻电影天堂🌻",
+      "分组类目": "影视",
+      "record_id": "jtHqQiM91SOyn2rs8qoTOA"
+    },
+    {
+      "api": "http://www.cmov.cn/api.php/provide/vod/",
+      "名称": "🌻全民视界🌻",
+      "分组类目": "直链",
+      "record_id": "TiJLBoyeeRBJ5EMruzrwno"
+    },
+    {
+      "api": "https://yayazy2.com/api.php/provide/vod/",
+      "名称": "🌻鸭鸭采集🌻",
+      "分组类目": "直链",
+      "record_id": "h30TO3Z7C4OvGIDNlnazpp"
+    },
+    {
+      "api": "https://niuniuzy6.com/api.php/provide/vod/",
+      "名称": "🌻牛牛采集🌻",
+      "分组类目": "直链",
+      "record_id": "iCV8kL2wQvp1nZ9IPd1Iw7"
+    },
+    {
+      "api": "https://shandianzy.com/api.php/provide/vod/",
+      "名称": "🌻闪电采集🌻",
+      "分组类目": "直链",
+      "record_id": "8fz3OvWHtBgpJW5CEGHZQP"
+    },
+    {
+      "api": "http://www.jisuziyuan.com/api.php/provide/vod/",
+      "名称": "🌻极速采集🌻",
+      "分组类目": "直链",
+      "record_id": "WihaMi79dD9FyC5UVtC6pt"
+    },
+    {
+      "api": "https://lbapi9.com/api.php/provide/vod/",
+      "名称": "☀乐播👍资源🎦",
+      "分组类目": "直链",
+      "record_id": "IoE22fA8Mjk5ndUs9YrmUF"
+    },
+    {
+      "api": "https://api.xjzyapi.xyz/provide/vod",
+      "名称": "☀新小鸡👍资源🎦",
+      "分组类目": "直链",
+      "record_id": "3s5wGbDykSJAtO64zciJVf"
+    },
+    {
+      "api": "https://api.douapi.cc/api.php/provide/vod/?ac=list",
+      "名称": "☀豆豆👍影源🎦",
+      "分组类目": "直链",
+      "record_id": "Qh8mS3HddYIIXNYIYZzbTs"
+    },
+    {
+      "api": "https://apidanaizi.com/api.php/provide/vod/",
+      "名称": "☀大奶子👍资源🎦",
+      "分组类目": "直链",
+      "record_id": "VhH0mD2Th34l21GDYlQl3T"
+    },
+    {
+      "api": "https://hsckzy.vip/api.php/provide/vod/from/hsckm3u8/",
+      "名称": "☀黄色👍资源🎦",
+      "分组类目": "直链",
+      "record_id": "uP68sd7we1yzqAhWrKvSDR"
+    },
+    {
+      "api": "https://apilj.com/api.php/provide/vod/",
+      "名称": "☀辣椒👍资源🎦",
+      "分组类目": "直链",
+      "record_id": "VqU8ft97MxyxznnHCZDICl"
+    },
+    {
+      "api": "https://heiliaozyapi.com/api.php/provide/vod/",
+      "名称": "☀黑料👍资源🎦",
+      "分组类目": "直链",
+      "record_id": "kYnfXdyvBLq01pX2YFEM4z"
+    },
+    {
+      "api": "https://apilsbzy.com/api.php/provide/vod/?ac=list",
+      "名称": "☀老色逼👍资源🎦",
+      "分组类目": "直链",
+      "record_id": "IVvfGu9wWIz9fVORKyrAs4"
+    },
+    {
+      "api": "https://api.xiaojizy.live/provide/vod?ac=list",
+      "名称": "☀小鸡👍资源🎦",
+      "分组类目": "直链",
+      "record_id": "vzBpnVCO1rNY8SD0zTck7b"
+    },
+    {
+      "api": "https://155api.com/api.php/provide/vod/",
+      "名称": "☀155👍资源🎦",
+      "分组类目": "直链",
+      "record_id": "mEmM38n0FUYRSC58vXLcrm"
+    },
+    {
+      "api": "https://api.okzyw.net/api.php/provide/vod/?ac=list",
+      "名称": "☀OK👍资源🎦",
+      "分组类目": "直链",
+      "record_id": "Bha1O7Dcuy2SDLSxBRYn4R"
+    },
+    {
+      "api": "https://maoyanzy.com/api.php/provide/vod",
+      "名称": "☀新猫眼👍资源🎦",
+      "分组类目": "直链",
+      "record_id": "03EvX1qqBwFzOk3sb8qaN9"
+    },
+    {
+      "api": "https://jkunzyapi.com/api.php/provide/vod",
+      "名称": "☀爱坤👍资源🎦",
+      "分组类目": "直链",
+      "record_id": "udecoiux0GvVZIw5KgfYSy"
+    },
+    {
+      "api": "https://slapibf.com/api.php/provide/vod/",
+      "名称": "🈲森林采集",
+      "分组类目": "直链",
+      "record_id": "rEQzsjBrjt3Ht60D6Yg38y"
+    },
+    {
+      "api": "https://api.ddapi.cc/api.php/provide/vod/?ac=list",
+      "名称": "💕滴滴(直连)",
+      "分组类目": "直链",
+      "record_id": "kzxeaE3UqVXPgCgxZUQ6L8"
+    },
+    {
+      "api": "https://beiyong.slapibf.com/api.php/provide/vod/?ac=list",
+      "名称": "🔞采集.森林资源",
+      "分组类目": "直链",
+      "record_id": "x36zpFVQFv9QtCtaPGsiJ7"
+    },
+    {
+      "api": "https://apiyutu.com/api.php/provide/vod/",
+      "名称": "🔞玉兔采集",
+      "分组类目": "直链",
+      "record_id": "HAXpa4jXrC8lYoa8R2Vwfj"
+    },
+    {
+      "api": "http://fhapi9.com/api.php/provide/vod/",
+      "名称": "🔞番外采集",
+      "分组类目": "直链",
+      "record_id": "ykvccMqkMzNTacw9VidqKE"
+    },
+    {
+      "api": "https://aosikazy.com/api.php/provide/vod/",
+      "名称": "☀奥斯卡👍🎦资源",
+      "分组类目": "直链",
+      "record_id": "qahjnZLDJssYu13nyoLCaV"
+    },
+    {
+      "api": "https://play.iptv365.org/天天开心/api/drpy2.min.txt",
+      "名称": "⚽Jrs┃球迷",
+      "分组类目": "直链",
+      "record_id": "pVc6c6J4Yq6bCqjTi338bb"
+    },
+    {
+      "api": "https://play.iptv365.org/天天开心/api/drpy2.min.js",
+      "名称": "🎦好趣网",
+      "分组类目": "直链",
+      "record_id": "s49VikGepD1NIKSt5jtEZB"
+    },
+    {
+      "api": "https://www.yingm.cc/dm/js/drpy.min.js",
+      "名称": "哈基米·去看吧",
+      "分组类目": "其他",
+      "record_id": "e12yvc2nvBSbp6Ejb6vDsr"
+    },
+    {
+      "api": "http://nn.4688888.xyz/js/drpy2.min.js",
+      "名称": "哈基米·哔幕",
+      "分组类目": "其他",
+      "record_id": "GrOrpvwspCgEiwrvW6sp3J"
+    },
+    {
+      "api": "http://hucongrong.web3v.work/风水/fxz/lib/apiv387drpy2.min.js",
+      "名称": "哈基米·js_亲子",
+      "分组类目": "其他",
+      "record_id": "oNe3k8nsl25po3sOPI1d8X"
+    },
+    {
+      "api": "http://zhangqun1818.serv00.net/cj/cjjh.php",
+      "名称": "哈基米·采集集合",
+      "分组类目": "其他",
+      "record_id": "90GindX9WgIbxbUwmczVCP"
+    },
+    {
+      "api": "https://raw.githubusercontent.com/xyq254245/xyqonlinerule/main/dr_py/libs/drpy2.min.js",
+      "名称": "香雅情·豆瓣[js]",
+      "分组类目": "影视",
+      "record_id": "jRwo4jhLochn5OgqS0LZ22"
+    },
+    {
+      "api": "http://tv123.vvvv.ee/tv.m3u",
+      "名称": "❁直播1017℗tv123℗备用库留存❁",
+      "分组类目": "直播",
+      "record_id": "M2Hxs6YHyzqI8ZStFHIWBn"
+    }
+  ],
+  "drop": [],
+  "pending": []
+}

@@ -1,0 +1,23 @@
+{
+ "created": "2026-10-20T00:03:20",
+ "cmd": {
+  "tvbox probe self-check": {
+   "rc": 0,
+   "lines": 35,
+   "head": "🔬 探源司·监测器活体探针（注入 → 捕获 → 清理）",
+   "tail": "探针结果: 33/33 监测器逻辑有效（\"依赖可达≠逻辑对\"，故需活体证明）"
+  },
+  "tvbox probe token": {
+   "rc": 0,
+   "lines": 11,
+   "head": "🔑 GitHub 凭据状态",
+   "tail": "   配额提升：60/h（匿名）→ 5000/h（鉴权）；检索 API：10/min → 30/min"
+  },
+  "tvbox probe limits": {
+   "rc": 0,
+   "lines": 2,
+   "head": "🔑 token：(未配置)（未配置）",
+   "tail": "📊 配额：剩余 38/60"
+  }
+ }
+}

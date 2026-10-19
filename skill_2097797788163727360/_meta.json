@@ -1,0 +1,7 @@
+{
+  "slug": "wechat-article-publisher",
+  "name": "公众号图文发布助手",
+  "author": "七仔的AI工具箱",
+  "version": "2.0.0",
+  "description": "微信公众号图文「HTML 导入 -> 排版 -> 发布」全流程技能：内联样式转换、多主题美化、图片内嵌、移动端预览、六维发布质检，另附 CSDN 纯文本 Markdown 通道与封面图生成。"
+}

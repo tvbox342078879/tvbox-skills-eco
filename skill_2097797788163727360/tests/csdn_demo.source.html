@@ -1,0 +1,31 @@
+<html><head><style>.fig{text-align:center;}.cap{color:#999;font-size:12px;}</style></head><body>
+<h1>本地 AI 字幕工具是怎么搭起来的</h1>
+<p>给视频配字幕，过去要么<strong>按分钟付费</strong>，要么把音视频<em>传到别人服务器</em>。本文讲一个纯本地方案。</p>
+<h2>一、整体流程</h2>
+<p>抽音轨 → 语音识别 → 文本校对 → 出字幕，全在<strong>自己电脑</strong>上跑。</p>
+<ul>
+<li>抽音轨用 ffmpeg</li>
+<li>识别用本地 Whisper</li>
+<li>校对用自定义词表</li>
+</ul>
+<h2>二、关键代码</h2>
+<pre><code class="language-python">from faster_whisper import WhisperModel
+model = WhisperModel("base", device="cpu")
+segs, _ = model.transcribe("clip.mp3")
+for s in segs:
+    print(f"{s.start:.1f} {s.text}")</code></pre>
+<table>
+<tr><th>形态</th><th>特点</th></tr>
+<tr><td>外挂 srt</td><td>最通用</td></tr>
+<tr><td>软字幕</td><td>可开关</td></tr>
+<tr><td>硬烧</td><td>不可逆</td></tr>
+</table>
+<blockquote>小提示：硬烧中文若出方块，需指定中文字体文件。</blockquote>
+<div class="callout">认知增量：双语字幕本质是模型跑两遍识别，耗时翻倍。</div>
+<figure class="fig">
+<img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M8AAAMBAQDJ/pLvAAAAAElFTkSuQmCC" alt="流程示意图">
+<p class="cap">图：本地字幕流水线</p>
+</figure>
+<hr>
+<p>收尾：把生成的 srt 拖进剪辑软件即可。</p>
+</body></html>

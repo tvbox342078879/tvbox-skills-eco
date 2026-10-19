@@ -1,0 +1,181 @@
+{
+ "name": "tvbox-end-to-end-flow",
+ "version": "1.0.56",
+ "created": "2026-10-15",
+ "source": "全量复盘第1轮产物（SKILL.md §8.10 的机器可读版）；v1.4.0 同步规则54四化（SKILL.md §8.17）与 S023 复盘修正；S108 版本线收敛：flow.json 旧独立版本号 1.6.4 → 对齐 SKILL.md/云端台账权威 1.0.34（M-R40 单一权威）",
+ "route_decision": {
+  "interface_url_or_local_package": "tvbox-interface 全链路 §0-§8",
+  "candidate_list_json": "tvbox ingest --candidates <file>",
+  "single_or_query_or_maintenance": "tvbox 单命令（log/lib-log/sync/audit/snapshot/block/evolve）",
+  "dirty_config": "先 parse_tvbox_config.py 解析，再按上面分流"
+ },
+ "steps": [
+  {
+   "no": 0,
+   "name": "触发判定",
+   "rule": "interface §0.1 宁触发勿漏",
+   "cmd": null,
+   "artifact": null,
+   "sop_ref": "S1"
+  },
+  {
+   "no": 1,
+   "name": "开工前三问",
+   "rule": "interface §1.1（1和3不明才问）",
+   "cmd": null,
+   "artifact": null,
+   "sop_ref": "S1"
+  },
+  {
+   "no": 2,
+   "name": "体系识别",
+   "rule": "后缀即体系 + 规则51 命名",
+   "cmd": null,
+   "artifact": "命名 <体系><MMDD>_<描述> 或「待确认」清单",
+   "action": "后缀即体系/技术血缘判定；两者都判不出→标「待确认」并显式列出请用户拍板",
+   "sop_ref": "S3"
+  },
+  {
+   "no": 3,
+   "name": "抓取+体检",
+   "rule": "interface §2/§3；脏配置走解析器",
+   "cmd": "parse_tvbox_config.py",
+   "artifact": "体检结论",
+   "sop_ref": "S2+S4"
+  },
+  {
+   "no": 4,
+   "name": "拆解",
+   "rule": "lives/py/采集/直链分开",
+   "cmd": "split_jsm.py / split_box.py",
+   "artifact": "候选 JSON",
+   "sop_ref": "S4"
+  },
+  {
+   "no": 5,
+   "name": "黑名单拦截",
+   "rule": "命中失效域→失效库，不进源库；必须在去重/入库之前",
+   "cmd": "tvbox block check/mark",
+   "artifact": "拦截记录",
+   "action": "整域/单条命中→失效库，不进源库；双保险：本步显式拦+ingest 管线内部 blk guard 再拦",
+   "sop_ref": "S6"
+  },
+  {
+   "no": 6,
+   "name": "全量去重",
+   "rule": "规则30/31 host 去重",
+   "cmd": "tvbox sync",
+   "artifact": "去重后候选",
+   "sop_ref": "S6"
+  },
+  {
+   "no": 7,
+   "name": "测活+分类",
+   "rule": "并发实测 + 规则49 分组类目",
+   "cmd": "probe_src.py",
+   "artifact": "状态+类目标注",
+   "sop_ref": "S5"
+  },
+  {
+   "no": 8,
+   "name": "入库",
+   "rule": "L7 ingest；状态列零空值；★规则53：读 spider 判枝 → 命中归枝/未命中建枝文件夹 → move-node 归位",
+   "cmd": "tvbox ingest --candidates <file>；枝归位：create_folder.py + move-node",
+   "artifact": "源总库记录",
+   "sop_ref": "S8"
+  },
+  {
+   "no": 9,
+   "name": "交付四项",
+   "rule": "规则50 四项强制 + 规则51 命名/进底包库/node id",
+   "cmd": "upload_drive_file.py(JSON) / create_doc.py(MD)",
+   "artifact": "结构化JSON+轻量可编辑版+体系标注+复盘报告",
+   "sop_ref": "S9"
+  },
+  {
+   "no": 10,
+   "name": "复盘闭环",
+   "rule": "规则47 快照 + 规则48 四问 + 规则52 坑→解法固化",
+   "cmd": "tvbox log/lib-log; evolve recurring; tvbox snapshot",
+   "artifact": "台账+经验库+快照",
+   "sop_ref": "S10"
+  }
+ ],
+ "iron_order": [
+  "触发",
+  "体系识别",
+  "拆解",
+  "黑名单拦截",
+  "去重",
+  "测活",
+  "入库",
+  "交付四项",
+  "复盘闭环"
+ ],
+ "self_check": [
+  "状态列零空值",
+  "命名含体系+日期",
+  "四项交付齐",
+  "node id 已交代",
+  "复盘四问真做",
+  "坑→解法已固化（规则52）",
+  "快照已刷新",
+  "tvbox status 闭环全绿",
+  "体系判不出的已标待确认并请用户拍板",
+  "新包已按 spider 指纹归枝（规则53），对照表已更新？",
+  "写后读回验证若报『未查到』：先重试3次，仍失败必须独立进程复核后才可信（禁信单一进程内信号，S020）",
+  "复盘双库对账：本次踩到平台操作坑就必须落④库（lib-log），③④各落各的（S020）",
+  "新增/改写 SOP 症状时已补 alias 并重跑校准集（四指标达标），growth.route_calibration 已更新（S021）",
+  "规则54四化：三件套齐全（version+CHANGELOG+flow.json）",
+  "manifest chains 非占位步骤可执行；占位步骤（<候选文件>类）有替换指引，禁静默失败（S023）",
+  "contracts.json 与 ingest/guard 实际消费字段一致（--dry 验证，禁文档骗人）",
+  "tvbox 在 PATH 可直接调用（/usr/local/bin/tvbox 软链在位）",
+  "生态资产不写死计数（规则47：实时数以命令为准，如失效库条数）",
+  "批量入库判重必须双层（exist_* 库内 + seen_* 批内）：单靠库内快照在『同批多站名共用同一 api』场景必失败（S025：源库 73 条/失效库 8 条重复实证）",
+  "入库后重复 api 组 = 0（源总库与失效库各扫一遍）；ingest 输出『去重跳过 N』须可见（S025）",
+  "失效登记 host 与 guard 口径一致（urlparse(api).netloc，含端口）；登记前查重，命中改 batch-update 而非新增（S025 → 契约 blacklist-field）",
+  "批量写接口（add_records）去重键口径与库字段完整取值一致（如样例api 截断长度必须与写入时一致，否则判重形同虚设）",
+  "配置入口为图片/伪装类型时：先看真结尾（JPEG 找最后 FFD9）→ 剥非 base64 字符 → 解码 → 剥 // 注释行，四步齐才判格式（S026 图种）",
+  "UA 探测用矩阵（okhttp 必带 + TVBox/Dalvik/Mozilla）：md5 相同=障眼判真身；md5 不同=UA 分流须换 UA（S026）",
+  "整域拉黑前排除代理型 host（URL 内嵌第二层 http(s):// 或代理域名族）——其可达性由被代理目标决定（S026 阻断级误判）"
+ ],
+ "snapshot_refresh_rule": "凡对源库/失效库的写操作，收工必须 tvbox snapshot；纯规则/命名/文档变更不刷但复盘须说明原因",
+ "backlog": [
+  "（2026-10-15 已清零：底包库7个pre-规则51历史节点改名+索引文档5处引用同步，台账S016；无命名遗留）",
+  "[已清零 S074] 入口内联命令登记修复：补登记 manifest 的 chain/run/manifest 三个入口内联命令（此前用户话术无法路由到它）；manifest version 1.0.21→1.0.23 同步；新增 sizes 命令登记（S073 引入）",
+  "[已清零 S082] link.py 云端读取三态化（M-R60）：_root_nodes/_fold_nodes 旧版把云端读失败折叠成 []（空节点列表）→鉴权失效/网络不可达时 collect() 静默产出『0 节点』假权威快照；改三态 (ok,nodes)/(fail,None)，collect 汇总 cloud_fail，build_snapshot_md 失败项显示「—（☁️读取失败）」不写假 0，cmd_snapshot 云端失败时**拒绝刷新云端权威快照**（M-R60⑥损坏态拒回写）；受控单测 9/9（正常显真值/失败不写0/部分失败混合）",
+  "[已清零 S083] 读表基座三态化（M-R60 续）：core.rows_of 被 21+ 命令共用却把读失败折叠成空表+写入 _MEM 缓存（一次失败毒化整进程）；新增 rows_of_t 三态 (ok,rows)+失败不缓存+rows_of_failed；link 快照失败库显示「—（读取失败）」不写假0；probe_src 删重复 rows_of（M-R38）且失败中止不写空结果；受控单测 6/6；conductor 信号源15 守护",
+  "[已清零 S091] manifest 路由补 `tvbox probe search gitlab`（GitLab 项目检索）；search 描述改多平台；对话意图可直接路由到 GitLab 检索（commands 50→51）",
+  "[已清零 S093] manifest 补 `tvbox probe monitor forecast` 路由（弃更风险预测）；commands 51→52",
+  "[已清零 S094] 伴随探源司三模块真实落地（probe 1.0.6），manifest 无新增命令（dispatch --dry 为既有命令加参数）"
+ ],
+ "sop_binding": {
+  "authority": "scripts/sop_makejson.json（禁手改）",
+  "sync": "scripts/sync_sop.py render（md投影）/ route（症状直达）/ check（覆盖检查）/ add-case（登记）/ promote（升级）",
+  "doc": "/workspace/标准1015_做JSON标准流程SOP.md",
+  "note": "本流程各步的坑与解法/备选路径以SOP权威源为准；复发症状先 sync_sop.py route --symptom 直达已验证解法"
+ },
+ "iron_rules": {
+  "定位": "生态**数据中枢**（源枢库曹）——源库/失效库/底包库读写 + 招式库/术语库的读写通道",
+  "守护": {
+   "M-R32": "装健康的哑巴——hub 各命令失败须显式上报，禁把读失败折叠成空表",
+   "M-R38": "单一事实源——probe_src 不得自带 rows_of 副本（S083 已删重复实现），声明式走 core.py",
+   "M-R55": "修完度量器必配探针——每次修 hub 读取须同落探针",
+   "M-R60": "数据基座读取三态化——_root_nodes/_fold_nodes 云端读失败禁折叠成空节点；cmd_snapshot 云端失败拒绝刷新权威快照（⑥损坏态拒回写）",
+   "M-R64": "缓存不得固化假态——core.rows_of 的 _MEM 缓存：读失败的空态绝不可入缓存（一次失败毒化整进程）",
+   "M-R66": "白名单键用稳定指纹——招式库/术语库/登记册的键不得用『文件:行号』",
+   "U-R1": "用户面与机器面分开治理——hub 承载用户术语库写入通道（DB_TERM）",
+   "P-R1": "合格线路源判据=真实可用——成品源入库只写『真实测活通过』者（harvest promote），未测/失败禁入库",
+   "L023": "批量入库判重只用库内快照，同批同 api 全落库",
+   "L028": "select 字段用 `{'text':值}` 写入被平台静默丢弃（不报错、读回空）",
+   "L029": "给 CLI 的 argparse `choices` 加选项就以为能写平台 → `invalid fields` 拒绝",
+   "M-R43": "「1+N 请求」是最常见的云端性能反模式：先查父级拿子 id 列表，再对每个子各发一次请求查详情（S066：`_cloud_children` 用 node-i",
+   "M-R44": "API 签名里列出的参数未必都必填：按签名『一个不少地全传』会导致为『可选参数』额外付出一次往返（S067：`list-nodes` 签名含 spaceId，照",
+   "M-R46": "统一入口（CLI/调度器）顶层 eager 加载全部子模块是单点故障：任一模块缺失/语法错，整个入口 import 期即崩——连其它健康模块的命令都用不了（S0",
+   "M-R50": "「绝对耗时最大者」≠「最该优化的对象」：计时普查得到一串耗时后，最高那个往往不是反模式，而是必要的真实成本——重网络探测（135 host × 12s 超时，已",
+   "M-R51": "「看起来只读」的命令可能在内部写——命名是承诺，实现才是事实：评估/体检/对账/审计类命令，直觉上（和命名上）都该是只读的，但没人会去核查它内部实际调了哪些子命",
+   "M-R52": "审计体系只覆盖「技能脚本」一种归属，则「跨层游离组件」成法外之地：组件的归属不只有一种——①技能 `scripts/*.py`（信号源6 的 DISPATCH "
+  },
+  "自检": "hub 受控单测（三态/折叠/指纹）全绿 + conductor 信号源15/16 守护"
+ }
+}

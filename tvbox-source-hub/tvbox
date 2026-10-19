@@ -1,0 +1,324 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+TVBox 技能生态统一入口（技能↔脚本联动中枢 + 并行加速）
+
+分发到：联动引擎 link.py / 黑名单 blk.py / 进化引擎 evolve.py
+
+用法:
+  tvbox <verb> [args]                单命令（向后兼容：自动分发到对应脚本）
+  tvbox run <v1> <v2> ...            同进程串联多命令，共享缓存（高效，最快单线程）
+  tvbox p "<v1>" "<v2>" ...          并行跑多命令（多线程并发，各自带标题输出）
+  tvbox manifest                     打印「意图 → 命令」联动清单
+  tvbox help                         帮助
+
+设计要点（回应两个提效方向）:
+  1) 技能↔脚本联动：manifest.json 把"用户意图"显式绑定到"脚本命令"，
+     调度器据此把多个命令放进**同一进程**并共享 core 缓存/并行池，脚本因此跑得更快。
+  2) 并行更快：run 用进程内缓存消除重复云端读；p 把互相独立的命令多线程并发执行。
+
+示例:
+  tvbox run brief status            # 开工速览+体检，一条进程完成
+  tvbox p "block stats" "evolve scan" "eco"   # 三件独立事并行跑
+"""
+import sys, os, io, time, json, subprocess, importlib.util
+from concurrent.futures import ThreadPoolExecutor
+
+HUB = '/root/.codebuddy/skills/tvbox-source-hub/scripts'
+BLK = '/root/.codebuddy/skills/tvbox-source-blacklist/scripts/blk.py'
+EVO = '/root/.codebuddy/skills/skill-evolution/scripts/evolve.py'
+DOG = '/root/.codebuddy/skills/legacy-watchdog/scripts/watchdog.py'
+# ★ S158 补：manifest.json 里早就登记了 `tvbox janitor list/inbox/add/scan` 四条命令，
+#   契约 `janitor-handoff` 的验证也写的 `tvbox janitor list`——但入口**根本没有 janitor 分支**，
+#   于是契约跑不通、清单命令只能靠人记得脚本路径。**契约登记了不等于入口存在。**
+JAN = '/root/.codebuddy/skills/tvbox-janitor/scripts/janitor.py'
+CON = '/root/.codebuddy/skills/ecosys-conductor/scripts/conductor.py'
+IPL = '/root/.codebuddy/skills/tvbox-interface/scripts/pipeline.py'
+PRB = '/root/.codebuddy/skills/probe-hub/scripts/probe.py'
+UNF = '/root/.codebuddy/skills/unfinished-audit/scripts/unfinished_cli.py'   # S136 清账司
+LINK = os.path.join(HUB, 'link.py')
+MANIFEST = os.path.join(os.path.dirname(HUB), 'manifest.json')   # 真身在 skills 目录（与 conductor 同源）
+CONTRACTS = os.path.join(HUB, 'contracts.json')
+
+# 让三个脚本能 import core（共享效率核心：同一模块实例 → 缓存/并行池复用）
+sys.path.insert(0, HUB)
+
+
+_MOD_CACHE = {}
+
+def get_module(path):
+    """惰性加载模块（首次调用才 import），失败返回 None（降级，不让单模块缺失拖垮整个入口）。
+    S069：原为顶层 eager load——任一技能脚本缺失（如 interface/scripts/pipeline.py 被移走）
+    会让 `tvbox` 启动即 FileNotFoundError 崩溃，连其它健康技能的命令都用不了。"""
+    if path in _MOD_CACHE:
+        return _MOD_CACHE[path]
+    try:
+        name = 'tvb_' + os.path.basename(path).replace('.', '_')
+        spec = importlib.util.spec_from_file_location(name, path)
+        m = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(m)
+    except Exception:
+        m = None
+    _MOD_CACHE[path] = m
+    return m
+
+# 动词 → 模块路径（惰性：调 get_module 时才真正加载）
+ROUTE = {
+    'brief': LINK, 'status': LINK, 'learn': LINK, 'log': LINK,
+    'sync': LINK, 'audit': LINK, 'snapshot': LINK, 'ingest': LINK,
+    'eco': LINK, 'lib-learn': LINK, 'lib-log': LINK, 'sizes': LINK,
+    'block': BLK, 'evolve': EVO, 'watchdog': DOG, 'conductor': CON, 'janitor': JAN,
+    'pipe': IPL, 'probe': PRB,
+    # S136 M-R81「收尾唯一入口」：九技能共用同一条收尾命令
+    'close': UNF, 'finish': UNF,
+}
+
+# link 系动词本身就是 link.py 的子命令，需要补回；block/evolve/watchdog 系动词仅是选择器
+LINK_VERBS = {'brief', 'status', 'learn', 'log', 'sync', 'audit', 'snapshot',
+              'ingest', 'eco', 'lib-learn', 'lib-log', 'sizes'}
+
+
+def mod_argv(verb, rest):
+    """计算传给模块 dispatch 的 argv。"""
+    return [verb] + list(rest) if verb in LINK_VERBS else list(rest)
+
+HELP = """📡 TVBox 技能生态统一入口（技能↔脚本联动中枢）
+
+  单命令      : tvbox <brief|status|learn|log|sync|audit|snapshot|ingest|eco|lib-learn|lib-log>
+  黑名单      : tvbox block <mark|check|guard|list|stats|review>
+  进化        : tvbox evolve <recurring|create|scan|upgrade|review|note|mine|lend|review-lend>   # mine=抽招式 lend=查可借鉴 review-lend=对照对账（规则57）
+  遗留监测    : tvbox watchdog <scan|status|report|monitors|add-monitor>   # 历史遗留+时效项
+  清道夫      : tvbox janitor <inbox|add|scan|list|restore|census>        # 待删收件箱+分层普查（census=这块归谁管）
+  需求管家    : tvbox conductor ask "<需求>"        # ★单一入口：随便怎么问，术语翻译+历史呼应+路由+拆解
+  历史清单    : tvbox conductor history ["<关键词>"] # ★查"我以前做过什么、当时交付啥"
+  生态指挥    : tvbox conductor <plan|sprint|speed|whoami|ask|lanes|assess|direction>  # 提速+协调+进化
+  探源司      : tvbox probe <monitor|search|harvest|livecheck|token|limits|self-check>  # 上游监测/找源/采线路/真实测活（harvest promote 入成品源库；harvest prune 剔失效产备用版；livecheck 点播拉片/直播拉流）
+  串联(高效)  : tvbox run <v1> <v2> ...            # 同进程共享缓存
+  并行(最快)  : tvbox p "<v1>" "<v2>" ...          # 多命令并发，各带标题
+  任务链(一键): tvbox chain <名称>                  # 跨技能链：命令步骤自动跑，flow步骤提示按flow.json执行
+  收尾(必用)  : tvbox close [--dry|status|mine|done|wontfix|defer|verify|report|promise|link]
+                                                  # ★S136 九技能共用收尾入口：六源采集→对账→派单→落账→四向验证
+  联动清单    : tvbox manifest                      # 意图→命令 + 任务链
+  联动契约    : tvbox contracts                     # 上下游数据格式契约（规则54）
+
+  示例        : tvbox chain 开工速览
+              : tvbox chain 新接口全流程
+              : tvbox run brief status
+              : tvbox p "block stats" "evolve scan" "eco"
+"""
+
+
+def load_manifest():
+    try:
+        return json.load(open(MANIFEST, encoding='utf-8'))
+    except Exception:
+        return {}
+
+
+def cmd_manifest():
+    m = load_manifest()
+    if not m:
+        print("  (manifest.json 缺失)")
+        return
+    print("🗺️  技能↔脚本 联动清单（意图 → 命令）\n")
+    for r in m.get('commands', []):
+        print(f"  {r.get('intent',''):34} →  {r.get('cmd','')}")
+    chains = m.get('chains', [])
+    if chains:
+        print("\n🔗 跨技能任务链（tvbox chain <名称> 一键执行）\n")
+        for c in chains:
+            print(f"  {c.get('name',''):12} {c.get('scene','')}")
+            for s in c.get('steps', []):
+                if s.get('t') == 'cmd':
+                    print(f"      $ tvbox {s.get('v','')}")
+                else:
+                    print(f"      ▶ {s.get('v','')}")
+
+
+def cmd_contracts():
+    try:
+        d = json.load(open(CONTRACTS, encoding='utf-8'))
+    except Exception:
+        print('(contracts.json 缺失)')
+        return
+    print(f"📜 联动契约 {d.get('name','')} v{d.get('version','')}（{d.get('source','')}）\n")
+    for c in d.get('contracts', []):
+        print(f"  【{c.get('id','')}】{c.get('title','')}")
+        print(f"    产出: {c.get('producer','')}")
+        print(f"    消费: {c.get('consumer','')}")
+        if c.get('cmd'):
+            print(f"    命令: {c['cmd']}")
+        if c.get('verify'):
+            print(f"    验证: {c['verify']}")
+        if c.get('rule'):
+            print(f"    铁律: {c['rule']}")
+        print()
+
+
+def cmd_chain(name):
+    m = load_manifest()
+    chains = {c.get('name'): c for c in m.get('chains', [])}
+    if name not in chains:
+        print(f'未知任务链: {name}')
+        print('可用: ' + ' / '.join(chains) if chains else '(无)')
+        return
+    c = chains[name]
+    print(f"🔗 任务链「{name}」—— {c.get('scene','')}\n")
+    t0 = time.time()
+    skipped = 0
+    for s in c.get('steps', []):
+        if s.get('t') == 'cmd':
+            v = s.get('v', '')
+            # 占位符检测（S023 实证）：<候选文件> 等占位步骤直接执行必失败（找不到文件/空参数），
+            # 静默失败比报错更坏——显式跳过并给出替换指引
+            placeholders = [w for w in v.split() if w.startswith('<') and w.endswith('>')]
+            if placeholders:
+                skipped += 1
+                print(f'── ⏭️  tvbox {v}')
+                print(f'      （含占位符 {" ".join(placeholders)}——替换为实际值后手动执行）')
+                continue
+            parts = v.split()
+            verb, rest = parts[0], parts[1:]
+            if verb in ('run', 'p'):
+                # 链内嵌套 run/p：展开执行
+                print(f'── $ tvbox {v}')
+                (cmd_run if verb == 'run' else cmd_parallel)(rest)
+                continue
+            if verb not in ROUTE:
+                print(f'── $ tvbox {v}  ⚠️ 未知子命令，跳过')
+                continue
+            print(f'── $ tvbox {v}')
+            _dispatch(verb, rest)
+        else:
+            print(f'── ▶ {s.get("v","")}（流程步骤，按 {s.get("ref","对应 flow.json")} 执行）')
+    print(f'\n⏱  链「{name}」命令步骤完成，用时 {time.time()-t0:.1f}s'
+          + (f'（{skipped} 个占位步骤已跳过）' if skipped else ''))
+    print(f'✅ 验收判据：{c.get("accept","")}')
+
+
+def safe_dispatch(module, argv):
+    """捕获 SystemExit（如 block check 的 exit(1)），不让其终止整个调度进程。"""
+    if module is None:
+        print('  ⚠️ 该技能脚本缺失或加载失败（降级跳过，不影响其它命令）——可用: '
+              f'{argv[0] if argv else "?"} 所属技能 scripts/ 检查')
+        return
+    try:
+        module.dispatch(list(argv))
+    except SystemExit:
+        pass
+
+
+JOURNAL_FP = '/root/.codebuddy/skills/ecosys-conductor/session_journal.jsonl'
+
+def _journal(verb, rest, ok):
+    """S113 会话监工（M-R67）：每个动作落 journal 流水，conductor recap 兜底复盘。"""
+    try:
+        import json as _j
+        rec = {'ts': time.strftime('%Y-%m-%dT%H:%M:%S'), 'verb': verb,
+               'arg': (rest[0][:60] if rest else ''), 'ok': bool(ok)}
+        with open(JOURNAL_FP, 'a', encoding='utf-8') as f:
+            f.write(_j.dumps(rec, ensure_ascii=False) + '\n')
+    except Exception:
+        pass
+
+def _dispatch(verb, rest):
+    """按动词取模块（惰性）并派发；模块缺失时降级提示而非崩溃（S069）。"""
+    ok = True
+    try:
+        safe_dispatch(get_module(ROUTE[verb]), mod_argv(verb, rest))
+    except Exception:
+        ok = False; raise
+    finally:
+        _journal(verb, rest, ok)
+
+
+def run_capture(module, argv):
+    """在独立捕获区执行一条命令，返回其 stdout 文本。
+
+    注意：多线程并行时不能用「重定向全局 sys.stdout」的方式隔离——
+    命令内部会释放 GIL 去跑 subprocess(云读)，导致各线程的 stdout 缓冲互相串扰。
+    因此并行模式改为「每命令一个子进程」（见 cmd_parallel），本函数仅串行/调试用。
+    """
+    buf = io.StringIO()
+    old = sys.stdout
+    sys.stdout = buf
+    try:
+        module.dispatch(list(argv))
+    except SystemExit:
+        pass
+    except Exception as e:
+        buf.write(f'\n[ERROR] {e}')
+    finally:
+        sys.stdout = old
+    return buf.getvalue()
+
+
+def run_subprocess(spec):
+    """并行模式：每条命令独立子进程，stdout 天然隔离，避免线程间缓冲串扰。"""
+    parts = spec.split()
+    p = subprocess.run([sys.executable, os.path.abspath(__file__), *parts],
+                       capture_output=True, text=True)
+    out = p.stdout
+    if p.stderr and p.returncode != 0:
+        out += '\n[stderr] ' + p.stderr.strip()[:300]
+    return spec, out
+
+
+def cmd_run(specs):
+    if not specs:
+        print(HELP)
+        return
+    t0 = time.time()
+    for spec in specs:
+        parts = spec.split()
+        v, rest = parts[0], parts[1:]
+        if v not in ROUTE:
+            print(f'未知子命令: {v}')
+            continue
+        _dispatch(v, rest)
+    print(f'\n⏱  run 串联完成 {len(specs)} 个命令，用时 {time.time()-t0:.1f}s'
+          f'（同进程 + 共享缓存）', file=sys.stderr)
+
+
+def cmd_parallel(specs):
+    if not specs:
+        print(HELP)
+        return
+    tasks = [s for s in specs if s.split()[0] in ROUTE]
+    t0 = time.time()
+    with ThreadPoolExecutor(max_workers=min(len(tasks), 8)) as ex:
+        res = list(ex.map(run_subprocess, tasks))
+    for spec, out in res:
+        print(f'\n═══ {spec} ═══')
+        print(out.rstrip())
+    print(f'\n⏱  p 并行完成 {len(tasks)} 个命令，用时 {time.time()-t0:.1f}s'
+          f'（{len(tasks)} 并发 · 子进程隔离）', file=sys.stderr)
+
+
+def main():
+    args = sys.argv[1:]
+    if not args or args[0] in ('-h', '--help', 'help'):
+        print(HELP)
+        return
+    verb = args[0]
+    if verb == 'manifest':
+        return cmd_manifest()
+    if verb == 'contracts':
+        return cmd_contracts()
+    if verb == 'chain':
+        if len(args) < 2:
+            return cmd_manifest()
+        return cmd_chain(args[1])
+    if verb == 'run':
+        return cmd_run(args[1:])
+    if verb == 'p':
+        return cmd_parallel(args[1:])
+    if verb not in ROUTE:
+        print(f'未知子命令: {verb}')
+        print(HELP)
+        return
+    _dispatch(verb, args[1:])
+
+
+if __name__ == '__main__':
+    main()

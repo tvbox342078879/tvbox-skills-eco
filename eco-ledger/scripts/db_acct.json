@@ -1,0 +1,111 @@
+{
+ "title": "📒 账房·账户",
+ "properties": [
+  {
+   "name": "账户名",
+   "config": {
+    "text": {}
+   }
+  },
+  {
+   "name": "科目类",
+   "config": {
+    "select": {
+     "options": [
+      {
+       "text": "资产·数据"
+      },
+      {
+       "text": "资产·版本"
+      },
+      {
+       "text": "负债·欠账"
+      },
+      {
+       "text": "权益·指标"
+      },
+      {
+       "text": "损益·产能"
+      },
+      {
+       "text": "暂记"
+      },
+      {
+       "text": "期初"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "name": "币种",
+   "config": {
+    "select": {
+     "options": [
+      {
+       "text": "记录数"
+      },
+      {
+       "text": "版本号"
+      },
+      {
+       "text": "事项数"
+      },
+      {
+       "text": "分数"
+      },
+      {
+       "text": "字节数"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "name": "关联对象",
+   "config": {
+    "text": {}
+   }
+  },
+  {
+   "name": "当前余额",
+   "config": {
+    "number": {
+     "decimalPlaces": 2,
+     "useSeparate": false,
+     "displayType": "number"
+    }
+   }
+  },
+  {
+   "name": "上次核对",
+   "config": {
+    "date": {}
+   }
+  },
+  {
+   "name": "账户状态",
+   "config": {
+    "select": {
+     "options": [
+      {
+       "text": "正常"
+      },
+      {
+       "text": "冻结"
+      },
+      {
+       "text": "合并中"
+      },
+      {
+       "text": "已并入"
+      },
+      {
+       "text": "已废弃"
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

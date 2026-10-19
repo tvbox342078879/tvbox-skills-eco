@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>公众号预览 - fix-v6-01</title>
+<style>
+  body{margin:0;background:#ededed;font-family:-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;}
+  .bar{position:sticky;top:0;background:#07c160;color:#fff;padding:10px 16px;
+        font-size:14px;z-index:9;display:flex;align-items:center;justify-content:space-between;}
+  .bar button{background:#fff;color:#07c160;border:none;border-radius:14px;
+        padding:6px 14px;font-size:13px;font-weight:bold;cursor:pointer;}
+  .phone{width:375px;margin:16px auto 40px;background:#fff;min-height:667px;
+          padding:16px;box-sizing:border-box;border-radius:4px;}
+  .phone *{max-width:100%!important;box-sizing:border-box;}
+  .tip{max-width:375px;margin:0 auto;color:#999;font-size:12px;padding:0 4px 30px;}
+  #copied{color:#ffd;font-size:12px;margin-left:8px;}
+</style>
+</head>
+<body>
+  <div class="bar">
+    <span>📱 公众号移动端预览（375px）· 所见即所得</span>
+    <span><button onclick="copyContent()">📋 复制全文</button><span id="copied"></span></span>
+  </div>
+  <div class="phone" id="phone">
+  <div id="copy-target">
+<section id="content" style="font-size:15px;color:#3f3f3f;line-height:1.85;letter-spacing:.3px;font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;word-break:break-word;"><section style="font-size:15px;color:#3f3f3f;line-height:1.85;font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;word-break:break-word">
+<h1 style="font-size:22px;line-height:1.4;margin:0 0 16px 0;color:#2c3e50;font-weight:bold">OpenAI o1的真正秘密：不是模型更大，而是考试允许带计算器</h1>
+<section style="background-color:#f093fb;color:white;padding:16px;margin:16px 0;text-align:center">
+<section>🧠 一句话讲清楚</section>
+<section>考试让你带计算器，但不许改教材</section>
+<section>——萌兰 × 萌二 对谈录</section>
+</section>
+<hr style="border:none;border-top:1px solid #eee;margin:26px 0"/>
+<blockquote style="border-left:4px solid #ff6b6b;padding:12px 16px;margin:16px 0;background-color:#fff9f9;color:#555;border-radius:6px">
+<p style="margin:8px 0;line-height:1.9">你有没有发现——参数越来越大的模型，遇到新题还是会傻眼？</p>
+</blockquote>
+<p style="margin:8px 0;line-height:1.9">OpenAI o1/o3 的出现，说明了一条新路：<br/><strong style="color:#e74c3c">不一定把教材写更厚，可以在考场上多想一会儿。</strong></p>
+<h2 style="color:#fff;background-color:#667eea;padding:10px 16px;margin:24px 0 16px 0;font-size:17px;display:inline-block;font-weight:bold;padding-left:12px;border-left:5px solid #667eea;line-height:1.4">🌱 训练时扩展 vs 推理时扩展</h2>
+<blockquote style="border-left:4px solid #ff6b6b;padding:12px 16px;margin:16px 0;background-color:#fff9f9;color:#555;border-radius:6px">
+<p style="margin:8px 0;line-height:1.9"><strong style="color:#e74c3c">训练时扩展（Pre-training Scaling）</strong><br/>
+= 把教材写厚、把大脑容量扩大。</p>
+</blockquote>
+<blockquote style="border-left:4px solid #ff6b6b;padding:12px 16px;margin:16px 0;background-color:#fff9f9;color:#555;border-radius:6px">
+<p style="margin:8px 0;line-height:1.9"><strong style="color:#e74c3c">推理时扩展（Test-Time Compute）</strong><br/>
+= 考试的时候，允许你反复思考、查笔记、用计算器——但不许提前偷看题目。</p>
+</blockquote>
+<p style="margin:8px 0;line-height:1.9">换句话说：<br/>模型"考场上"的算力，可以弥补一点"教材"的不足。</p>
+<hr style="border:none;border-top:1px solid #eee;margin:26px 0"/>
+<h2 style="color:#fff;background-color:#667eea;padding:10px 16px;margin:24px 0 16px 0;font-size:17px;display:inline-block;font-weight:bold;padding-left:12px;border-left:5px solid #667eea;line-height:1.4">🌿 二、两种"学习制度"的对比</h2>
+<table style="width:100%;border-collapse:collapse;margin:16px 0;font-size:14px">
+<tr><th style="background-color:#667eea;color:white;padding:10px 10px;text-align:left;font-size:14px;font-weight:600">维度</th><th style="background-color:#667eea;color:white;padding:10px 10px;text-align:left;font-size:14px;font-weight:600">传统Scaling<br/>（教材制度）</th><th style="background-color:#667eea;color:white;padding:10px 10px;text-align:left;font-size:14px;font-weight:600">推理时扩展<br/>（考试制度）</th></tr>
+<tr><td style="padding:9px 10px;border-bottom:1px solid #f0f0f0;font-size:14px;border:1px solid #eee;color:#333"><strong style="color:#e74c3c">提升方式</strong></td><td style="padding:9px 10px;border-bottom:1px solid #f0f0f0;font-size:14px;border:1px solid #eee;color:#333">扩大模型参数<br/>（把教材写得更厚）</td><td style="padding:9px 10px;border-bottom:1px solid #f0f0f0;font-size:14px;border:1px solid #eee;color:#333">延长推理时间<br/>（允许反复思考）</td></tr>
+<tr><td style="padding:9px 10px;border-bottom:1px solid #f0f0f0;font-size:14px;border:1px solid #eee;color:#333"><strong style="color:#e74c3c">比喻</strong></td><td style="padding:9px 10px;border-bottom:1px solid #f0f0f0;font-size:14px;border:1px solid #eee;color:#333">让学生背完全套<br/>《五年高考三年模拟》</td><td style="padding:9px 10px;border-bottom:1px solid #f0f0f0;font-size:14px;border:1px solid #eee;color:#333">允许学生带计算器、<br/>查公式表</td></tr>
+<tr><td style="padding:9px 10px;border-bottom:1px solid #f0f0f0;font-size:14px;border:1px solid #eee;color:#333"><strong style="color:#e74c3c">本质</strong></td><td style="padding:9px 10px;border-bottom:1px solid #f0f0f0;font-size:14px;border:1px solid #eee;color:#333">知识内化</td><td style="padding:9px 10px;border-bottom:1px solid #f0f0f0;font-size:14px;border:1px solid #eee;color:#333">外部辅助</td></tr>
+<tr><td style="padding:9px 10px;border-bottom:1px solid #f0f0f0;font-size:14px;border:1px solid #eee;color:#333"><strong style="color:#e74c3c">成本结构</strong></td><td style="padding:9px 10px;border-bottom:1px solid #f0f0f0;font-size:14px;border:1px solid #eee;color:#333">训练一次很贵，<br/>之后推理便宜</td><td style="padding:9px 10px;border-bottom:1px solid #f0f0f0;font-size:14px;border:1px solid #eee;color:#333">训练便宜，<br/>但每次推理更贵</td></tr>
+<tr><td style="padding:9px 10px;border-bottom:1px solid #f0f0f0;font-size:14px;border:1px solid #eee;color:#333"><strong style="color:#e74c3c">效果上限</strong></td><td style="padding:9px 10px;border-bottom:1px solid #f0f0f0;font-size:14px;border:1px solid #eee;color:#333">知识边界内很强，<br/>边界外很弱</td><td style="padding:9px 10px;border-bottom:1px solid #f0f0f0;font-size:14px;border:1px solid #eee;color:#333">对付新题、复杂题<br/>更从容</td></tr>
+<tr><td style="padding:9px 10px;border-bottom:1px solid #f0f0f0;font-size:14px;border:1px solid #eee;color:#333"><strong style="color:#e74c3c">典型场景</strong></td><td style="padding:9px 10px;border-bottom:1px solid #f0f0f0;font-size:14px;border:1px solid #eee;color:#333">简单问答、常规翻译</td><td style="padding:9px 10px;border-bottom:1px solid #f0f0f0;font-size:14px;border:1px solid #eee;color:#333">数学证明、多步推理、<br/>代码调试</td></tr>
+</table>
+<hr style="border:none;border-top:1px solid #eee;margin:26px 0"/>
+<h2 style="color:#fff;background-color:#667eea;padding:10px 16px;margin:24px 0 16px 0;font-size:17px;display:inline-block;font-weight:bold;padding-left:12px;border-left:5px solid #667eea;line-height:1.4">🌳 三、谁更强？</h2>
+<section style="background-color:#f0f8ff;border:2px solid #667eea;padding:16px;margin:16px 0">
+<section style="font-size:13px;color:#667eea;font-weight:bold;margin-bottom:8px">💡 类比理解</section>
+<p style="margin:8px 0;line-height:1.9">想象两个人参加数学竞赛：</p>
+<p style="margin:8px 0;line-height:1.9">👤 <strong style="color:#e74c3c">大参数模型</strong>：把历年真题全背下来，遇到原题秒答，但新题型就傻眼。</p>
+<p style="margin:8px 0;line-height:1.9">👤 <strong style="color:#e74c3c">推理时扩展</strong>：给你无限草稿纸和计算器，不需要背题，但每道题多想几分钟。</p>
+</section>
+<p style="margin:8px 0;line-height:1.9">看题目类型：</p>
+<p style="margin:8px 0;line-height:1.9">✅ <strong style="color:#e74c3c">常规题</strong> → 大参数模型赢（因为背过了）<br/>✅ <strong style="color:#e74c3c">创新题</strong> → 推理时扩展赢（因为会思考）</p>
+<hr style="border:none;border-top:1px solid #eee;margin:26px 0"/>
+<h2 style="color:#fff;background-color:#667eea;padding:10px 16px;margin:24px 0 16px 0;font-size:17px;display:inline-block;font-weight:bold;padding-left:12px;border-left:5px solid #667eea;line-height:1.4">💡 四、什么时候用推理时扩展？</h2>
+<table style="width:100%;border-collapse:collapse;margin:16px 0;font-size:14px">
+<tr><th style="background-color:#667eea;color:white;padding:10px 10px;text-align:left;font-size:14px;font-weight:600">场景</th><th style="background-color:#667eea;color:white;padding:10px 10px;text-align:left;font-size:14px;font-weight:600">推荐方案</th><th style="background-color:#667eea;color:white;padding:10px 10px;text-align:left;font-size:14px;font-weight:600">原因</th></tr>
+<tr><td style="padding:9px 10px;border-bottom:1px solid #f0f0f0;font-size:14px;border:1px solid #eee;color:#333">日常客服问答</td><td style="padding:9px 10px;border-bottom:1px solid #f0f0f0;font-size:14px;border:1px solid #eee;color:#333">大参数模型（快且便宜）</td><td style="padding:9px 10px;border-bottom:1px solid #f0f0f0;font-size:14px;border:1px solid #eee;color:#333">题目固定，不需要深度思考</td></tr>
+<tr><td style="padding:9px 10px;border-bottom:1px solid #f0f0f0;font-size:14px;border:1px solid #eee;color:#333">代码审查/调试</td><td style="padding:9px 10px;border-bottom:1px solid #f0f0f0;font-size:14px;border:1px solid #eee;color:#333">推理时扩展（o1/o3）</td><td style="padding:9px 10px;border-bottom:1px solid #f0f0f0;font-size:14px;border:1px solid #eee;color:#333">需要多步推理，容易出错</td></tr>
+<tr><td style="padding:9px 10px;border-bottom:1px solid #f0f0f0;font-size:14px;border:1px solid #eee;color:#333">数学证明</td><td style="padding:9px 10px;border-bottom:1px solid #f0f0f0;font-size:14px;border:1px solid #eee;color:#333">推理时扩展（o1/o3）</td><td style="padding:9px 10px;border-bottom:1px solid #f0f0f0;font-size:14px;border:1px solid #eee;color:#333">逻辑链长，需要反复验证</td></tr>
+<tr><td style="padding:9px 10px;border-bottom:1px solid #f0f0f0;font-size:14px;border:1px solid #eee;color:#333">创意写作</td><td style="padding:9px 10px;border-bottom:1px solid #f0f0f0;font-size:14px;border:1px solid #eee;color:#333">大参数模型（快）</td><td style="padding:9px 10px;border-bottom:1px solid #f0f0f0;font-size:14px;border:1px solid #eee;color:#333">发散为主，不需要严密推理</td></tr>
+<tr><td style="padding:9px 10px;border-bottom:1px solid #f0f0f0;font-size:14px;border:1px solid #eee;color:#333">复杂决策分析</td><td style="padding:9px 10px;border-bottom:1px solid #f0f0f0;font-size:14px;border:1px solid #eee;color:#333">推理时扩展</td><td style="padding:9px 10px;border-bottom:1px solid #f0f0f0;font-size:14px;border:1px solid #eee;color:#333">多因素权衡，需要算</td></tr>
+</table>
+
+<section style="background-color:#ffecd2;color:#c04800;padding:16px;margin:20px 0;text-align:center;font-size:14px">
+<p style="margin:8px 0;line-height:1.9">🧠 Post-Scaling Law × 推理时计算 · 对谈录<br/>关注我，看更多AI × 量化的人话解读</p>
+</section>
+</section></section>
+  </div>
+  </div>
+  <div class="tip">说明：渐变/阴影等公众号不支持的样式已退化为兼容写法。点击「复制全文」后，到公众号编辑器 Ctrl+V 即可。</div>
+<script>
+/* ========== 公众号粘贴兼容层（复制前自动 sanitize）==========
+   修复已知 bug：
+   A) 工具栏(.bar)被误复制 → 用专用 #copy-target 容器隔离复制范围
+   B) 内容太窄(375px手机宽) → sanitize 时剥离 width/max-width 固定像素约束
+   C) 嵌套 html/body → unwrap 拆除
+   D) <div> 不认容器样式 → 转为 <section>
+   E) 渐变/阴影不支持 → 退化实色/删除
+=========================================================== */
+function sanitizeForWechat(html) {
+  var d = document.createElement('div');
+  d.innerHTML = html;
+  /* Step 0: 剥离 UI 铬层（工具栏/按钮/提示）
+     输入可能是旧版 _preview.html，文章内容里已嵌了 .bar / button 等预览元素。
+     不剥离的话这些会当正文复制进公众号。 */
+  var chromeSelectors = '.bar, .tip, #copied, button, [id^="copied"]';
+  d.querySelectorAll(chromeSelectors).forEach(function(el) {
+    el.parentNode.removeChild(el);
+  });
+  /* Step 1: 拆除嵌套的 <html>/<head>/<body>，保留子元素 */
+  var bad = d.querySelectorAll('html, head, body');
+  bad.forEach(function(el) {
+    while (el.firstChild) { el.parentNode.insertBefore(el.firstChild, el); }
+    el.parentNode.removeChild(el);
+  });
+  /* Step 2: <div> → <section>（公众号 ProseMirror 白名单不认 div 的容器样式） */
+  d.querySelectorAll('div').forEach(function(el) {
+    var s = document.createElement('section');
+    s.setAttribute('style', el.getAttribute('style') || '');
+    s.className = el.className;
+    while (el.firstChild) { s.appendChild(el.firstChild); }
+    el.parentNode.replaceChild(s, el);
+  });
+  /* Step 3: 渐变 → 实色 + 剥离不支持的属性 + 剥离固定像素宽度 */
+  d.querySelectorAll('[style]').forEach(function(el) {
+    var style = el.getAttribute('style') || '';
+    /* 3a: 渐变 → 实色 */
+    style = style.replace(/background\s*:\s*linear-gradient\([^)]*\)/gi,
+      function(m) {
+        var colors = m.match(/#[a-fA-F0-9]{3,8}/g) || ['667eea'];
+        return 'background-color:' + colors[0];
+      });
+    /* 3b: 移除公众号不支持的属性 */
+    var drop = [
+      'border-radius', 'box-shadow', 'text-shadow', 'transform',
+      'transition', 'animation', 'filter', '-webkit-', '-moz-'
+    ];
+    drop.forEach(function(prop) {
+      var re = new RegExp(prop + "[^;']*", "gi");
+      style = style.replace(re, '');
+    });
+    /* 3c: 剥离固定像素宽度约束（解决"粘贴后太窄像手机版"问题）
+         公众号编辑器有自己的布局宽度，不需要预览层的 375px 约束。
+         保留百分比值（如 width:100%），只删 px 固定值。 */
+    style = style.replace(/(max-)?width\s*:\s*[0-9]+px(\s*!important)?\s*/gi, '');
+    /* 清理空 style 和多余分号 */
+    style = style.replace(/;\s*;/g, ';').replace(/^\s*;|;\s*$/g, '').trim();
+    if (!style) { el.removeAttribute('style'); }
+    else { el.setAttribute('style', style); }
+  });
+  return d.innerHTML;
+}
+
+function copyContent(){
+  /* 关键修复：始终从 #copy-target 取内容，绝不取 .bar 或 #phone 容器 */
+  var node = document.getElementById('copy-target');
+  if (!node) { node = document.getElementById('content') || document.getElementById('phone'); }
+  var rawHtml = node.innerHTML;
+  var html = sanitizeForWechat(rawHtml);
+  var plain = node.innerText;
+  function ok(msg){var c=document.getElementById('copied');if(c)c.textContent=msg;}
+  try {
+    if (navigator.clipboard && window.ClipboardItem) {
+      var htmlBlob = new Blob([html], {type:'text/html'});
+      var textBlob = new Blob([plain], {type:'text/plain'});
+      navigator.clipboard.write([new ClipboardItem({'text/html':htmlBlob,'text/plain':textBlob})]).then(function(){ok('已复制 ✅');}).catch(function(){fallback();});
+      return;
+    }
+  } catch(e) {}
+  fallback();
+  function fallback(){
+    var tmp = document.createElement('div');
+    tmp.style.position='fixed';tmp.style.left='-9999px';
+    tmp.innerHTML = html;
+    document.body.appendChild(tmp);
+    try{
+      var r=document.createRange(); r.selectNodeContents(tmp);
+      var s=window.getSelection(); s.removeAllRanges(); s.addRange(r);
+      document.execCommand('copy'); ok('已复制 ✅');
+    }catch(e){ok('复制失败，请手动 Ctrl+A');}
+    s.removeAllRanges();
+    document.body.removeChild(tmp);
+  }
+}
+</script>
+</body>
+</html>

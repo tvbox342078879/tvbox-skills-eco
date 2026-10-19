@@ -1,0 +1,13 @@
+{
+  "name": "wechat-article-styled-extractor-runtime",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "description": "Browser runtime for 微信文章提取（保留排版）",
+  "dependencies": {
+    "playwright": "1.63.0"
+  }
+}

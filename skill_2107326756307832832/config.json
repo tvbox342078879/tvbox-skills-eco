@@ -1,0 +1,47 @@
+{
+  "name": "wechat-article-scraper",
+  "version": "1.1.0",
+  "description": "微信公众号图文爬取 Skill 配置",
+
+  "sogou": {
+    "rate_limit_min": 3.0,
+    "rate_limit_max": 8.0,
+    "max_pages": 5,
+    "proxy": null,
+    "raise_on_block": false,
+    "note": "搜狗微信搜索的请求间隔（秒），过快会被验证码拦截；raise_on_block=true 时命中验证页直接抛错"
+  },
+
+  "fetch": {
+    "rate_limit_min": 2.0,
+    "rate_limit_max": 5.0,
+    "save_raw_html": false,
+    "proxy": null,
+    "cache_max_age_days": null,
+    "note": "文章全文获取的请求间隔；cache_max_age_days 留空表示缓存永不过期"
+  },
+
+  "ima": {
+    "api_key": null,
+    "base_url": "https://ima.qq.com/api",
+    "note": "IMA知识库API Key，留空则导出到本地目录"
+  },
+
+  "dify": {
+    "api_key": null,
+    "base_url": "https://api.dify.ai/v1",
+    "note": "Dify Dataset API Key 和地址，留空则导出到本地"
+  },
+
+  "obsidian": {
+    "vault_path": null,
+    "note": "Obsidian vault 路径，留空则导出到数据目录下的 obsidian_export"
+  },
+
+  "export": {
+    "default_format": "zip",
+    "default_formats": ["markdown", "text", "json"],
+    "default_output_dir": null,
+    "note": "default_output_dir 留空则写入系统临时目录，避免二进制产物留在技能包里被上传拦截"
+  }
+}

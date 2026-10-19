@@ -1,0 +1,141 @@
+{
+ "name": "learn-hub-flow",
+ "version": "1.0.0",
+ "created": "2026-10-19",
+ "source": "规则54四化落地（SKILL.md §1-§7 的机器可读版）；生态新成员「学习工坊」立项：学习资料单类业务全能选手",
+ "route_decision": {
+  "bring_in_materials": "learn.py intake file/url/pan/scan（采集四入口·三态）",
+  "organize_knowledge": "learn.py sort outline/dedupe/difficulty（知识点树·外部分母优先）",
+  "is_this_usable": "learn.py gate run/coverage/grounding/ratio（四查·强验收格式）",
+  "learn_specific_tools": "learn.py forge diagnose/schedule/check（学情/记忆曲线/资料体检）",
+  "reuse_existing": "learn.py store find/put/trace（先找后建，不重复造）",
+  "source_rot": "learn.py watch sources/stale（源存活·三态）"
+ },
+ "steps": [
+  {
+   "no": 0,
+   "name": "触发判定",
+   "rule": "触发词命中：做学习资料/整理学习资料/学习资料库/这套资料能用吗/知识点切一下/学情分析/资料体检/覆盖率/学习工坊；或用户手上有一堆散素材想变成能用的东西、怀疑现有资料有漏或编造",
+   "cmd": null,
+   "artifact": null,
+   "action": "先问一句：分母（教材目录/考纲/框架）在哪。没有分母就不要承诺覆盖率"
+  },
+  {
+   "no": 1,
+   "name": "采集 intake",
+   "rule": "file/url/pan/scan 四入口；同一文件按**内容哈希**去重；每份素材记三态",
+   "cmd": "learn intake scan <目录> --recursive",
+   "artifact": "materials/<日期>_<来源>_<短名>/ + manifest.json",
+   "action": "412/超时/登录墙 归『无法判定』，不归『失败』；零命中必须 rc=1，不许报完成；scan 先出清单再落库"
+  },
+  {
+   "no": 2,
+   "name": "分类整理 sort",
+   "rule": "有外部框架走 outline --from（分母=external）；无框架走 auto（分母=self-built，须显式标注）",
+   "cmd": "learn sort outline <素材目录> --from <框架文件>",
+   "artifact": "outline.json（节点含 evidence / unverified）",
+   "action": "归一化必须双侧同归（素材与标题同一套 _norm），单边清洗 = 假匹配；找不到出处的节点标 unverified 并写理由，不许硬塞 evidence"
+  },
+  {
+   "no": 3,
+   "name": "质检闸 gate（★立身之处）",
+   "rule": "四查：覆盖率（分母须外部）/ 出处 / 答案自洽 / 难度分布；任一不过即不出品",
+   "cmd": "learn gate run <outline.json> <成品目录>",
+   "artifact": "四查逐项报数 + 判定",
+   "action": "禁止只写『质检通过』四个字；分母自建时必须判『无法判定』并 rc=3，不许报覆盖率数值"
+  },
+  {
+   "no": 4,
+   "name": "特有工具 forge",
+   "rule": "diagnose 学情诊断 / schedule 记忆曲线 / check 资料体检",
+   "cmd": "learn forge diagnose <错题文件> --outline <outline.json>",
+   "artifact": "归因表 + 无法归因清单",
+   "action": "归因必须落到 outline 具体节点；落不到就说『无法归因』，不许硬套『基础不牢』；缺 outline 判无法判定，不许报『归因 0 条』；间隔序列必须严格递增且给公式"
+  },
+  {
+   "no": 5,
+   "name": "入库 store",
+   "rule": "put/find/trace；同名不覆盖，先找后建",
+   "cmd": "learn store put <成品目录> --name <名> --tags <标签>",
+   "artifact": "library/<名>/ + scripts/index.json",
+   "action": "store find 命中高度相似时先提示复用；重名 put 必须 rc=3，不许静默覆盖"
+  },
+  {
+   "no": 6,
+   "name": "监测 watch",
+   "rule": "sources 查存活（三态）/ stale 查老化 / refresh（暂未实现，如实说）",
+   "cmd": "learn watch sources",
+   "artifact": "存活清单",
+   "action": "『无法判定』不许写成『已失效』；未实现的功能必须明说『暂未实现』，不许假装跑完"
+  },
+  {
+   "no": 7,
+   "name": "复盘闭环",
+   "rule": "每轮必须留一条可复验的探针（亏驱动为主）",
+   "cmd": "learn self-check",
+   "artifact": "N/N + 注入回归记录",
+   "action": "只改文档不加探针 = 没优化；新探针必须做『把目标改坏它还亮吗』的注入验证"
+  }
+ ],
+ "iron_order": [
+  "触发判定",
+  "采集",
+  "分类整理",
+  "质检闸",
+  "特有工具",
+  "入库",
+  "监测",
+  "复盘闭环"
+ ],
+ "iron_rules": {
+  "定位": "学习资料单类业务**全能选手**（与探源司同构）——采集/整理/工具/质检/入库/监测六环唯一归属地；不与子技能抢活，只做跨来源整合与全链质检",
+  "守护": {
+   "M-L01": "不许凭空生成资料——每条产出必须能指回原文（文件+行/页/时间戳）；指不回的写成『⚠️ 无出处（推测）』并单列，不许静默删，也不许混进正文",
+   "M-L02": "覆盖率是分母问题——分母必须外部（教材目录/考纲/框架）；无外部分母时不许报覆盖率数值，只能报『生成了 N 条，未做覆盖评估』",
+   "M-L03": "三态不折叠——取到了 / 确定取不到 / 无法判定；412、超时、登录墙、编码异常都是『无法判定』，不许并进『失败』",
+   "M-R38": "同一判据只许一份实现——归一化只许 _norm 一处；修一处漏一处等于没修（S172 实测：gate run 与 gate coverage 各写一份，改一处漏两处）",
+   "M-R55": "修完度量器必配探针——每条探针必须做注入回归，且反假阳性基线干净",
+   "M-R109": "用户编号选项引用约定：单个数字/字母/复合编号默认指代最近一次回复的对应选项，直接执行；仅歧义或不可逆操作时澄清",
+   "M-R110": "输出语言一律简体中文，切换模型/新会话/压缩上下文后不得回退英文",
+   "M-R116": "新技能 onboard 必须填责任田（materials / library / scripts/index.json / work），不填 = 产出天然成缝"
+  }
+ },
+ "self_check": [
+  "三态不折叠·412不判死：412/超时→无法判定，404/已删→确定取不到；任何可识别失败都不许落回 ok",
+  "分母自建不报覆盖率（M-L02）：denominator=self-built 时 gate coverage 必须 rc=3 且输出『无法判定』",
+  "强验收格式四查齐备：gate run 必须同时报出 覆盖/有出处/答案自洽/难度 四项指标；禁止出现『质检通过』一句话结案",
+  "无出处必单列：gate grounding 分支里必须同时有『无出处』与『不通过』（按分支取字面量，不取整函数并集）",
+  "去重按内容哈希：真跑 intake，两个同名不同内容文件必须都算新增、且 sha256 不同",
+  "200≠有正文：SPA 三特征（__NUXT__ / window.__INITIAL / vite）与登录墙四特征（登录后 / 扫码登录 / 请先登录 / sign in to continue）必须全在",
+  "网盘412归因：classify_failure_why('HTTP 412') 必须返回 unknown 且理由里含『412』（不许只验结果——末尾兜底也会给 unknown）",
+  "难度标注须带依据：真跑 sort difficulty，节点必须有 level 且有非空 why",
+  "零命中不许报完成：真跑一个抽不出文本的文件，必须 rc=1 且输出『一条都没取到』",
+  "未实现不假装实现：watch refresh 必须显式写『暂未实现』，且不许出现『已全部检查完成』这类假完成词",
+  "归一化双侧同归：带 # 的素材 + 带 # 的标题必须能对上；框架里多出的章节必须判 unverified 而不是硬塞 evidence",
+  "相对路径写盘不崩：_save_json('rel.json') 必须先 abspath 再取 dirname（dirname('') 会让 makedirs 抛异常）",
+  "归一化只许一处实现（M-R38）：AST 走 Call 节点，全代码库『去全部空白』的 sub 只允许 1 处（_norm 内部）",
+  "缺框架不报归因0条：找不到 outline 时 forge diagnose 必须 rc=3 且不输出任何归因数",
+  "间隔序列严格递增：真跑 forge schedule，从**输出**抽『第N天』，必须严格递增且首日为 1（不许在探针里自己重算一遍）",
+  "探针元规则（S171/S172）：判据取自**执行路径**，不取自说明书；不用『字面量存在 = 功能存在』；不查『自己会说的话』；不在探针里重算一遍被测逻辑"
+ ],
+ "backlog": [
+  "[待办] intake url 的正文抽取：目前是去标签 + 长度判断。公众号正文需复用 wechat-article-scraper，不自己写一套（M-R38）",
+  "[待办] intake pan：目前只做委托提示，未真正串起 probe pan pull → 落盘 → scan",
+  "[待办] sort auto 的自动切分质量偏低（只认 # 标题与『第X章』），接入真实教材后会漏；需要以『章节编号正则 + 目录页』双判据重做",
+  "[待办] gate 答案自洽目前只查『答案行有没有出处』，没有真正做『从原文能否推出答案』的语义校验——这是最难也最核心的一条，未实现前不许宣称做到了",
+  "[待办] watch refresh 未实现（教材改版/课标变动需外部版本源），已在命令里如实标注",
+  "[待办] store 索引目前是本地 index.json，未上云（library）；跨设备共享待接入",
+  "[待办] 与 exam-generator / knowledge-framework-builder 的编排尚未端到端联调"
+ ],
+ "roadmap": [
+  "公众号正文抽取接入 wechat-article-scraper（复用，不重写）",
+  "网盘取料串通 probe pan pull → materials 落地",
+  "答案自洽的语义校验（最难，未做前必须在交付时说明『未做』）",
+  "索引上云到 library，跨设备可检索",
+  "与知识框架技能联调：它的框架直接当本技能覆盖率分母"
+ ],
+ "sop_binding": {
+  "authority": "本技能 SKILL.md §1-§7（SSOT）+ scripts/learn.py",
+  "note": "三态口径以 ST_LABEL 为准；归因口径以 classify_failure_why 为准；归一化口径以 _norm 为唯一实现"
+ }
+}

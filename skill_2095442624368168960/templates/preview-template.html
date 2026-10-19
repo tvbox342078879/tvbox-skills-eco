@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{TITLE}} · 公众号排版预览</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: #0F1115;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                 "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---------- 工具栏 ---------- */
+  .toolbar {
+    position: sticky; top: 0; z-index: 100;
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: 12px 18px;
+    background: rgba(21, 24, 30, 0.94);
+    backdrop-filter: saturate(180%) blur(12px);
+    border-bottom: 1px solid #262C36;
+  }
+  .tb-title {
+    font-size: 13px; font-weight: 700; color: #E6EAF2;
+    max-width: 34vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .tb-spacer { flex: 1; }
+
+  .seg {
+    display: inline-flex; background: #1A1E26;
+    border: 1px solid #2B323D; border-radius: 8px; padding: 3px; gap: 2px;
+  }
+  .seg button {
+    border: 0; background: transparent; color: #9AA4B5;
+    font-size: 12px; font-weight: 600; padding: 6px 13px;
+    border-radius: 6px; cursor: pointer; transition: all .15s ease;
+    font-family: inherit;
+  }
+  .seg button:hover { color: #E6EAF2; }
+  .seg button.active { background: #2F6BFF; color: #fff; }
+
+  .btn-copy {
+    border: 0; border-radius: 8px; cursor: pointer;
+    padding: 9px 20px; font-size: 13px; font-weight: 700;
+    background: linear-gradient(135deg, #2F6BFF, #1E4FD8);
+    color: #fff; font-family: inherit;
+    box-shadow: 0 2px 10px rgba(47, 107, 255, .35);
+    transition: transform .12s ease, box-shadow .12s ease;
+  }
+  .btn-copy:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(47, 107, 255, .45); }
+  .btn-copy:active { transform: translateY(0); }
+
+  .tb-hint { font-size: 11px; color: #6B7484; line-height: 1.6; }
+
+  .stat { font-size: 11px; color: #6B7484; font-variant-numeric: tabular-nums; }
+
+  /* ---------- 画布 ---------- */
+  .canvas {
+    display: flex; justify-content: center;
+    padding: 30px 16px 60px;
+    min-height: calc(100vh - 60px);
+  }
+  .frame {
+    width: 375px; max-width: 100%;
+    background: #fff; border-radius: 14px; overflow: hidden;
+    box-shadow: 0 12px 48px rgba(0, 0, 0, .5);
+    transition: width .28s cubic-bezier(.4, 0, .2, 1);
+  }
+  .frame.w-tablet { width: 768px; }
+  .frame.w-desktop { width: 100%; max-width: 900px; }
+
+  .frame-bar {
+    display: flex; align-items: center; gap: 6px;
+    padding: 10px 14px; background: #171B22; border-bottom: 1px solid #262C36;
+  }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: #333A45; }
+  .frame-bar span.url {
+    flex: 1; margin-left: 8px; font-size: 11px; color: #6B7484;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+
+  .stage { padding: 0; background: #fff; }
+
+  /* ---------- Toast ---------- */
+  .toast {
+    position: fixed; left: 50%; top: 76px; transform: translate(-50%, -14px);
+    background: #16A34A; color: #fff; font-size: 13px; font-weight: 600;
+    padding: 10px 22px; border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .4);
+    opacity: 0; pointer-events: none; transition: all .22s ease; z-index: 200;
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+  .toast.err { background: #DC2626; }
+
+  @media (max-width: 860px) {
+    .frame.w-tablet { width: 100%; }
+    .tb-title { max-width: 40vw; }
+  }
+  @media (max-width: 520px) {
+    .toolbar { gap: 10px; padding: 10px 12px; }
+    .tb-hint { display: none; }
+    .canvas { padding: 16px 8px 40px; }
+    .frame { border-radius: 10px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="tb-title">{{TITLE}}</div>
+
+  <div class="seg" role="group" aria-label="设备切换">
+    <button type="button" data-w="phone" class="active">手机 375</button>
+    <button type="button" data-w="tablet">平板 768</button>
+    <button type="button" data-w="desktop">桌面 100%</button>
+  </div>
+
+  <div class="tb-spacer"></div>
+
+  <div class="stat" id="stat"></div>
+  <div class="tb-hint">点「一键复制」后到公众号编辑器 Ctrl+V</div>
+  <button type="button" class="btn-copy" id="copyBtn">一键复制到公众号</button>
+</div>
+
+<div class="canvas">
+  <div class="frame" id="frame">
+    <div class="frame-bar">
+      <i class="dot"></i><i class="dot"></i><i class="dot"></i>
+      <span class="url">mp.weixin.qq.com · 图文编辑</span>
+    </div>
+    <div class="stage">
+      <div id="gzh-root">
+<!--GZH_CONTENT-->
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  var frame = document.getElementById('frame');
+  var root  = document.getElementById('gzh-root');
+  var toast = document.getElementById('toast');
+  var stat  = document.getElementById('stat');
+
+  // ---- 设备切换（仅本地预览生效，不影响粘贴结果）----
+  var btns = document.querySelectorAll('.seg button');
+  btns.forEach(function (b) {
+    b.addEventListener('click', function () {
+      btns.forEach(function (x) { x.classList.remove('active'); });
+      b.classList.add('active');
+      frame.classList.remove('w-tablet', 'w-desktop');
+      var w = b.getAttribute('data-w');
+      if (w === 'tablet')  frame.classList.add('w-tablet');
+      if (w === 'desktop') frame.classList.add('w-desktop');
+    });
+  });
+
+  // ---- 字数统计 ----
+  try {
+    var txt = (root.innerText || root.textContent || '').replace(/\s+/g, '');
+    stat.textContent = txt.length + ' 字';
+  } catch (e) {}
+
+  // ---- Toast ----
+  var timer = null;
+  function show(msg, isErr) {
+    toast.textContent = msg;
+    toast.className = 'toast show' + (isErr ? ' err' : '');
+    clearTimeout(timer);
+    timer = setTimeout(function () { toast.className = 'toast'; }, 2200);
+  }
+
+  // ---- 一键复制：复制渲染后的 DOM（富文本），不是源码文本 ----
+  function legacyCopy() {
+    var range = document.createRange();
+    range.selectNodeContents(root);      // 只取内层，不会带上 #gzh-root 这个 div
+    var sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    var ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    sel.removeAllRanges();
+    return ok;
+  }
+
+  async function copyRich() {
+    // 优先用异步剪贴板 API 写入 text/html，富文本保真度最高
+    if (window.ClipboardItem && navigator.clipboard && navigator.clipboard.write) {
+      try {
+        var html = root.innerHTML;
+        var text = root.innerText || root.textContent || '';
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            'text/html': new Blob([html], { type: 'text/html' }),
+            'text/plain': new Blob([text], { type: 'text/plain' })
+          })
+        ]);
+        return true;
+      } catch (e) { /* 降级 */ }
+    }
+    return legacyCopy();
+  }
+
+  document.getElementById('copyBtn').addEventListener('click', async function () {
+    var ok = await copyRich();
+    show(ok ? '已复制，去公众号编辑器 Ctrl+V' : '复制失败，请手动全选正文区域复制', !ok);
+  });
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,10 @@
+{
+  "name": "workbuddy-sandbox-publish",
+  "version": "1.0.0",
+  "description": "Publish the current sandbox project as an online app via the agentos artifact-release API.",
+  "private": true,
+  "bin": {
+    "publish": "./publish.js",
+    "unpublish": "./unpublish.js"
+  }
+}

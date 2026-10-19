@@ -1,0 +1,52 @@
+{
+ "version": 1,
+ "sources": [
+  {
+   "file": "yyzy_vip.py",
+   "name": "优质影视",
+   "verdict": "通过",
+   "last_verdict": "通过",
+   "steps": [
+    {
+     "step": "①分类 homeContent",
+     "ok": true,
+     "detail": "58 个分类，1.9s"
+    },
+    {
+     "step": "①b空壳分类",
+     "ok": true,
+     "detail": "无空壳"
+    },
+    {
+     "step": "②列表 categoryContent",
+     "ok": true,
+     "detail": "第1页20 第2页20 重复0 跨页重叠0 pagecount=260"
+    },
+    {
+     "step": "②b图片绝对地址",
+     "ok": true,
+     "detail": "非绝对 0 条"
+    },
+    {
+     "step": "③详情 detailContent",
+     "ok": true,
+     "detail": "剧本世界：无免之门：接口 84 集 / 源产出 84 集"
+    },
+    {
+     "step": "④播放 playerContent",
+     "ok": true,
+     "detail": "第01集 → HTTP 206 m3u8=True parse=0"
+    },
+    {
+     "step": "⑤搜索 searchContent",
+     "ok": true,
+     "detail": "剧 → 20 条，0.4s"
+    }
+   ],
+   "ok_n": 7,
+   "total_n": 7,
+   "verified_at": "2026-10-19T01:03:09",
+   "src_path": "/root/.codebuddy/skills/probe-hub/sources/yyzy_vip.py"
+  }
+ ]
+}

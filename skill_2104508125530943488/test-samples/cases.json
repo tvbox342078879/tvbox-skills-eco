@@ -1,0 +1,7 @@
+{
+  "tag": "试卷出题与组卷 v1.0.0 · 实际运行输出",
+  "setup": ["python3 test-samples/make_samples.py"],
+  "cases": [
+    {"title": "试卷出题与组卷 示例输出", "out": "sample_output.txt", "commands": [["按知识点与难度出卷，给双向细目表"]]}
+  ]
+}

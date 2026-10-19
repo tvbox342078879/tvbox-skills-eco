@@ -1,0 +1,119 @@
+[
+  {
+    "date": "2026-10-16",
+    "suggestions": [
+      {
+        "skill": "legacy-watchdog",
+        "type": "backlog兑现",
+        "evidence": "[扩展点] 后续成长方向：检查器时效回归（检查器口径变更时回放历史确认不误报） / 延迟归因下钻（哪类风险面发现慢、为什么） / 扩面决策留痕（雷达候选→人工评"
+      },
+      {
+        "skill": "tvbox-source-blacklist",
+        "type": "backlog兑现",
+        "evidence": "[扩展点] SKILL.md §5 四项持续演进：拦截后自动快照 / probe_src 联合复测 / 失效原因枚举化 / 复活自动回流（非遗留，逐版推进）"
+      },
+      {
+        "skill": "ecosys-conductor",
+        "type": "backlog兑现",
+        "evidence": "[扩展点] 后续成长方向：conflict（写冲突仲裁）/ handoff（交接契约检查）/ expand-eco（生态空白识别）/ retro（会话复盘沉淀）"
+      },
+      {
+        "skill": "tvbox-source-hub",
+        "type": "契约漂移",
+        "evidence": "SKILL=1.0.18 但 CHANGELOG 最新=127.0.0（追加式取最大值）",
+        "retracted": "S052 检测器误报：127.0.0.1 IP 被全文匹配"
+      },
+      {
+        "skill": "tvbox-interface",
+        "type": "契约漂移",
+        "evidence": "SKILL=1.0.0 但 CHANGELOG 最新=1.0.12（追加式取最大值）",
+        "retracted": "S052 检测器误报：正文引用版本号被全文匹配"
+      },
+      {
+        "skill": "skill-evolution",
+        "type": "契约漂移",
+        "evidence": "SKILL=1.0.5 但 CHANGELOG 最新=1.1.0（追加式取最大值）",
+        "retracted": "S052 真实漂移，已兑现修复（SKILL 1.0.5→1.1.0）"
+      },
+      {
+        "skill": "ecosys-conductor",
+        "type": "backlog兑现",
+        "evidence": "zzprobeunique 扩展点未兑现",
+        "retracted": "S059 并行竞态污染：signal-check 探针写窗口内被 direction 读到并留痕的假证据"
+      },
+      {
+        "skill": "ecosys-conductor",
+        "type": "信号源自检",
+        "evidence": "信号源6 文档-实现漂移 依赖丢失（1/1 不可达）→ 该检测器静默失效"
+      },
+      {
+        "skill": "ecosys-conductor",
+        "type": "backlog兑现",
+        "evidence": "[扩展点] assess 内部 6 次 subprocess 串行调用（evolve scan/watchdog scan/snapshot/health/ga"
+      },
+      {
+        "skill": "ecosys-conductor",
+        "type": "契约漂移",
+        "evidence": "SKILL=1.17.0 但 CHANGELOG 最新=1.16.0（追加式取最大值）",
+        "retracted": "陈旧建议：契约漂移当时已修，现行 SKILL=1.41.0 = CHANGELOG=v1.41.0，无漂移（S108 清理过期留痕）"
+      },
+      {
+        "skill": "ecosys-conductor",
+        "type": "信号源自检",
+        "evidence": "信号源10 入口内联命令 已在注册表但 _sig_health 未自检（覆盖缺口）"
+      },
+      {
+        "skill": "tvbox-source-hub",
+        "type": "入口内联命令",
+        "evidence": "入口内联命令 chain 未登记进 manifest.json——用户话术无法路由到它"
+      },
+      {
+        "skill": "tvbox-source-hub",
+        "type": "入口内联命令",
+        "evidence": "入口内联命令 manifest 未登记进 manifest.json——用户话术无法路由到它"
+      },
+      {
+        "skill": "tvbox-source-hub",
+        "type": "入口内联命令",
+        "evidence": "入口内联命令 run 未登记进 manifest.json——用户话术无法路由到它"
+      },
+      {
+        "skill": "tvbox-source-hub",
+        "type": "契约漂移",
+        "evidence": "SKILL=1.0.28 但 CHANGELOG 最新=1.0.27（追加式取最大值）",
+        "retracted": "陈旧建议：契约漂移当时已修，现行 hub SKILL=1.0.35 = CHANGELOG=v1.0.35，无漂移（S108 清理过期留痕）"
+      },
+      {
+        "skill": "ecosys-conductor",
+        "type": "基座折叠扫描",
+        "evidence": "未登记的折叠候选 probe-hub/scripts/probe.py:515dc0e04e（原 probe-hub/scripts/probe.py:1313）：_IFACE_PIPE = None——except 后 return/赋值 空态（M-R60：读失败被折叠成空态），请审计：真缺陷须修，合理折叠须登记白名单"
+      },
+      {
+        "skill": "ecosys-conductor",
+        "type": "基座折叠扫描",
+        "evidence": "未登记的折叠候选 probe-hub/scripts/probe.py:8f7b17b662（原 probe-hub/scripts/probe.py:784）：code = 0                       # 取不到状态码 → 走语义兜底判定——except 后 return/赋值 空态（M-R60：读失败被折叠成空态），请审计：真缺陷须修，合理折叠须登记白名单"
+      },
+      {
+        "skill": "ecosys-conductor",
+        "type": "基座折叠扫描",
+        "evidence": "未登记的折叠候选 probe-hub/scripts/probe.py:46dcf75dfa（原 probe-hub/scripts/probe.py:1410）：old = []                   # 旧文件损坏 → 本次结果为准（不因此丢弃）——except 后 return/赋值 空态（M-R60：读失败被折叠成空态），请审计：真缺陷须修，合理折叠须登记白名单"
+      }
+    ]
+  },
+  {
+    "date": "2026-10-16",
+    "topic": "hub路由负载12条过载",
+    "verdict": "暂不",
+    "note": "hub 是数据中枢，12条路由对应12个高频意图，拆分会破坏 manifest 单一入口；观察即可"
+  },
+  {
+    "date": "2026-10-16",
+    "topic": "conductor路由11条过载",
+    "verdict": "暂不",
+    "note": "12命令分三层各自内聚，路由条目数≠复杂度；若超20条再考虑按层拆分"
+  },
+  {
+    "date": "2026-10-17",
+    "suggestions": []
+  }
+]

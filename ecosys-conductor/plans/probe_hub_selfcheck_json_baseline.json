@@ -1,0 +1,274 @@
+{
+ "probe": "probe-hub/self-check",
+ "spec": "self_probe_spec/v1",
+ "ts": "2026-10-20T00:13:55",
+ "total": 33,
+ "passed": 33,
+ "all_good": true,
+ "items": [
+  {
+   "name": "存活判定器",
+   "hit": true,
+   "clean": true,
+   "base": true,
+   "good": true,
+   "missing": []
+  },
+  {
+   "name": "内容指纹",
+   "hit": true,
+   "clean": true,
+   "base": true,
+   "good": true,
+   "missing": []
+  },
+  {
+   "name": "目录差集",
+   "hit": true,
+   "clean": true,
+   "base": true,
+   "good": true,
+   "missing": []
+  },
+  {
+   "name": "活跃度判定",
+   "hit": true,
+   "clean": true,
+   "base": true,
+   "good": true,
+   "missing": []
+  },
+  {
+   "name": "数据基座三态",
+   "hit": true,
+   "clean": true,
+   "base": true,
+   "good": true,
+   "missing": []
+  },
+  {
+   "name": "HTTP 拉取三态",
+   "hit": true,
+   "clean": true,
+   "base": true,
+   "good": true,
+   "missing": []
+  },
+  {
+   "name": "鉴权模块",
+   "hit": true,
+   "clean": true,
+   "base": true,
+   "good": true,
+   "missing": []
+  },
+  {
+   "name": "多平台适配",
+   "hit": true,
+   "clean": true,
+   "base": true,
+   "good": true,
+   "missing": []
+  },
+  {
+   "name": "harvest判据一致性",
+   "hit": true,
+   "clean": true,
+   "base": true,
+   "good": true,
+   "missing": []
+  },
+  {
+   "name": "活跃度预测",
+   "hit": true,
+   "clean": true,
+   "base": true,
+   "good": true,
+   "missing": []
+  },
+  {
+   "name": "search三态与写保护",
+   "hit": true,
+   "clean": true,
+   "base": true,
+   "good": true,
+   "missing": []
+  },
+  {
+   "name": "上云date列不被当text写丢",
+   "hit": true,
+   "clean": true,
+   "base": true,
+   "good": true,
+   "missing": []
+  },
+  {
+   "name": "上云upsert与指纹幂等",
+   "hit": true,
+   "clean": true,
+   "base": true,
+   "good": true,
+   "missing": []
+  },
+  {
+   "name": "XML源判活通道",
+   "hit": true,
+   "clean": true,
+   "base": true,
+   "good": true,
+   "missing": []
+  },
+  {
+   "name": "候选评分分层",
+   "hit": true,
+   "clean": true,
+   "base": true,
+   "good": true,
+   "missing": []
+  },
+  {
+   "name": "登记册残留识别",
+   "hit": true,
+   "clean": true,
+   "base": true,
+   "good": true,
+   "missing": []
+  },
+  {
+   "name": "上云回执判真",
+   "hit": true,
+   "clean": true,
+   "base": true,
+   "good": true,
+   "missing": []
+  },
+  {
+   "name": "黑名单三层三铁律",
+   "hit": true,
+   "clean": true,
+   "base": true,
+   "good": true,
+   "missing": []
+  },
+  {
+   "name": "证书类不判死·脏URL不入黑",
+   "hit": true,
+   "clean": true,
+   "base": true,
+   "good": true,
+   "missing": []
+  },
+  {
+   "name": "原生态保留·字段不凭空没",
+   "hit": true,
+   "clean": true,
+   "base": true,
+   "good": true,
+   "missing": []
+  },
+  {
+   "name": "addto段随形态·不落解析器",
+   "hit": true,
+   "clean": true,
+   "base": true,
+   "good": true,
+   "missing": []
+  },
+  {
+   "name": "批量测活认api接口·空址不装网络错",
+   "hit": true,
+   "clean": true,
+   "base": true,
+   "good": true,
+   "missing": []
+  },
+  {
+   "name": "URL解码/代理剥离归一·不丢斜杠",
+   "hit": true,
+   "clean": true,
+   "base": true,
+   "good": true,
+   "missing": []
+  },
+  {
+   "name": "jsm拆包分诊·非外链不冒充候选",
+   "hit": true,
+   "clean": true,
+   "base": true,
+   "good": true,
+   "missing": []
+  },
+  {
+   "name": "网盘取料·整段文案认出id且口令不误认",
+   "hit": true,
+   "clean": true,
+   "base": true,
+   "good": true,
+   "missing": []
+  },
+  {
+   "name": "网盘412归因·机房IP段而非IPv6",
+   "hit": true,
+   "clean": true,
+   "base": true,
+   "good": true,
+   "missing": []
+  },
+  {
+   "name": "MSITEPK2·key自取+坏输入不折叠",
+   "hit": true,
+   "clean": true,
+   "base": true,
+   "good": true,
+   "missing": []
+  },
+  {
+   "name": "取数层镜像回退·慢则换路且只换raw",
+   "hit": true,
+   "clean": true,
+   "base": true,
+   "good": true,
+   "missing": []
+  },
+  {
+   "name": "破甲模块·严格填充/语义判图/形态不串",
+   "hit": true,
+   "clean": true,
+   "base": true,
+   "good": true,
+   "missing": []
+  },
+  {
+   "name": "源验证器·坏源判失败/不可达不冤杀",
+   "hit": true,
+   "clean": true,
+   "base": true,
+   "good": true,
+   "missing": []
+  },
+  {
+   "name": "触发词覆盖·业务语言能匹配上",
+   "hit": true,
+   "clean": true,
+   "base": true,
+   "good": true,
+   "missing": []
+  },
+  {
+   "name": "写源留档·没验过的不许进 sources/ ",
+   "hit": true,
+   "clean": true,
+   "base": true,
+   "good": true,
+   "missing": []
+  },
+  {
+   "name": "record_id三态·读失败≠空表",
+   "hit": true,
+   "clean": true,
+   "base": true,
+   "good": true,
+   "missing": []
+  }
+ ]
+}

@@ -1,0 +1,119 @@
+{
+ "name": "skill-evolution-flow",
+ "version": "1.3.9",
+ "created": "2026-10-15",
+ "source": "规则54四化落地（SKILL.md §1-§6 的机器可读版；S022 盘点：evolution 流程无机器可读版）",
+ "route_decision": {
+  "recurring_scan": "evolve.py recurring --min 3（扫③+④聚类，输出带已固化途径）",
+  "create_new_skill": "evolve.py create <name> --trigger --desc（脚手架+契约验收）",
+  "periodic_cleanup": "evolve.py review + 六步整理（去重/简化/逻辑/合理性/复盘/升级）",
+  "readiness_check": "evolve.py scan（三件套含flow.json就绪度体检）",
+  "lend_before_upgrade": "evolve.py lend <name> --own（规则57：升级前必查可借鉴招式）",
+  "mine_moves": "evolve.py mine [--min 2]（抽跨技能通用招式入库；--dry 只审计）",
+  "review_lend": "evolve.py review-lend（对账升级无对照留痕，规则57）"
+ },
+ "steps": [
+  {
+   "no": 0,
+   "name": "触发判定",
+   "rule": "同类问题≥3次(③+④合计)/累计新增≥5条规则/距上次整理>7天/用户要求——命中即做",
+   "cmd": null,
+   "artifact": null,
+   "action": "新会话开工默认跑一次 recurring（防复发问题重复踩）"
+  },
+  {
+   "no": 1,
+   "name": "扫描聚类",
+   "rule": "recurring 按问题签名聚类；输出3必须带出命中聚类的已固化途径（规则52：复发先查途径，禁止重新试错）",
+   "cmd": "tvbox evolve recurring --min 3",
+   "artifact": "复发候选清单（含途径指引）",
+   "action": "没够格的也留痕：≥2次标「易复发」进④库"
+  },
+  {
+   "no": 2,
+   "name": "候选判定",
+   "rule": "够格(≥3次)才立项；立项=生成独立可升级技能，禁止把一切塞进一个巨型技能",
+   "cmd": "tvbox evolve create <name> --trigger .. --desc ..",
+   "artifact": "技能骨架（SKILL.md+scripts/+CHANGELOG+扩展点）",
+   "action": "触发词必须写进 SKILL.md（让引擎未来能自动识别）"
+  },
+  {
+   "no": 3,
+   "name": "契约验收",
+   "rule": "规则48 两件(version+CHANGELOG)+规则54 第三件(flow.json)：缺一即视为不达标",
+   "cmd": "tvbox evolve scan",
+   "artifact": "就绪度体检报告",
+   "action": "evolve scan 覆盖生态全技能；library 随官方不强制"
+  },
+  {
+   "no": 4,
+   "name": "周期整理",
+   "rule": "六步缺一不可：去重→简化→强化逻辑→增强合理性→复盘→技能升级；规则宁少勿多，每条先问能否并入已有",
+   "cmd": "tvbox evolve review",
+   "artifact": "整理结论（新增/待整理提示）",
+   "action": "历史规则标「已归并」保留原文保可追溯（S007 教训：规则膨胀即归并）"
+  },
+  {
+   "no": 5,
+   "name": "登记落库",
+   "rule": "新技能/版本变动：生态登记库注册或更新version + ③台账记「规则维护」+ ④经验库补「建库建夹」+ evolution_log 留痕",
+   "cmd": "tvbox eco / tvbox evolve note --what ..",
+   "artifact": "生态库记录 + 台账/经验库 + evolution_log.jsonl",
+   "action": "版本提升用 tvbox evolve upgrade <name>；数字变动按规则47刷快照"
+  },
+  {
+   "no": 6,
+   "name": "经验对照（规则57）",
+   "rule": "任何技能升级前跑 lend <name> --own 查可借鉴招式；升级后 mine --skill 回写出处；借鉴/不适用须在 CHANGELOG 留痕",
+   "cmd": "evolve.py lend <name> --own → upgrade → mine --skill <name>",
+   "artifact": "招式库（🥋 通用招式库）+ CHANGELOG 对照留痕",
+   "action": "漏项即遗留（review-lend 报出 → conductor 信号源21 扫成遗留）；软阻断，不阻断主流程"
+  }
+ ],
+ "iron_order": [
+  "触发",
+  "扫描聚类",
+  "候选判定",
+  "契约验收",
+  "经验对照",
+  "周期整理",
+  "登记落库"
+ ],
+ "iron_rules": {
+  "定位": "生态**进化元层**（进化舵）——技能契约验收 / 复发聚类 / 招式库（规则57 方法极）/ 生态就绪度",
+  "守护": {
+   "M-R32": "装健康的哑巴——evolve scan 须区分『契约齐备』与『机器可执行层缺失』（第五维）",
+   "M-R38": "单一事实源——ECO_SKILLS 副本与 evolve 权威发现三方对齐（_all_skills）",
+   "M-R45": "契约≠可执行——scan 第五维检测 scripts/*.py 存在性，标出『契约齐备但无脚本』的停滞技能",
+   "M-R55": "修完度量器必配探针——本技能自身以受控单测守护（4 态单测）",
+   "M-R57": "输出→判定三态——lend 读库失败→『无法判定』不阻断，绝不折叠成『0条待借鉴』",
+   "M-R60": "数据基座读取三态化——mine 落库读失败中止防重复插入；_move_rows_with_id 三态返回",
+   "M-R66": "白名单键用稳定指纹——招式库 upsert 用招式编号作稳定键，防重复行"
+  },
+  "自检": "`evolve scan` 全生态就绪 + `evolve lend/mine/review-lend` 三命令可用 + 4 态受控单测全绿"
+ },
+ "self_check": [
+  "recurring 输出带出了已固化途径（规则52） （M-R54）",
+  "新技能过契约验收：version+CHANGELOG+flow.json 三件套+触发词+扩展点 （M-R45）",
+  "evolve scan 全生态就绪度已知（4/4）",
+  "整理六步真做了，不是只改版本号",
+  "生态登记库 version 与实际一致 （M-R40）",
+  "evolution_log.jsonl 已留痕",
+  "数字变动已刷快照（规则47） （M-R60）",
+  "scan 第五维「机器可执行层」：scripts/*.py 存在性检测，标出「契约齐备但无脚本」的停滞技能（M-R45 机制化）",
+  "升级前跑过 lend <name> --own（规则57）；有适用招式须借鉴或声明不适用，无对照留痕=遗留 （M-R57）",
+  "招式库三态：lend 读库失败→「无法判定」不阻断（M-R60），绝不折叠成「0条待借鉴」",
+  "用户偏好固化路径在位：recurring 输出4 与 standing 命令均读 user_standing_instructions.json（M-R108）",
+  "用户重复≥3次要求已即时登记持久指令档，未只活在上下文（M-R108）",
+  "会话开工首步主动触发生态联动：跑 tvbox brief + 命中技能触发词必调 Skill（M-R108·S156，治 S148 双向盲区）"
+ ],
+ "snapshot_refresh_rule": "纯技能进化（版本/契约/流程）不刷快照（数据计数未变）；涉及③④库写入的复盘须在台账体现",
+ "backlog": [
+  "[已清零 2026-10-15] scan 发现机制已修（生态库登记∪本地自建，S022 实证前缀硬编码漏 legacy-watchdog）+ flow.json 检查列已加",
+  "[清账司派单 2026-11-02] [待办] store 索引目前是本地 index.json，未上云（library）；跨设备共享待接入 ｜ sid=e389e4886e54 ｜ 下一步 tvbox evolve upgrade <技能名>"
+ ],
+ "sop_binding": {
+  "authority": "云 RULES 规则 48/52/54（isuY4U01Me0kUggpMN5RfX）+ 本技能 SKILL.md",
+  "note": "本技能是规则48的落地引擎；四化(规则54)的三件套检查由 evolve scan 执行"
+ }
+}

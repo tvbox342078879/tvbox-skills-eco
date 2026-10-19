@@ -1,0 +1,104 @@
+{
+ "name": "tvbox-blacklist-flow",
+ "version": "1.1.13",
+ "created": "2026-10-15",
+ "source": "规则54四化落地（SKILL.md §1-§5 的机器可读版；S022 盘点：blacklist 流程只在 SKILL.md 文字里）",
+ "route_decision": {
+  "new_candidates_batch": "blk.py guard --candidates x.json（批量拦截，L7 第一道闸）",
+  "single_check": "blk.py check <api接口>（退出码0=放行1=拦截）",
+  "probe_result_feedback": "blk.py mark（从实测结果提取失效host/单条写失效库）",
+  "periodic_review": "blk.py review（复测整域host，识别复活）"
+ },
+ "steps": [
+  {
+   "no": 0,
+   "name": "触发判定",
+   "rule": "触发词命中：失效源/拉黑/拦截/host屏蔽/失效库；或新源入库前的必经拦截",
+   "cmd": null,
+   "artifact": null,
+   "action": "本技能是 hub ingest 统一入库管线的第一道闸，主动触达不是等人想起"
+  },
+  {
+   "no": 1,
+   "name": "候选接入",
+   "rule": "候选来源：实测结果(probe_result.json)/待入库候选清单/用户指定host",
+   "cmd": "tvbox block guard --candidates <file>",
+   "artifact": "放行清单 + 拦截清单两份",
+   "action": "guard 拆两份：拦截的直接归档失效库，放行的交下游续走"
+  },
+  {
+   "no": 2,
+   "name": "拦截判定",
+   "rule": "三档拉黑：整域(host全灭)/单条(部分失效，保守)/单条(host为空按api精确)；命中→失效库，不进源总库",
+   "cmd": "tvbox block check <api>",
+   "artifact": "拦截记录（拦截次数+1，实测反馈闭环）",
+   "action": "双保险：本步显式拦一次；走 ingest 的候选其管线内部 blk guard 再拦一次（防御纵深）"
+  },
+  {
+   "no": 3,
+   "name": "放行分流",
+   "rule": "放行部分交 hub ingest 管线续走：分类→实测→入源总库→snapshot",
+   "cmd": "tvbox ingest --candidates <放行清单>",
+   "artifact": "源总库记录",
+   "action": "拦截与放行不许混流；拦截部分只进失效库 hGwE41OpJDOR8CW0sLUwRx（S150 搬库·S156 补改说明）"
+  },
+  {
+   "no": 4,
+   "name": "复测复查",
+   "rule": "对整域拉黑host重新探测，疑似复活标「已复活」并评估移除",
+   "cmd": "tvbox block review",
+   "artifact": "复活候选清单",
+   "action": "复活自动回流为扩展点：复测200且内容正常→从失效库移除并可选回源总库"
+  },
+  {
+   "no": 5,
+   "name": "统计反馈",
+   "rule": "拦截计数是实测反馈闭环：每次命中+1，统计指导拉黑策略",
+   "cmd": "tvbox block stats",
+   "artifact": "失效库统计",
+   "action": "拦截命中后刷新快照（规则47）——当前为手动，自动刷新为扩展点"
+  }
+ ],
+ "iron_order": [
+  "触发",
+  "候选接入",
+  "拦截判定",
+  "放行分流",
+  "复测复查",
+  "统计反馈"
+ ],
+ "iron_rules": {
+  "定位": "生态**质检闸**（失效源治理）——host 拦截第一道闸，命中者进失效库而非源总库",
+  "守护": {
+   "M-R32": "装健康的哑巴——拦截与放行两份清单未混流；复测/复活结论显式",
+   "M-R55": "修完度量器必配探针——受控单测（合成拉黑→guard拦截→快照含目标→check命中→读回）",
+   "M-R57": "输出→判定三态——失效原因枚举化（REASON_FULL/PART/PARSE/REVIVE），新写入用枚举",
+   "M-R60": "数据基座读取三态化——_dead_id/_update_dead 读回验证，防伪成功",
+   "T-I": "[招式:skill_local] 写路径写后回读验证——拦截次数+1 后须读回确认（写了≠写成了）",
+   "P-R1": "合格线路源判据=真实可用——review --deep 联合复测（host活≠api活），样例 api 二次验证",
+   "L024": "失效登记 host 不带端口 → guard 永不命中",
+   "L026": "代理域名被整域拉黑，误伤 28 条正常源"
+  }
+ },
+ "self_check": [
+  "拦截发生在去重/入库之前（L7 第一道闸，顺序不可反） （M-R32）",
+  "拦截与放行两份清单未混流 （M-R32）",
+  "拦截次数已+1（反馈闭环） （T-I）",
+  "拦截部分只进失效库未污染源总库",
+  "复测复活已标记「已复活」 （M-R57）",
+  "收工 tvbox snapshot 已刷新（规则47）",
+  "guard 拦截后自动快照归档（block_archive/按日JSON，防/tmp易失） （M-R60）",
+  "review --deep 联合复测（host活≠api活，样例api二次验证） （P-R1）",
+  "review --apply 复活自动回流（复测结果=已复活枚举+回写路径端到端验证） （T-I）",
+  "失效原因枚举化（REASON_FULL/PART/PARSE/REVIVE，新写入用枚举，存量不回改） （M-R57）",
+  "受控单测：合成拉黑→guard拦截→快照含目标→check命中→_dead_id+_update_dead读回 （M-R55/T-I）"
+ ],
+ "snapshot_refresh_rule": "凡拦截归档/复活标注等失效库写操作，收工必须 tvbox snapshot",
+ "backlog": [
+  "[已清零 S046] 四项持续演进兑现：①guard 拦截自动快照归档 ②review --deep 联合复测 ③失效原因枚举化 ④review --apply 复活自动回流（回流后人工验源确认才出清）"
+ ],
+ "sop_binding": {
+  "authority": "本技能 SKILL.md §1-§5（SSOT）+ blk.py",
+  "note": "上游=实测结果(probe_src.py)与候选清单(hub contracts.json schema)；下游=hub ingest 管线与唯一权威快照(规则47)"
+ }
+}

@@ -1,0 +1,1257 @@
+[
+  {
+    "ts": "2026-10-17T07:25:32",
+    "n": 1,
+    "items": [
+      {
+        "api接口": "https://dead-host-test.invalid/api.txt",
+        "名称": "合成测试-应拦截",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "dead-host-test.invalid"
+      }
+    ]
+  },
+  {
+    "ts": "2026-10-17T07:27:27",
+    "n": 129,
+    "items": [
+      {
+        "api接口": "https://pan.szfx.top/down.php/21da377c5e328d67e943a2acc1947ff3.py",
+        "名称": "💓‍4k-av",
+        "分组类目": "",
+        "命中": "单条",
+        "依据": "https://pan.szfx.top/down.php/21da377c5e328d67e943a2acc1947ff3.py"
+      },
+      {
+        "api接口": "https://raw.githubusercontent.com/Kimentanm/aptv/master/m3u/iptv.m3u",
+        "名称": "Kimentanm",
+        "分组类目": "",
+        "命中": "单条",
+        "依据": "https://raw.githubusercontent.com/Kimentanm/aptv/master/m3u/iptv.m3u"
+      },
+      {
+        "api接口": "https://la1.wqwqwq.sbs/tv.m3u",
+        "名称": "wqwqwq",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "la1.wqwqwq.sbs"
+      },
+      {
+        "api接口": "https://https://raw.githubusercontent.com/YanG-1989/m3u/main/Gather.m3u",
+        "名称": "YanG",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "https:"
+      },
+      {
+        "api接口": "https://raw.githubusercontent.com/gambiarras/legal-iptv/refs/heads/main/playlist.m3u",
+        "名称": "gambiarras",
+        "分组类目": "",
+        "命中": "单条",
+        "依据": "https://raw.githubusercontent.com/gambiarras/legal-iptv/refs/heads/main/playlist.m3u"
+      },
+      {
+        "api接口": "https://m3u.002397.xyz/all.m3u",
+        "名称": "epg.pw All",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "m3u.002397.xyz"
+      },
+      {
+        "api接口": "https://m3u.002397.xyz/o_all.m3u",
+        "名称": "iptv.org All",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "m3u.002397.xyz"
+      },
+      {
+        "api接口": "https://jx.2s0.cn/player/?url=",
+        "名称": "极速",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "jx.2s0.cn"
+      },
+      {
+        "api接口": "https://super.playr.top/?url=",
+        "名称": "Super",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "super.playr.top"
+      },
+      {
+        "api接口": "https://mfjx.iwsyy.xyz/?url=",
+        "名称": "无上",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "mfjx.iwsyy.xyz"
+      },
+      {
+        "api接口": "https://zy.qiaoji8.com/xiafan.php?url=",
+        "名称": "巧计",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "zy.qiaoji8.com"
+      },
+      {
+        "api接口": "http://119.91.123.253:2345/Api/yun.php?url=",
+        "名称": "爱心",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "119.91.123.253:2345"
+      },
+      {
+        "api接口": "https://p10.zijincao.cc/?url=",
+        "名称": "观山",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "p10.zijincao.cc"
+      },
+      {
+        "api接口": "https://jx.nnxv.cn/tv.php?url=",
+        "名称": "七哥",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "jx.nnxv.cn"
+      },
+      {
+        "api接口": "https://www.huaqi.live/?url=",
+        "名称": "777",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "www.huaqi.live"
+      },
+      {
+        "api接口": "https://jx.jsonplayer.com/player/?url=",
+        "名称": "jsonplayer",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "jx.jsonplayer.com"
+      },
+      {
+        "api接口": "https://okjx.cc/?url=",
+        "名称": "OKJX",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "okjx.cc"
+      },
+      {
+        "api接口": "http://jx.abplayer.top/?url=",
+        "名称": "AB",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "jx.abplayer.top"
+      },
+      {
+        "api接口": "https://cj.rycjapi.com/api.php/provide/vod",
+        "名称": "🍀如意资源",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "cj.rycjapi.com"
+      },
+      {
+        "api接口": "http://ffzy1.tv/api.php/provide/vod",
+        "名称": "🍀非凡线路1",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "ffzy1.tv"
+      },
+      {
+        "api接口": "https://app.bfzyapi.com/api.php/provide/vod",
+        "名称": "🍀暴风APP",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "app.bfzyapi.com"
+      },
+      {
+        "api接口": "https://collect.wolongzy.cc/api.php/provide/vod",
+        "名称": "🍀卧龙CC",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "collect.wolongzy.cc"
+      },
+      {
+        "api接口": "https://m3u8.apiyhzy.com/api.php/provide/vod",
+        "名称": "🍀樱花资源",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "m3u8.apiyhzy.com"
+      },
+      {
+        "api接口": "https://api.yparse.com/api/json",
+        "名称": "🍀步步高资源",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "api.yparse.com"
+      },
+      {
+        "api接口": "https://jx.zui.cm/?url=",
+        "名称": "-zui-",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "jx.zui.cm"
+      },
+      {
+        "api接口": "https://caiji.dbzy.tv/api.php/provide/vod",
+        "名称": "❁直链067℗豆瓣❁",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "caiji.dbzy.tv"
+      },
+      {
+        "api接口": "https://m3u8.apiyhzy.com/api.php/provide/vod/at/xml",
+        "名称": "❁直链070℗樱花❁",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "m3u8.apiyhzy.com"
+      },
+      {
+        "api接口": "https://ikunzyapi.com/api.php/provide/vod",
+        "名称": "❁直链072℗爱坤❁",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "ikunzyapi.com"
+      },
+      {
+        "api接口": "https://api.wwzy.tv/api.php/provide/vod",
+        "名称": "❁直链073℗旺旺❁",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "api.wwzy.tv"
+      },
+      {
+        "api接口": "https://pg.fenwe078.cf/api.php/provide/vod",
+        "名称": "❁直链074℗四圈❁",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "pg.fenwe078.cf"
+      },
+      {
+        "api接口": "http://jiduo.3116598.xyz/PHP/pkty.php",
+        "名称": "❁体育002℗酷克❁",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "jiduo.3116598.xyz"
+      },
+      {
+        "api接口": "https://ghfast.top/https://raw.githubusercontent.com/GodLike631/test/refs/heads/main/datas/%E8%B6%85%E7%A8%B3%E5%AE%9A%E6%B5%81%E7%95%85.txt",
+        "名称": "❁超稳定流畅｜Tg：@huliys9",
+        "分组类目": "",
+        "命中": "单条",
+        "依据": "https://ghfast.top/https://raw.githubusercontent.com/GodLike631/test/refs/heads/main/datas/%E8%B6%85%E7%A8%B3%E5%AE%9A%E6%B5%81%E7%95%85.txt"
+      },
+      {
+        "api接口": "https://d.kstore.dev/download/9565/小新TV.txt",
+        "名称": "小新TV",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "d.kstore.dev"
+      },
+      {
+        "api接口": "https://gh-proxy.org/https://raw.githubusercontent.com/Jsnzkpg/Jsnzkpg/Jsnzkpg/Jsnzkpg1.m3u",
+        "名称": "裤TV",
+        "分组类目": "",
+        "命中": "单条",
+        "依据": "https://gh-proxy.org/https://raw.githubusercontent.com/Jsnzkpg/Jsnzkpg/Jsnzkpg/Jsnzkpg1.m3u"
+      },
+      {
+        "api接口": "https://tv.tmxk.kdns.fr/ex64181y",
+        "名称": "裤TV2",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "tv.tmxk.kdns.fr"
+      },
+      {
+        "api接口": "https://www.985pan.com/down.php/bf5e9607ff407fcdd71f63928ea5bc79.txt",
+        "名称": "飞扬源",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "www.985pan.com"
+      },
+      {
+        "api接口": "http://tv123.vvvv.ee/tv.m3u",
+        "名称": "港奥台国际",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "tv123.vvvv.ee"
+      },
+      {
+        "api接口": "http://122.228.84.103:7777/api/?key=4Dk5tdayvY6NZufEMG&url=",
+        "名称": "王",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "122.228.84.103:7777"
+      },
+      {
+        "api接口": "http://110.42.7.182:880/api/?key=7e84f07dc78fbb3406d64a1ab7d966b3&url=",
+        "名称": "二",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "110.42.7.182:880"
+      },
+      {
+        "api接口": "http://43.136.176.188:91/api/?key=4ef232e96172b0bda78d393c695fe7c4&url=",
+        "名称": "小",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "43.136.176.188:91"
+      },
+      {
+        "api接口": "http://pan.qiaoji8.com/tvbox/neibu.php?url=",
+        "名称": "帅",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "pan.qiaoji8.com"
+      },
+      {
+        "api接口": "https://ghfast.top/https://raw.githubusercontent.com/xuge188/TVBOX/main/py/%E6%B5%AA%E9%85%B7.py",
+        "名称": "🌻浪酷🌻",
+        "分组类目": "",
+        "命中": "单条",
+        "依据": "https://ghfast.top/https://raw.githubusercontent.com/xuge188/TVBOX/main/py/%E6%B5%AA%E9%85%B7.py"
+      },
+      {
+        "api接口": "http://rihou.cc:88/js/drpy2.min.js",
+        "名称": "🌻腾腾🌻",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "rihou.cc:88"
+      },
+      {
+        "api接口": "https://api.yzzy-api.com/inc/apijson.php",
+        "名称": "🌻优质资源🌻",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "api.yzzy-api.com"
+      },
+      {
+        "api接口": "https://pz.168188.dpdns.org/?url=https://cj.rycjapi.com/api.php/provide/vod",
+        "名称": "🌻如意资源🌻",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "pz.168188.dpdns.org"
+      },
+      {
+        "api接口": "https://pz.168188.dpdns.org/?url=https://lovedan.net/api.php/provide/vod",
+        "名称": "🌻艾旦影视🌻",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "pz.168188.dpdns.org"
+      },
+      {
+        "api接口": "https://api.wwzy.tv/api.php/provide/vod/?ac=list",
+        "名称": "🌻旺旺短剧🌻",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "api.wwzy.tv"
+      },
+      {
+        "api接口": "https://zy.jinchancaiji.com/api.php/provide/vod",
+        "名称": "🌻金蝉影视🌻",
+        "分组类目": "",
+        "命中": "单条",
+        "依据": "https://zy.jinchancaiji.com/api.php/provide/vod"
+      },
+      {
+        "api接口": "https://api.1080zyku.com/inc/ldg_api.php",
+        "名称": "🌻飞龙优质秒播🌻",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "api.1080zyku.com"
+      },
+      {
+        "api接口": "http://tvdb.top/api.php/provide/vod/",
+        "名称": "🌻熊猫影视🌻",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "tvdb.top"
+      },
+      {
+        "api接口": "https://caiji.kczyapi.com/api.php/provide/vod/",
+        "名称": "🌻快车采集🌻",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "caiji.kczyapi.com"
+      },
+      {
+        "api接口": "http://ffzy1.tv/api.php/provide/vod/",
+        "名称": "🌻非凡采集🌻",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "ffzy1.tv"
+      },
+      {
+        "api接口": "https://pan.vma.cc/pan/down.php/ec67b9045d393737f073d2c9365533f0.js",
+        "名称": "A1┃动漫",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "pan.vma.cc"
+      },
+      {
+        "api接口": "https://yimi-tv.zone.id/js/drpy2.min.js",
+        "名称": "爱动漫┃动漫",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "yimi-tv.zone.id"
+      },
+      {
+        "api接口": "https://xn--fjq53n.xyz/Ting/yinyue/网易云音乐1.py",
+        "名称": "🦄网易云1｜音乐",
+        "分组类目": "",
+        "命中": "单条",
+        "依据": "https://xn--fjq53n.xyz/Ting/yinyue/网易云音乐1.py"
+      },
+      {
+        "api接口": "https://xn--fjq53n.xyz/Ting/yinyue/枫叶音乐.py",
+        "名称": "🦄枫叶｜音乐",
+        "分组类目": "",
+        "命中": "单条",
+        "依据": "https://xn--fjq53n.xyz/Ting/yinyue/枫叶音乐.py"
+      },
+      {
+        "api接口": "https://git.yylx.win/raw.githubusercontent.com/PizazzGY/NewTVBox/main/other/py/爱听音乐.py",
+        "名称": "爱听┃音乐",
+        "分组类目": "",
+        "命中": "单条",
+        "依据": "https://git.yylx.win/raw.githubusercontent.com/PizazzGY/NewTVBox/main/other/py/爱听音乐.py"
+      },
+      {
+        "api接口": "https://git.yylx.win/raw.githubusercontent.com/PizazzGY/NewTVBox/main/webcast/py/WLZB.py",
+        "名称": "网络┃直播",
+        "分组类目": "",
+        "命中": "单条",
+        "依据": "https://git.yylx.win/raw.githubusercontent.com/PizazzGY/NewTVBox/main/webcast/py/WLZB.py"
+      },
+      {
+        "api接口": "https://git.yylx.win/raw.githubusercontent.com/PizazzGY/NewTVBox/main/webcast/py/BLZB.py",
+        "名称": "哔哩┃直播",
+        "分组类目": "",
+        "命中": "单条",
+        "依据": "https://git.yylx.win/raw.githubusercontent.com/PizazzGY/NewTVBox/main/webcast/py/BLZB.py"
+      },
+      {
+        "api接口": "https://freetv.fun/test_channels_original.txt",
+        "名称": "全世界",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "freetv.fun"
+      },
+      {
+        "api接口": "https://pl.a6club.com/player/analysis.php?v=",
+        "名称": "A6",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "pl.a6club.com"
+      },
+      {
+        "api接口": "https://mzm3u8jx.com/aliplayer.html?url=",
+        "名称": "mzm3u8",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "mzm3u8jx.com"
+      },
+      {
+        "api接口": "https://zy.qiaoji8.com/gouzi.php?url=94b07e0b2c0e8244&url=",
+        "名称": "推荐",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "zy.qiaoji8.com"
+      },
+      {
+        "api接口": "https://150.138.78.37:4399/api?key=94b07e0b2c0e8244&url=",
+        "名称": "臻享",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "150.138.78.37:4399"
+      },
+      {
+        "api接口": "http://110.42.41.52:8989/api/index/store?id=2&appid=10001",
+        "名称": "壹米",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "110.42.41.52:8989"
+      },
+      {
+        "api接口": "http://1.94.221.189:88/algorithm.php?url=",
+        "名称": "优选",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "1.94.221.189:88"
+      },
+      {
+        "api接口": "http://122.228.84.103:7777/api/?key=rSqUtltpbfk1xsQFjz&url=",
+        "名称": "开心",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "122.228.84.103:7777"
+      },
+      {
+        "api接口": "https://svip.cygc.xyz/api/?key=cygctest&url=",
+        "名称": "上限万",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "svip.cygc.xyz"
+      },
+      {
+        "api接口": "https://apilj.com/api.php/provide/vod/",
+        "名称": "☀辣椒👍资源🎦",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "apilj.com"
+      },
+      {
+        "api接口": "https://cnb.cool/ms511/rs18/-/git/raw/main/18",
+        "名称": "【本地CNB定制】",
+        "分组类目": "",
+        "命中": "单条",
+        "依据": "https://cnb.cool/ms511/rs18/-/git/raw/main/18"
+      },
+      {
+        "api接口": "http://x315601.serv00.net/10.php",
+        "名称": "x315601",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "x315601.serv00.net"
+      },
+      {
+        "api接口": "http://bwind.fr.to/m3u/crzb.txt",
+        "名称": "crzb",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "bwind.fr.to"
+      },
+      {
+        "api接口": "https://ikunzyapi.com/api.php/provide/vod/from/ikm3u8/",
+        "名称": "💥丨爱看2k丨微广",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "ikunzyapi.com"
+      },
+      {
+        "api接口": "https://py.doube.eu.org/spider?site=MrJav",
+        "名称": "MRJav",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "py.doube.eu.org"
+      },
+      {
+        "api接口": "https://py.doube.eu.org/spider?site=Miss",
+        "名称": "MissAV",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "py.doube.eu.org"
+      },
+      {
+        "api接口": "https://py.doube.eu.org/spider?site=AiDou",
+        "名称": "AiDou",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "py.doube.eu.org"
+      },
+      {
+        "api接口": "https://py.doube.eu.org/spider?site=BadNews",
+        "名称": "BadNews🔞",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "py.doube.eu.org"
+      },
+      {
+        "api接口": "https://91md.me/api.php/provide/vod/",
+        "名称": "91md",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "91md.me"
+      },
+      {
+        "api接口": "https://api.sexnguon.com/api.php/provide/vod/",
+        "名称": "松视3",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "api.sexnguon.com"
+      },
+      {
+        "api接口": "http://api.sexnguon.com/api.php/provide/vod/",
+        "名称": "🔞Sexnguon",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "api.sexnguon.com"
+      },
+      {
+        "api接口": "https://ghfast.top/https://raw.githubusercontent.com/yuanwangokk-1/TV-BOX/main/纯福利/live/mmhy.zzong6599.workers.dev",
+        "名称": "全部",
+        "分组类目": "",
+        "命中": "单条",
+        "依据": "https://ghfast.top/https://raw.githubusercontent.com/yuanwangokk-1/TV-BOX/main/纯福利/live/mmhy.zzong6599.workers.dev"
+      },
+      {
+        "api接口": "https://ghfast.top/https://raw.githubusercontent.com/yuanwangokk-1/TV-BOX/main/纯福利/live/live.js",
+        "名称": "直播",
+        "分组类目": "",
+        "命中": "单条",
+        "依据": "https://ghfast.top/https://raw.githubusercontent.com/yuanwangokk-1/TV-BOX/main/纯福利/live/live.js"
+      },
+      {
+        "api接口": "http://112.74.124.75:8899/jiexi/api.php?url=",
+        "名称": "4K解析",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "112.74.124.75:8899"
+      },
+      {
+        "api接口": "https://jf.lemiaoyun.cn/api/?key=86950663b3198d25885fdf61501a3366&url=",
+        "名称": "1080解析",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "jf.lemiaoyun.cn"
+      },
+      {
+        "api接口": "http://xiutan.shiyifacai.com/json/qingfeng.php?url=",
+        "名称": "赛文",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "xiutan.shiyifacai.com"
+      },
+      {
+        "api接口": "https://t1.qlplayer.cyou/player/analysis.php?v=",
+        "名称": "西瓜1",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "t1.qlplayer.cyou"
+      },
+      {
+        "api接口": "https://t1.qlplayer.cyou/player/?url=",
+        "名称": "西瓜2",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "t1.qlplayer.cyou"
+      },
+      {
+        "api接口": "https://ys.zf520.cn/addons/dp/player/index.php?key=0&url=",
+        "名称": "初恋1",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "ys.zf520.cn"
+      },
+      {
+        "api接口": "https://ys.zf520.cn/addons/dp/player/dp.php?key=0&from=&id=&api=&url=",
+        "名称": "初恋2",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "ys.zf520.cn"
+      },
+      {
+        "api接口": "https://jx.777jiexi.com/player/?url=",
+        "名称": "嗅探2",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "jx.777jiexi.com"
+      },
+      {
+        "api接口": "http://61.147.93.21:8090/index.php?url=",
+        "名称": "观音解析",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "61.147.93.21:8090"
+      },
+      {
+        "api接口": "http://110.42.2.247:880/analysis/json/?uid=2449&my=acfgikquvzFGJRW459&url=",
+        "名称": "茶杯解析",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "110.42.2.247:880"
+      },
+      {
+        "api接口": "http://119.91.123.253:1234/Api/cs.php?url=2449&my=acfgikquvzFGJRW459&url=",
+        "名称": "盖碗解析",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "119.91.123.253:1234"
+      },
+      {
+        "api接口": "https://jx.bozrc.com:4433/player/?url=",
+        "名称": "白茶嗅探",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "jx.bozrc.com:4433"
+      },
+      {
+        "api接口": "https://jx.ppjbk.cn/?url=",
+        "名称": "岩茶嗅探",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "jx.ppjbk.cn"
+      },
+      {
+        "api接口": "https://jx.4kdv.com/?url=",
+        "名称": "红茶嗅探",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "jx.4kdv.com"
+      },
+      {
+        "api接口": "https://www.xiangjiaozyw.com/api.php/provide/vod/?ac=list",
+        "名称": "☀香蕉👍资源🎦",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "www.xiangjiaozyw.com"
+      },
+      {
+        "api接口": "https://xzybb1.com/api.php/provide/vod/?ac=list",
+        "名称": "☀杏资👍资源🎦",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "xzybb1.com"
+      },
+      {
+        "api接口": "https://naixxzy.com/api.php/provide/vod/?ac=list",
+        "名称": "☀奶香香👍资源🎦",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "naixxzy.com"
+      },
+      {
+        "api接口": "https://api.bwzyz.com/api.php/provide/vod/at/json/",
+        "名称": "☀百万👍资源🎦",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "api.bwzyz.com"
+      },
+      {
+        "api接口": "https://www.xxibaozyw.com/api.php/provide/vod/",
+        "名称": "☀X细胞👍资源",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "www.xxibaozyw.com"
+      },
+      {
+        "api接口": "https://aosikazy.com/api.php/provide/vod/",
+        "名称": "☀奥斯卡👍🎦资源",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "aosikazy.com"
+      },
+      {
+        "api接口": "http://lbapiby.com/api.php/provide/vod/at/xml",
+        "名称": "🔞AIvin",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "lbapiby.com"
+      },
+      {
+        "api接口": "https:www.kxgav.com/api/xml.php",
+        "名称": "🈲白嫖资源",
+        "分组类目": "",
+        "命中": "单条",
+        "依据": "https:www.kxgav.com/api/xml.php"
+      },
+      {
+        "api接口": "https:www.gdlsp.com/api/xml.php",
+        "名称": "🈲香奶儿资源",
+        "分组类目": "",
+        "命中": "单条",
+        "依据": "https:www.gdlsp.com/api/xml.php"
+      },
+      {
+        "api接口": "https:www.msnii.com/api/xml.php",
+        "名称": "🈲美少女资源",
+        "分组类目": "",
+        "命中": "单条",
+        "依据": "https:www.msnii.com/api/xml.php"
+      },
+      {
+        "api接口": "https:www.pgxdy.com/api/xml.php",
+        "名称": "🈲黄AV资源",
+        "分组类目": "",
+        "命中": "单条",
+        "依据": "https:www.pgxdy.com/api/xml.php"
+      },
+      {
+        "api接口": "https:www.xrbsp.com/api/xml.php",
+        "名称": "🈲钦水机资源",
+        "分组类目": "",
+        "命中": "单条",
+        "依据": "https:www.xrbsp.com/api/xml.php"
+      },
+      {
+        "api接口": "https:ckzy.me/api.php/provide/vod/at/xml/",
+        "名称": "🈲CK资源2",
+        "分组类目": "",
+        "命中": "单条",
+        "依据": "https:ckzy.me/api.php/provide/vod/at/xml/"
+      },
+      {
+        "api接口": "https:ckzy.me/api.php/provide/vod/",
+        "名称": "🈲CK资源3",
+        "分组类目": "",
+        "命中": "单条",
+        "依据": "https:ckzy.me/api.php/provide/vod/"
+      },
+      {
+        "api接口": "https:dadiapi.com/api.php/",
+        "名称": "🈲大地资源",
+        "分组类目": "",
+        "命中": "单条",
+        "依据": "https:dadiapi.com/api.php/"
+      },
+      {
+        "api接口": "https:dadiapi.com/api.php/provide/vod/at/xml",
+        "名称": "🈲大地资源2",
+        "分组类目": "",
+        "命中": "单条",
+        "依据": "https:dadiapi.com/api.php/provide/vod/at/xml"
+      },
+      {
+        "api接口": "https:dadiapi.com/apple_m3u8.php",
+        "名称": "🈲大地资源3",
+        "分组类目": "",
+        "命中": "单条",
+        "依据": "https:dadiapi.com/apple_m3u8.php"
+      },
+      {
+        "api接口": "http:fhapi9.com/api.php/provide/vod/",
+        "名称": "🈲番号资源1",
+        "分组类目": "",
+        "命中": "单条",
+        "依据": "http:fhapi9.com/api.php/provide/vod/"
+      },
+      {
+        "api接口": "http:fhapi9.com/api.php/provide/vod/at/xml/",
+        "名称": "🈲番号资源2",
+        "分组类目": "",
+        "命中": "单条",
+        "依据": "http:fhapi9.com/api.php/provide/vod/at/xml/"
+      },
+      {
+        "api接口": "http:fhapi9.com/api.php/provide/vod/at/json",
+        "名称": "🈲番号资源3",
+        "分组类目": "",
+        "命中": "单条",
+        "依据": "http:fhapi9.com/api.php/provide/vod/at/json"
+      },
+      {
+        "api接口": "http:fhapi9.com/api.php/provide/vod/?ac=list",
+        "名称": "🈲番号资源4",
+        "分组类目": "",
+        "命中": "单条",
+        "依据": "http:fhapi9.com/api.php/provide/vod/?ac=list"
+      },
+      {
+        "api接口": "http://lbapiby.com/api.php/provide/vod/",
+        "名称": "🈲乐播资源1",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "lbapiby.com"
+      },
+      {
+        "api接口": "http://lbapiby.com/api.php/provide/vod/?ac=list",
+        "名称": "🈲乐播资源2",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "lbapiby.com"
+      },
+      {
+        "api接口": "https:lbapi9.com/api.php/provide/vod/at/xml",
+        "名称": "🈲乐播资源3",
+        "分组类目": "",
+        "命中": "单条",
+        "依据": "https:lbapi9.com/api.php/provide/vod/at/xml"
+      },
+      {
+        "api接口": "https:lbapi9.com/api.php/provide/vod/at/json/",
+        "名称": "🈲乐播资源4",
+        "分组类目": "",
+        "命中": "单条",
+        "依据": "https:lbapi9.com/api.php/provide/vod/at/json/"
+      },
+      {
+        "api接口": "https://fastgit.cc/https://raw.githubusercontent.com/develop202/migu_video/refs/heads/main/interface.txt",
+        "名称": "migu(优)",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "fastgit.cc"
+      },
+      {
+        "api接口": "https://migu.heropx.dpdns.org/",
+        "名称": "migu",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "migu.heropx.dpdns.org"
+      },
+      {
+        "api接口": "https://im5k.fun/vip.m3u",
+        "名称": "iptv(简)",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "im5k.fun"
+      },
+      {
+        "api接口": "https://fastgit.cc/https://raw.githubusercontent.com/iTCoffe/Collect-iTV/main/MiGu.m3u",
+        "名称": "migu720",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "fastgit.cc"
+      },
+      {
+        "api接口": "https://fastgit.cc/https://raw.githubusercontent.com/iTCoffe/Collect-iTV/main/Internet_iTV.m3u",
+        "名称": "iTV",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "fastgit.cc"
+      },
+      {
+        "api接口": "http://rihou.cc:555/gggg.nzk",
+        "名称": "D佬直播",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "rihou.cc:555"
+      },
+      {
+        "api接口": "https://live.fanmingming.cn/tv/m3u/ipv6.m3u",
+        "名称": "范明明(IPV6)",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "live.fanmingming.cn"
+      },
+      {
+        "api接口": "https://jx.zhanlangbu.com/?url=",
+        "名称": "线路8",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "jx.zhanlangbu.com"
+      }
+    ]
+  },
+  {
+    "ts": "2026-10-17T07:28:08",
+    "n": 22,
+    "items": [
+      {
+        "api接口": "https://ryzy.tv/api.php/provide/vod/from/rym3u8/",
+        "名称": "❁直链049℗如意❁",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "ryzy.tv"
+      },
+      {
+        "api接口": "https://m3u8.apiyhzy.com/api.php/provide/vod/at/xml/",
+        "名称": "❁直链157℗樱花(备)❁",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "m3u8.apiyhzy.com"
+      },
+      {
+        "api接口": "https://cj.rycjapi.com/api.php/provide/vod/?ac=list",
+        "名称": "❁直链164℗如意资源刺桐❁",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "cj.rycjapi.com"
+      },
+      {
+        "api接口": "https://caiji.kczyapi.com/api.php/provide/vod/from/kcm3u8/",
+        "名称": "❁直链166℗快车资源刺桐❁",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "caiji.kczyapi.com"
+      },
+      {
+        "api接口": "https://ryzy.tv/api.php/provide/vod/from/rym3u8/",
+        "名称": "❁直链179℗如意资源❁",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "ryzy.tv"
+      },
+      {
+        "api接口": "https://taopianapi.com/home/cjapi/vod/",
+        "名称": "❁直链188℗淘片资源❁",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "taopianapi.com"
+      },
+      {
+        "api接口": "https://ikunzyapi.com/api.php/provide/vod/from/ikm3u8/",
+        "名称": "❁直链190℗资源(备2)❁",
+        "分组类目": "",
+        "命中": "单条",
+        "依据": "https://ikunzyapi.com/api.php/provide/vod/from/ikm3u8/"
+      },
+      {
+        "api接口": "https://m3u8.apiyhzy.com/api.php/provide/vod/from/yhm3u8/",
+        "名称": "❁直链191℗樱花资源❁",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "m3u8.apiyhzy.com"
+      },
+      {
+        "api接口": "http://zy.jinchancaiji.com/api.php/provide/vod",
+        "名称": "❁直链194℗金蝉聚合❁",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "zy.jinchancaiji.com"
+      },
+      {
+        "api接口": "https://api.1080zyku.com/inc/api_mac10.php?ac=list",
+        "名称": "❁直链196℗优质❁",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "api.1080zyku.com"
+      },
+      {
+        "api接口": "https://ikunzyapi.com/api.php/provide/vod/from/ikm3u8/at/json",
+        "名称": "❁直链221℗ikun采集(备)❁",
+        "分组类目": "",
+        "命中": "单条",
+        "依据": "https://ikunzyapi.com/api.php/provide/vod/from/ikm3u8/at/json"
+      },
+      {
+        "api接口": "https://gh-proxy.com/https://raw.githubusercontent.com/ediart/tvbox/refs/heads/main/lz/py/采集合集.py",
+        "名称": "❁直链245℗公众号知源峰度❁",
+        "分组类目": "",
+        "命中": "单条",
+        "依据": "https://gh-proxy.com/https://raw.githubusercontent.com/ediart/tvbox/refs/heads/main/lz/py/采集合集.py"
+      },
+      {
+        "api接口": "https://api.wwzy.tv/api.php/provide/vod/?ac=list",
+        "名称": "❁直链264℗旺旺❁",
+        "分组类目": "",
+        "命中": "单条",
+        "依据": "https://api.wwzy.tv/api.php/provide/vod/?ac=list"
+      },
+      {
+        "api接口": "https://api.yzzy-api.com/inc/apijson.php?ac=list",
+        "名称": "❁直链265℗优质❁",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "api.yzzy-api.com"
+      },
+      {
+        "api接口": "https://collect.wolongzy.cc/api.php/provide/vod/?ac=list",
+        "名称": "❁直链266℗卧龙❁",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "collect.wolongzy.cc"
+      },
+      {
+        "api接口": "https://taopianapi.com/cjapi/sda/vod/json",
+        "名称": "❁直链267℗淘片❁",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "taopianapi.com"
+      },
+      {
+        "api接口": "https://ikunzyapi.com/api.php/provide/vod/at/json",
+        "名称": "❁直链268℗ikun❁",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "ikunzyapi.com"
+      },
+      {
+        "api接口": "https://caiji.kczyapi.com/api.php/provide/vod/?ac=list",
+        "名称": "❁直链271℗快车❁",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "caiji.kczyapi.com"
+      },
+      {
+        "api接口": "https://ikunzyapi.com/api.php/provide/vod/at/xml",
+        "名称": "❁直链275℗🦋 iKun资源(有三级片)❁",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "ikunzyapi.com"
+      },
+      {
+        "api接口": "https://caiji.dbzy.tv/api.php/provide/vod/from/dbm3u8/at/xml/",
+        "名称": "❁直链277℗豆瓣资源❁",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "caiji.dbzy.tv"
+      },
+      {
+        "api接口": "https://api.yzzy-api.com/inc/api.php/provide/vod/at/xml",
+        "名称": "❁直链279℗柚子资源❁",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "api.yzzy-api.com"
+      },
+      {
+        "api接口": "https://www.zycaiji.net:7788/api.php/provide/vod/from/pptv/at/xml/",
+        "名称": "❁直链284℗📺PPTV（官）❁",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "www.zycaiji.net:7788"
+      }
+    ]
+  },
+  {
+    "ts": "2026-10-17T07:28:19",
+    "n": 22,
+    "items": [
+      {
+        "api接口": "https://ryzy.tv/api.php/provide/vod/from/rym3u8/",
+        "名称": "❁直链049℗如意❁",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "ryzy.tv"
+      },
+      {
+        "api接口": "https://m3u8.apiyhzy.com/api.php/provide/vod/at/xml/",
+        "名称": "❁直链157℗樱花(备)❁",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "m3u8.apiyhzy.com"
+      },
+      {
+        "api接口": "https://cj.rycjapi.com/api.php/provide/vod/?ac=list",
+        "名称": "❁直链164℗如意资源刺桐❁",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "cj.rycjapi.com"
+      },
+      {
+        "api接口": "https://caiji.kczyapi.com/api.php/provide/vod/from/kcm3u8/",
+        "名称": "❁直链166℗快车资源刺桐❁",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "caiji.kczyapi.com"
+      },
+      {
+        "api接口": "https://ryzy.tv/api.php/provide/vod/from/rym3u8/",
+        "名称": "❁直链179℗如意资源❁",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "ryzy.tv"
+      },
+      {
+        "api接口": "https://taopianapi.com/home/cjapi/vod/",
+        "名称": "❁直链188℗淘片资源❁",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "taopianapi.com"
+      },
+      {
+        "api接口": "https://ikunzyapi.com/api.php/provide/vod/from/ikm3u8/",
+        "名称": "❁直链190℗资源(备2)❁",
+        "分组类目": "",
+        "命中": "单条",
+        "依据": "https://ikunzyapi.com/api.php/provide/vod/from/ikm3u8/"
+      },
+      {
+        "api接口": "https://m3u8.apiyhzy.com/api.php/provide/vod/from/yhm3u8/",
+        "名称": "❁直链191℗樱花资源❁",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "m3u8.apiyhzy.com"
+      },
+      {
+        "api接口": "http://zy.jinchancaiji.com/api.php/provide/vod",
+        "名称": "❁直链194℗金蝉聚合❁",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "zy.jinchancaiji.com"
+      },
+      {
+        "api接口": "https://api.1080zyku.com/inc/api_mac10.php?ac=list",
+        "名称": "❁直链196℗优质❁",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "api.1080zyku.com"
+      },
+      {
+        "api接口": "https://ikunzyapi.com/api.php/provide/vod/from/ikm3u8/at/json",
+        "名称": "❁直链221℗ikun采集(备)❁",
+        "分组类目": "",
+        "命中": "单条",
+        "依据": "https://ikunzyapi.com/api.php/provide/vod/from/ikm3u8/at/json"
+      },
+      {
+        "api接口": "https://gh-proxy.com/https://raw.githubusercontent.com/ediart/tvbox/refs/heads/main/lz/py/采集合集.py",
+        "名称": "❁直链245℗公众号知源峰度❁",
+        "分组类目": "",
+        "命中": "单条",
+        "依据": "https://gh-proxy.com/https://raw.githubusercontent.com/ediart/tvbox/refs/heads/main/lz/py/采集合集.py"
+      },
+      {
+        "api接口": "https://api.wwzy.tv/api.php/provide/vod/?ac=list",
+        "名称": "❁直链264℗旺旺❁",
+        "分组类目": "",
+        "命中": "单条",
+        "依据": "https://api.wwzy.tv/api.php/provide/vod/?ac=list"
+      },
+      {
+        "api接口": "https://api.yzzy-api.com/inc/apijson.php?ac=list",
+        "名称": "❁直链265℗优质❁",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "api.yzzy-api.com"
+      },
+      {
+        "api接口": "https://collect.wolongzy.cc/api.php/provide/vod/?ac=list",
+        "名称": "❁直链266℗卧龙❁",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "collect.wolongzy.cc"
+      },
+      {
+        "api接口": "https://taopianapi.com/cjapi/sda/vod/json",
+        "名称": "❁直链267℗淘片❁",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "taopianapi.com"
+      },
+      {
+        "api接口": "https://ikunzyapi.com/api.php/provide/vod/at/json",
+        "名称": "❁直链268℗ikun❁",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "ikunzyapi.com"
+      },
+      {
+        "api接口": "https://caiji.kczyapi.com/api.php/provide/vod/?ac=list",
+        "名称": "❁直链271℗快车❁",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "caiji.kczyapi.com"
+      },
+      {
+        "api接口": "https://ikunzyapi.com/api.php/provide/vod/at/xml",
+        "名称": "❁直链275℗🦋 iKun资源(有三级片)❁",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "ikunzyapi.com"
+      },
+      {
+        "api接口": "https://caiji.dbzy.tv/api.php/provide/vod/from/dbm3u8/at/xml/",
+        "名称": "❁直链277℗豆瓣资源❁",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "caiji.dbzy.tv"
+      },
+      {
+        "api接口": "https://api.yzzy-api.com/inc/api.php/provide/vod/at/xml",
+        "名称": "❁直链279℗柚子资源❁",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "api.yzzy-api.com"
+      },
+      {
+        "api接口": "https://www.zycaiji.net:7788/api.php/provide/vod/from/pptv/at/xml/",
+        "名称": "❁直链284℗📺PPTV（官）❁",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "www.zycaiji.net:7788"
+      }
+    ]
+  },
+  {
+    "ts": "2026-10-17T23:48:13",
+    "n": 1,
+    "items": [
+      {
+        "api接口": "https://ryzy.tv/x",
+        "名称": "坏源A",
+        "分组类目": "",
+        "命中": "整域",
+        "依据": "ryzy.tv"
+      }
+    ]
+  }
+]

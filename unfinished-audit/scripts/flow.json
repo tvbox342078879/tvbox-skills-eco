@@ -1,0 +1,114 @@
+{
+ "name": "unfinished-audit-flow",
+ "version": "1.4.9",
+ "created": "2026-10-17",
+ "source": "S136：用户要求「给未完成事件列清单，做整体性联动，每个技能或每次会话结束后，完成了啥、没完成的有啥，全局全量的一个搜集官，结果交给相应监察官供复盘和进化，联动要做好，闭环和全局性闭环（技能间/技能与资料库/技能与云端）统一起来」",
+ "route_decision": {
+  "close": "unfinished_cli.py close（统一收尾：六源采集→分诊→落账→汇报完成/未完成）",
+  "status": "unfinished_cli.py status（看欠账单：按 owner 分组、按期限排序）",
+  "done": "unfinished_cli.py done <id> <证据>（显式收口，须带证据）",
+  "defer": "unfinished_cli.py defer <id> <理由>（显式延期，须给新期限+理由）",
+  "mine": "unfinished_cli.py mine <技能名>（只看某监察官名下欠账）",
+  "verify": "unfinished_cli.py verify（欠账单自检：指纹对账+无主项+过期项）"
+ },
+ "steps": [
+  {
+   "no": 0,
+   "name": "触发判定",
+   "rule": "触发词命中：未完成清单/欠账/没做完/还差什么/收尾汇报/竣工汇报/清账/搜集官/未闭环/敞口/全局未完成/这次会话做完了啥；**或任何技能完成一次实质工作后的收尾环节（M-R81 默认动作）**",
+   "cmd": null,
+   "artifact": null,
+   "action": "命中即采，不等用户开口；收尾时默认跑一次 tvbox close"
+  },
+  {
+   "no": 1,
+   "name": "六源采集",
+   "rule": "①issues_ledger ②9技能 flow.backlog ③9技能 CHANGELOG 敞开段 ④monitors.json 缺 proven ⑤云端台账/经验库待跟进 ⑥9技能 SKILL 正文待办标记。任一源读失败**显式报「无法判定」**，不得折叠为「无欠账」（M-R80/M-R60）",
+   "cmd": "tvbox close --dry",
+   "artifact": "六源原始清单（按源分组，含读失败项）",
+   "action": "先看六源各自报了几条、有没有「读取失败」——源全空要先怀疑采集器，不是真干净"
+  },
+  {
+   "no": 2,
+   "name": "去重与指纹对账",
+   "rule": "同源同标题按 signature=sha1(source|skill|title[:40]) 去重；与上期账本比对——**上期在册、本期采集不到**的项标「消失」，须显式收口或说明（M-R82 防账悄悄蒸发）",
+   "cmd": "tvbox close (内置)",
+   "artifact": "新增/存续/消失 三类",
+   "action": "「消失」不等于做完；要能说出「哪一步做完的」才算"
+  },
+  {
+   "no": 3,
+   "name": "分诊派单",
+   "rule": "按性质派给对应监察官：代码缺陷→legacy-watchdog｜路由/纳管/体积→ecosys-conductor｜规则/招式/能力→skill-evolution｜数据源/上游→probe-hub｜总库/整包→tvbox-source-hub｜监测项/探针→tvbox-inspect｜云端节点→tvbox-janitor；无法判定→conductor 兜底，**不许留空**（M-R79）",
+   "cmd": "tvbox close (内置 dispatch.py)",
+   "artifact": "带 owner + next + due 的派单",
+   "action": "每条必须同时有 owner（谁）、next（下一步可执行命令）、due（期限），缺一即无主"
+  },
+  {
+   "no": 4,
+   "name": "落账",
+   "rule": "写入 unfinished_ledger.json（唯一欠账总账），状态机 open→doing→done，另可 wontfix/defer（须理由+新期限）；写后**回读确认**",
+   "cmd": "tvbox close",
+   "artifact": "unfinished_ledger.json（含首见/最近见/期限/owner/证据）",
+   "action": "回读失败即报错，不打印「已落账」（M-R71 自证全同步）"
+  },
+  {
+   "no": 5,
+   "name": "汇报完成/未完成",
+   "rule": "输出两段：**本次完成**（上期在册、本期已收口，带证据）+ **仍未完成**（按 owner 分组、按期限排序、到期标红）",
+   "cmd": "tvbox close",
+   "artifact": "收尾汇报（会话结束时可直接贴给用户）",
+   "action": "两段都必须有内容——只有「完成」没有「未完成」通常意味着采集漏了"
+  },
+  {
+   "no": 6,
+   "name": "交监察官执行",
+   "rule": "各 owner 用自己的命令处置名下欠账（watchdog scan / inspect scan / evolve upgrade / probe monitor …），处置完回来 `close done <id> <证据>`",
+   "cmd": "tvbox close mine <技能名>",
+   "artifact": "逐项闭环或显式 defer（含理由）",
+   "action": "派单不能只是打印一行字——不处置则 verify 判据⑧ 不过"
+  },
+  {
+   "no": 7,
+   "name": "硬闭环验收",
+   "rule": "conductor verify 判据⑧：欠账单里出现①无主项②超期未处置③上期在册本期消失未说明 → **判红**，验收不通过",
+   "cmd": "tvbox conductor verify",
+   "artifact": "8/8 判据",
+   "action": "这是本技能唯一的强制力来源；没有它，清单又会变成「产出后没人看」"
+  }
+ ],
+ "iron_order": "采集(1) → 对账(2) → 分诊(3) → 落账(4) → 汇报(5) → 派单执行(6) → 验收(7)。**次序不可颠倒**：先分诊后落账会把无主项写进账本；先汇报后落账会汇报出一份不存在的账。",
+ "iron_rules": {
+  "M-R79": "未完成不得无主——每条欠账必须有 owner+next+due，缺任一 verify 判红",
+  "M-R80": "六源只读不猜——任一源读失败显式报「无法判定」，禁折叠成「无欠账」（M-R60 同款）",
+  "M-R81": "收尾唯一入口——任何技能干完活都跑同一条 tvbox close（finish 别名）；派单必须真送达（写进对方 flow.backlog 并回读），不是打印一行「已派给谁」",
+  "M-R82": "账要能清——欠账只能靠「真实做完+显式收口（带证据）」变绿，禁因采集器看不见而自动消失；反向亦成立：自己派单写下的副本不得被下轮采回当新欠账（回声抑制，ECHO_TAG）",
+  "M-R83": "规则不得打架到死锁——「按规则做事就永远验收不过」会把人逼成「把表填绿、真账不记」；两条规则对同一事实要求相反时必须做口径拆分（M03 只报无人认领的脏尾巴，在册者算在办）",
+  "M-R84": "新建技能须过八面纳管——第八面「收尾绑定」：统一收尾命令必须采得到它、它自己也必须能交账；只建目录不接收尾=新孤岛（隐性欠账+假绿）"
+ },
+ "self_check": [
+  "六源全部跑过一遍，每个源都给出了条数（0 条或读取失败都算给出，静默不算）",
+  "任一源读取失败已显式打印「无法判定」，未折叠成「无欠账」（M-R80）",
+  "每条欠账都有 owner + next + due 三项，无空字段（M-R79）",
+  "上期在册本期采集不到的项已标「消失」并给出说明，未静默抹掉（M-R82）",
+  "落账后已回读文件确认写入，未只凭「已保存」提示就宣称成功",
+  "收尾汇报同时含「本次完成」与「仍未完成」两段，未只报喜",
+  "派给监察官的 owner 用 tvbox close mine <技能名> 可反查（派单真可达，不是纸面派单）",
+  "本技能自身也在 eco_skills.json 内——否则体积/路由/探针全部检查不到它（信号源28 守护）",
+  "verify 判据⑧ 已接入且故障注入验证会报红（不是装上去就宣称有效）",
+  "回声抑制：ECHO_TAG 能识别 [清账司派单…]/sid= 副本并跳过，野生 backlog 照采（T12 4/4）",
+  "幂等：同一 signature 重复采集不增殖（第1轮 1 条 → 第2轮 1 条）",
+  "现场洁净：单测用 _sandbox_on/off 隔离 SKILLS_ROOT，跑完生产 flow.json 残留 0（T13）",
+  "删账防御：sync() 用 carry 保留未采到的在办项，部分采集不抹账本（T11）"
+ ],
+ "contracts": {
+  "ledger": "unfinished_ledger.json（唯一欠账总账，字段见 SKILL.md §3）",
+  "item_schema": "sid/source/skill/title/kind/owner/next/due/evidence/signature/status/first_seen/last_seen",
+  "upstream": "conductor verify 判据⑧ 读取本账本判定",
+  "downstream": "legacy-watchdog / tvbox-inspect / skill-evolution / probe-hub / tvbox-source-hub / tvbox-janitor 按 owner 认领"
+ },
+ "sop_binding": {
+  "统一收尾": "tvbox close —— 九技能共用，M-R81",
+  "全局联动四向": "技能↔技能（派单/认领）、技能↔资料库（台账/经验库）、技能↔云端（DB_SESS/DB_LIB 回写）、技能↔规则（M-R79~82 入册）"
+ }
+}

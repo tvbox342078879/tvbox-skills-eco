@@ -1,0 +1,291 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""habit_brief.py —— 用户习惯摘要生成器（M-R112 习惯随身 / M-R110 中文铁律）
+
+用途：
+  生成「模型无关」的用户习惯摘要，供**任何模型、任何会话**开场加载。
+  解决「换个模型就忘了用户习惯」（尤其语言要求反复回退）的顽疾。
+
+命令：
+  habit_brief.py                生成 / 刷新 references/user_habit_brief.md（幂等，合并动态段）
+  habit_brief.py show           打印当前摘要（会话开场快速读取）
+  habit_brief.py handoff --task "..." --state "..." --next "..." --open "..."
+                                生成跨模型交接摘要 references/_handoff_latest.md（M-R112③）
+  habit_brief.py check          体检：摘要是否存在、关键铁律是否覆盖、是否过期
+
+设计约束：
+  · 动态段（持久指令、规则版本、生成时间）由脚本从**源数据**读取，禁止手写漂移。
+  · 静态段（交互约定/工作偏好/模型联动）保留在模板里，人工维护。
+  · 输出语言：简体中文（M-R110，本脚本注释与输出亦遵守）。
+"""
+import os
+import sys
+import json
+import time
+import argparse
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+CONDUCTOR = os.path.dirname(HERE)                     # .../ecosys-conductor
+REFS = os.path.join(CONDUCTOR, 'references')
+BRIEF = os.path.join(REFS, 'user_habit_brief.md')
+HANDOFF = os.path.join(REFS, '_handoff_latest.md')
+STANDING = os.path.join(HERE, 'user_standing_instructions.json')
+RULES = os.path.join(HERE, 'rules_registry.json')
+
+# ── 静态段：人工维护的偏好模板（与动态数据合并输出）────────────────
+STATIC_BACKGROUND = """## 2. 后台执行门禁（M-R120 · 优先级仅次语言铁律 · 用户 2026-10-19 明确要求）
+- **收后台结果必须非阻塞（M-R122）**：禁止 block=true 阻塞等待——「放后台」≠「可对话」，收结果也用非阻塞，完成靠系统通知。
+
+**预估或实测超过 1 分钟的命令，一律后台跑，不许前台阻塞。**
+
+> 用户原话：「超过一分钟，必须后台跑，不然我都找不到人，并且我无法插入对话」。
+> S176 实况：我在前台连跑十几分钟的长命令，屏幕反复刷同一批输出，用户发的截图里只看到
+> 「咋回事啊」「到哪了」「继续」——他既找不到进度，也插不进话。
+
+| 情形 | 必须怎么做 |
+|---|---|
+| 预估 >60s（`verify` / `signal-check` / 全量扫描 / 批量入库） | 直接 `run_in_background`，别试前台 |
+| 已经在跑且超时 | 立刻转后台，不要原地等 |
+| 启动后台后 | **马上回报**三句话：已在后台跑什么 / 预计多久 / 我接着做什么 |
+| 后台输出 | **必须重定向落盘**（`> /tmp/xxx.txt 2>&1`）——句柄会被清掉 |
+| 等待方式 | 靠完成通知，**禁止 sleep 轮询** |
+| 长任务期间 | 保持可对话：用户随时能插话、改需求、换方向 |
+
+**为什么必须落盘**：S176 实测两次 `No task found with ID`，后台句柄被清，结果全丢只能重跑——白等一轮。
+
+**判红口径**：单次前台命令耗时 >60s 即违规；已落盘的命令不计。
+"""
+
+STATIC_INTERACTION = """## 3. 交互约定
+
+| 规则 | 内容 |
+|---|---|
+| **M-R109 短代号** | 用户说 `1`/`2`/`a`/`b`/`1.2`/`a.b` 时，**直接指代 agent 最近一次回复中列出的选项**，立即执行、不澄清。例外：代号歧义、或该选项是不可逆/破坏性操作（删库/覆盖/发布）→ 先确认。 |
+| **"都做"** | = 把上一轮回复末尾提出的**所有**待办/建议全部执行。 |
+| **"继续"** | = 接着上次中断处往下做，不重述、不确认。 |
+| **"按顺序来"** | = 按上一轮列出的 1→2→3 顺序依次执行，不停顿问。 |
+| **"从根源解决"** | = 不接受打补丁/权宜之计，要改机制、改 SSOT、堵住复发路径。 |
+"""
+
+STATIC_WORK = """## 4. 工作偏好
+
+| 维度 | 用户偏好 |
+|---|---|
+| **执行风格** | 少问多做；能自己判断的直接做完再汇报。选项只给真正需要拍板的（2–4 个，带推荐）。 |
+| **汇报风格** | 先给结论，再给证据（数据/文件路径/实测输出）。禁止只报"已完成"而无凭据。 |
+| **真实性** | 状态不许美化：失败就说失败，没做就说没做，不确定就标不确定。清单条数 ≠ 实际条数时必须分开报。 |
+| **破坏性操作** | 删/覆盖/发布前必须：出清单 → 备份 → 显式等用户确认（"删"）→ 才执行。 |
+| **文档落点** | SSOT 在技能目录（SKILL.md / CHANGELOG / flow.json）；交付物在 `/workspace`；临时文件在 artifact 目录。 |
+| **模型选择** | 日常执行/批量操作 → 快速模型（用户评价"很好用"）；复杂推理/深度审查 → 重型模型。切到重型模型时**不要变啰嗦**，保持快速模型的直接风格。 |
+"""
+
+STATIC_MODEL = """## 5. 模型联动约定（M-R112）
+
+1. **习惯随身**：本文件即"习惯随身"载体——换模型后先读它，而不是从零理解用户。
+2. **风格守恒**：切到任何模型，**输出密度、直接程度、中文要求**都不许降级。重型模型尤其要避免"繁复化"（用户明确反馈 Hy3 切换后过于繁复）。
+3. **接力摘要**：切换模型时，上一模型须留下：当前任务、进度到哪、下一步、未决问题（命令见下）。
+4. **新模型接入**：任何新模型第一次服务本用户，**先读本文件再动手**。
+
+```bash
+# 切换模型前：留下交接摘要
+python3 habit_brief.py handoff --task "当前任务" --state "做到哪了" \\
+        --next "下一步" --open "未决问题"
+# 切换模型后：先读习惯摘要 + 交接摘要
+python3 habit_brief.py show && cat references/_handoff_latest.md
+```
+"""
+
+STATIC_COORD = """## 6. 生态坐标（常用，省得每次找）
+
+| 对象 | ID / 路径 |
+|---|---|
+| 个人空间 | `8w5cnqCqQJ0wNoF2Hb6efH` |
+| 探源司·总库（空间超根） | `gZ4xP6kXXeCpTlsH2CN9tJ` |
+| 底包·底包总库 | `GCLJWbFGS1BmYbj6JCX9it` |
+| 🗑 待删收件箱 | `tBlgSL4SPEFMrsyTBTg03c` |
+| 规则总册 | `ecosys-conductor/scripts/rules_registry.json` |
+| 持久指令档 | `ecosys-conductor/scripts/user_standing_instructions.json` |
+| 招式库 / 进化日志 | `skill-evolution/scripts/evolve.py`、`evolution_log.jsonl` |
+"""
+
+
+def _load(p, default=None):
+    try:
+        return json.load(open(p, encoding='utf-8'))
+    except Exception:
+        return default
+
+
+def build():
+    """组装完整摘要文本：动态段由源数据生成，静态段取自模板。"""
+    stand = _load(STANDING, {'instructions': []})
+    insts = stand.get('instructions', [])
+    reg = _load(RULES, {'rules': []})
+    rules = reg.get('rules', [])
+    r110 = next((r for r in rules if r.get('id') == 'M-R110'), None)
+    n_rules = len(rules)
+
+    # 动态：语言铁律段落（要求次数取自持久指令档，真实反映复发）
+    zh = next((i for i in insts if i.get('id') == 'pref_zh_chat'), None)
+    cnt = zh.get('requested_count', 0) if zh else 0
+    lang = f"""## 1. 语言铁律（M-R110 · 优先级最高 · 用户已要求 {cnt} 次）
+
+**全程简体中文。无例外。**
+
+| 覆盖范围 | 要求 |
+|---|---|
+| 正文回复 | 简体中文 |
+| 深度思考 / 思考流面板 | 简体中文（英文出现在这里 = 违规，用户已多次指出） |
+| 工具调用前置说明、进度播报 | 简体中文 |
+| 报错信息、工具输出摘要 | 简体中文 |
+| 澄清提问、选项列表 | 简体中文 |
+
+**触发重置的场景**（都要重新对齐）：切换模型、新开会话、打断后恢复、上下文压缩后。
+
+> ⚠️ 历史事实：该要求已登记 {cnt} 次仍未根治，用户 2026-10-18 再次反馈。**看到本文件即视为已对齐，不得再要用户提醒。**
+"""
+
+    # 动态：持久指令清单（完整列出，供核对）
+    lines = ['## 7. 持久用户指令清单（M-R108 · 源自 user_standing_instructions.json）', '']
+    if insts:
+        lines.append('| 编号 | 指令 | 要求次数 | 状态 |')
+        lines.append('|---|---|---|---|')
+        for it in insts:
+            st = '✅ 已固化' if str(it.get('status', '')).startswith('solidified') else '⏳ 待固化'
+            ins = (it.get('instruction') or '').replace('\n', ' ')
+            if len(ins) > 90:
+                ins = ins[:90] + '…'
+            lines.append(f"| `{it.get('id')}` | {ins} | {it.get('requested_count', 0)} | {st} |")
+    else:
+        lines.append('（暂无登记）')
+    lines.append('')
+    persist = '\n'.join(lines)
+
+    today = time.strftime('%Y-%m-%d %H:%M')
+    head = f"""# 用户习惯摘要（MODEL-AGNOSTIC · 任何模型开场必读）
+
+> **用途**：本文件是**模型无关**的用户习惯快照。任何模型（快速 / Hy3 / 深度思考 / 未来新模型）、
+> 任何会话（新开 / 切换 / 恢复 / 压缩后）在开始工作前**先读本文件**，即可对齐用户习惯，
+> 无需用户重新教一遍。
+>
+> **维护**：`ecosys-conductor`（生成与刷新）｜来源：规则册 M-R109/M-R110/M-R112（共 {n_rules} 条）
+> + 持久指令档 `scripts/user_standing_instructions.json`
+> ｜**刷新命令**：`python3 scripts/habit_brief.py`
+>
+> 版本：v1.0.0 ｜ 生成：{today} ｜ **本文件由脚本生成，勿手改动态段**
+
+---
+"""
+
+    tail = f"""
+---
+
+**一句话**：中文、直接、少问、有据、守习惯——换什么模型都这样。
+
+<!-- 生成器：habit_brief.py ｜ 规则数：{n_rules} ｜ 持久指令：{len(insts)} 条 ｜ 时间：{today} -->
+"""
+    return '\n'.join([head, lang, STATIC_BACKGROUND, STATIC_INTERACTION, STATIC_WORK,
+                      STATIC_MODEL, STATIC_COORD, persist, tail])
+
+
+def cmd_gen(a=None):
+    os.makedirs(REFS, exist_ok=True)
+    txt = build()
+    old = open(BRIEF, encoding='utf-8').read() if os.path.exists(BRIEF) else ''
+    open(BRIEF, 'w', encoding='utf-8').write(txt)
+    changed = '已更新' if old != txt else '无变化'
+    print(f'✅ 用户习惯摘要{changed}：{BRIEF}')
+    print(f'   行数 {txt.count(chr(10))} ｜ 字符 {len(txt)}')
+    return 0
+
+
+def cmd_show(a=None):
+    if not os.path.exists(BRIEF):
+        print('⚠️ 摘要不存在，先跑：python3 habit_brief.py')
+        return 1
+    print(open(BRIEF, encoding='utf-8').read())
+    return 0
+
+
+def cmd_handoff(a):
+    """生成跨模型交接摘要（M-R112③）：切换模型前后的状态传递。"""
+    os.makedirs(REFS, exist_ok=True)
+    now = time.strftime('%Y-%m-%d %H:%M')
+    txt = f"""# 跨模型交接摘要（切换模型时先读我）
+
+> 生成时间：{now} ｜ 用途：让接手的新模型**不从零开始**，避免"繁复地重来一遍"
+
+## 1. 语言要求（最高优先）
+全程**简体中文**（正文 + 思考 + 播报 + 报错）。切换模型后仍须中文，不得回退英文。—— 详见 `user_habit_brief.md`
+
+## 2. 当前任务
+{a.task or '（未填写）'}
+
+## 3. 进度状态
+{a.state or '（未填写）'}
+
+## 4. 下一步
+{a.next or '（未填写）'}
+
+## 5. 未决问题 / 需用户拍板
+{a.open or '（无）'}
+
+## 6. 交接约定
+- 接手后：先读本文件 + `user_habit_brief.md`，再动手；不要重述已完成的步骤。
+- 风格：保持直接、简洁、给证据；**不要因换了模型而变啰嗦**。
+- 若发现与上文冲突，以用户当前指令优先。
+"""
+    open(HANDOFF, 'w', encoding='utf-8').write(txt)
+    print(f'✅ 交接摘要已生成：{HANDOFF}')
+    return 0
+
+
+def cmd_check(a=None):
+    ok = True
+    if not os.path.exists(BRIEF):
+        print('❌ 摘要文件不存在'); return 1
+    t = open(BRIEF, encoding='utf-8').read()
+    checks = [
+        ('语言铁律 M-R110', 'M-R110' in t and '简体中文' in t),
+        ('后台执行门禁 M-R120', 'M-R120' in t and '超过 1 分钟' in t and 'run_in_background' in t),
+        ('短代号 M-R109', 'M-R109' in t),
+        ('模型联动 M-R112', 'M-R112' in t),
+        ('持久指令段', '持久用户指令清单' in t),
+        ('深呼吸/思考面板覆盖', '深度思考' in t),
+    ]
+    print(f'🔍 习惯摘要体检（{BRIEF}）')
+    for name, passed in checks:
+        print(f'  {"✅" if passed else "❌"} {name}')
+        ok = ok and passed
+    # 与源数据一致性：规则数 / 持久指令数是否与末尾注释一致
+    reg = _load(RULES, {'rules': []})
+    stand = _load(STANDING, {'instructions': []})
+    n_rules, n_inst = len(reg.get('rules', [])), len(stand.get('instructions', []))
+    print(f'  源数据：规则 {n_rules} 条 ｜ 持久指令 {n_inst} 条')
+    stale = f'规则数：{n_rules}' not in t or f'持久指令：{n_inst} 条' not in t
+    print(f'  {"⚠️ 摘要已过期（源数据变更后未刷新）" if stale else "✅ 与源数据一致"}')
+    return 0 if ok else 1
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(prog='habit_brief.py',
+                                 description='用户习惯摘要生成器（M-R110/M-R112 习惯随身）')
+    sub = ap.add_subparsers(dest='cmd')
+    sub.add_parser('gen')
+    sub.add_parser('show')
+    sub.add_parser('check')
+    hd = sub.add_parser('handoff')
+    hd.add_argument('--task', default='')
+    hd.add_argument('--state', default='')
+    hd.add_argument('--next', default='')
+    hd.add_argument('--open', default='')
+    a = ap.parse_args(argv)          # None → 读取真实命令行；[] → 空参（默认 gen）
+    cmd = a.cmd or 'gen'
+    fn = {'gen': cmd_gen, 'show': cmd_show, 'check': cmd_check, 'handoff': cmd_handoff}.get(cmd)
+    if fn is None:
+        ap.print_help(); return 1
+    return fn(a)
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())

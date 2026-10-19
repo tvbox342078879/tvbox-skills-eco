@@ -1,0 +1,168 @@
+{
+ "title": "📒 账房·总账",
+ "properties": [
+  {
+   "name": "凭证号",
+   "config": {
+    "text": {}
+   }
+  },
+  {
+   "name": "日期",
+   "config": {
+    "date": {}
+   }
+  },
+  {
+   "name": "借方账户",
+   "config": {
+    "text": {}
+   }
+  },
+  {
+   "name": "贷方账户",
+   "config": {
+    "text": {}
+   }
+  },
+  {
+   "name": "金额",
+   "config": {
+    "number": {
+     "decimalPlaces": 2,
+     "useSeparate": false,
+     "displayType": "number"
+    }
+   }
+  },
+  {
+   "name": "币种",
+   "config": {
+    "select": {
+     "options": [
+      {
+       "text": "记录数"
+      },
+      {
+       "text": "版本号"
+      },
+      {
+       "text": "事项数"
+      },
+      {
+       "text": "分数"
+      },
+      {
+       "text": "字节数"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "name": "动作类型",
+   "config": {
+    "select": {
+     "options": [
+      {
+       "text": "入库"
+      },
+      {
+       "text": "清库"
+      },
+      {
+       "text": "建库"
+      },
+      {
+       "text": "并库"
+      },
+      {
+       "text": "改名"
+      },
+      {
+       "text": "版本升级"
+      },
+      {
+       "text": "指标波动"
+      },
+      {
+       "text": "冲销"
+      },
+      {
+       "text": "转账"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "name": "经手技能",
+   "config": {
+    "text": {}
+   }
+  },
+  {
+   "name": "回读验证",
+   "config": {
+    "select": {
+     "options": [
+      {
+       "text": "未验"
+      },
+      {
+       "text": "已验"
+      },
+      {
+       "text": "失败"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "name": "终验相关",
+   "config": {
+    "checkbox": {}
+   }
+  },
+  {
+   "name": "余额快照",
+   "config": {
+    "text": {}
+   }
+  },
+  {
+   "name": "分录指纹",
+   "config": {
+    "text": {}
+   }
+  },
+  {
+   "name": "备注",
+   "config": {
+    "text": {}
+   }
+  },
+  {
+   "name": "状态",
+   "config": {
+    "select": {
+     "options": [
+      {
+       "text": "已记"
+      },
+      {
+       "text": "已平"
+      },
+      {
+       "text": "挂账"
+      },
+      {
+       "text": "冲销"
+      }
+     ]
+    }
+   }
+  }
+ ]
+}
