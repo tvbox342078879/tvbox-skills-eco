@@ -528,6 +528,26 @@
       "cadence": "按需",
       "severity": "耗时",
       "action": "见登记说明；检查器类型 manual_track"
+    },
+    {
+      "id": "M46",
+      "name": "automation-task-manager 招式借鉴停滞",
+      "check": "balance_weakness",
+      "desc": "automation-task-manager 未采用 8 条跨技能热招（T-A/T-C/T-H…）",
+      "threshold": "",
+      "cadence": "按需",
+      "severity": "耗时",
+      "action": "见登记说明；检查器类型 balance_weakness"
+    },
+    {
+      "id": "M47",
+      "name": "learn-hub 招式借鉴停滞",
+      "check": "balance_weakness",
+      "desc": "learn-hub 未采用 6 条跨技能热招（T-I/T-C/T-H…）",
+      "threshold": "",
+      "cadence": "按需",
+      "severity": "耗时",
+      "action": "见登记说明；检查器类型 balance_weakness"
     }
   ],
   "expansion_log": [

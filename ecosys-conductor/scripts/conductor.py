@@ -8533,6 +8533,72 @@ def cmd_audit_compliance(rest):
 
 
 
+def cmd_registry(args):
+    """五方对照表（S177 步6）：技能 ↔ 规则 ↔ 信号源 ↔ 监测项 ↔ 命令。
+
+    为什么要有这条命令：S177 前三步反复撞到同一类病——
+    「某处显示 ✅，其实从来没真查过」（M03 的 `s` 未定义、signal-check 恒 rc=0）。
+    根因不是某个函数写错，而是**五张表各自维护、中间那根线没人验**。
+    线断了不报错，只是所有检查安静地变绿。
+
+    用法:
+      tvbox conductor registry          重建并打印摘要（含孤儿技能/新技能未立规）
+      tvbox conductor registry --build  只重建，安静写文件
+      tvbox conductor registry --json   打印整表 JSON（供外部程序消费）
+    """
+    import json as _json
+    here = os.path.dirname(os.path.abspath(__file__))
+    out = os.path.join(os.path.dirname(here), 'plans', 'S177_registry.json')
+    try:
+        if here not in sys.path:
+            sys.path.insert(0, here)
+        import registry_build as RB
+        reg = RB.build()
+    except Exception as e:
+        # M-R60：建表失败 ≠ 没有对照关系
+        print(f'❌ 对照表构建失败（{type(e).__name__}: {e}）——'
+              f'**这不代表五方关系为空**，请先修构建器')
+        return 1
+
+    try:
+        os.makedirs(os.path.dirname(out), exist_ok=True)
+        _json.dump(reg, open(out, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
+    except Exception as e:
+        print(f'⚠️ 写文件失败（{type(e).__name__}: {e}）——表已算好但没落盘')
+        return 1
+
+    if '--json' in args:
+        print(_json.dumps(reg, ensure_ascii=False, indent=1))
+        return 0
+    if '--build' in args:
+        print(f'已重建 {out}')
+        return 0
+
+    c, g = reg['counts'], reg['gaps']
+    print('五方对照表（S177 步6）')
+    print(f"  技能 {c['skills']} / 规则 {c['rules']} / 信号源 {c['signals']}"
+          f" / 监测项 {c['monitors']} / 命令 {c['commands']}")
+    print(f'  已写入 {out}')
+    print()
+    print('各技能被守护情况：')
+    for k, v in reg['by_skill'].items():
+        print(f"    {k:28} 规则(own)={len(v['rules_owned']):3} "
+              f"参与={len(v['rules_touched']):3} 监={len(v['monitors']):2} 令={len(v['commands']):3}")
+    print()
+    print('缺口：')
+    print(f"  孤儿规则（owner 不在登记表）: {len(g['orphan_rules_owner_not_registered'])}")
+    print(f"  无 probe 的规则: {len(g['rules_without_probe'])}")
+    print(f"  无 landing 的规则: {len(g['rules_without_landing'])}")
+    print(f"  孤儿技能（三零：不守规则/无监测/无入口）: {len(g['orphan_skills'])}")
+    for o in g['orphan_skills']:
+        print(f"     · {o['skill']}  SKILL.md={o['has_skill_md']} flow={o['has_flow']}")
+    print(f"  有命令但零规则（新技能未立规）: {len(g['skills_without_any_rule'])}")
+    for o in g['skills_without_any_rule']:
+        print(f"     · {o['skill']:24} 令={o['commands']:2} 监={o['monitors']}")
+    # 有缺口即非零：让这条命令在 CI 里能真正挡住
+    return 0 if not (g['orphan_skills'] or g['orphan_rules_owner_not_registered']) else 3
+
+
 DISPATCH = {'plan': cmd_plan, 'sprint': cmd_sprint, 'speed': cmd_speed,
             'whoami': cmd_whoami, 'ask': cmd_ask, 'history': cmd_history,
             'lanes': cmd_lanes, 'assess': cmd_assess,
@@ -8542,7 +8608,8 @@ DISPATCH = {'plan': cmd_plan, 'sprint': cmd_sprint, 'speed': cmd_speed,
             'retract': cmd_retract, 'signal-check': cmd_signal_check, 'verify': cmd_verify,
             'rules-probe': cmd_rules_probe,   # ★ S176：真正执行 probe.command（此前从不执行）
             'next': cmd_next, 'recap': cmd_recap, 'audit-growth': cmd_audit_growth, 'audit-compliance': cmd_audit_compliance, 'waste': cmd_waste, 'backup': cmd_backup, 'restore': cmd_restore, 'linkmap': cmd_linkmap, 'issues': cmd_issues, 'sync-version': cmd_sync_version, 'eco-sync': cmd_eco_sync, 'drift-fix': cmd_drift_fix, 'onboard': cmd_onboard, 'size': cmd_size, 'gate': cmd_gate,
-            'field': cmd_field}   # S157：第三方口语集度量（只读，不进任何判据）
+            'field': cmd_field,   # S157：第三方口语集度量（只读，不进任何判据）
+            'registry': cmd_registry}   # S177 步6：五方对照表（技能↔规则↔信号源↔监测项↔命令）
 
 
 def _rules_fn():
