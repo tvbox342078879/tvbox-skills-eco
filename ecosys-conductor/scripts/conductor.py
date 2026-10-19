@@ -7594,7 +7594,15 @@ def cmd_audit_growth(rest):
             (over_hard if sz > hard else over_buf if sz > buf else []).append(f'规则总册 {sz/1024:.1f}KB')
         # S121 扩面一：技能正本体积——M-R77 阈值须对每个 SKILL.md 生效（此前只查总册=监管盲区实锤）
         near = []      # S135 补：贴近缓冲线（余量 < 1KB）——只报"全部 ✅"会掩盖"下一句就超线"
-        for s in ECO_SKILLS:
+        # S179 修：此前只遍历 ECO_SKILLS（13 个登记的），磁盘上另有 48 个有 SKILL.md 的技能
+        # 从未进体积视野——实测盲区里已有 1 个超硬上限（47.6KB）、2 个超缓冲线，全部漏检。
+        # 改：扫描**磁盘全量**（排除符号链接），与登记表取并集。
+        _scan = set(ECO_SKILLS)
+        for _d in sorted(os.listdir(SKILL_ROOT)):
+            _p = os.path.join(SKILL_ROOT, _d)
+            if os.path.isdir(_p) and not os.path.islink(_p) and os.path.isfile(os.path.join(_p, 'SKILL.md')):
+                _scan.add(_d)
+        for s in sorted(_scan):
             skp = os.path.join(SKILL_ROOT, s, 'SKILL.md')
             if os.path.exists(skp):
                 b = os.path.getsize(skp)
@@ -7643,8 +7651,15 @@ def cmd_audit_growth(rest):
             return all(str((x or {}).get('type') or '') in ('verbatim', 'reference', 'anchor')
                        for x in land if isinstance(x, dict))
 
-        tool_rules = [r for r in rs if not _is_design_principle(r)]
-        design_rules = [r for r in rs if _is_design_principle(r)]
+        # S179：新增第三类『会话行为型』（tier=manual）——它们天生没有命令可按
+        # （语言铁律 M-R110 / 短代号 M-R109 / 偏好固化 M-R108 / 模型联动 M-R112），
+        # 此前被算进"工具承载型→空载"，是**分类错不是缺陷**：给它们挂条假命令，
+        # 只会把"名义承载"从"空着"变成"编造"（同 S136 注释的道理）。
+        _manual = [r for r in rs if r.get('tier') == 'manual'
+                   or str((r.get('probe') or {}).get('type') or '') == 'manual']
+        _mids = {r['id'] for r in _manual}
+        tool_rules = [r for r in rs if not _is_design_principle(r) and r['id'] not in _mids]
+        design_rules = [r for r in rs if _is_design_principle(r) and r['id'] not in _mids]
         empty_probe = [r['id'] for r in tool_rules
                        if not str(((r.get('probe') or {}).get('command')) or '').strip()]
         bad_cmd = [r['id'] for r in rs
@@ -7658,9 +7673,9 @@ def cmd_audit_growth(rest):
             print(f'      空载清单（前 10）：{", ".join(empty_probe[:10])}{" …" if len(empty_probe) > 10 else ""}')
         else:
             print(f'   规则承载面：工具承载型 {len(tool_rules)} 条全部有真实命令 ✅')
-        if design_rules:
-            print(f'   设计原则型 {len(design_rules)} 条（{design_rules[0]["id"]}~{design_rules[-1]["id"]}）：'
-                  f'承载=文档锚点+探针逻辑，无独立命令（S136 口径校准）')
+        if _manual:
+            print(f'   会话行为型 {len(_manual)} 条（{", ".join(sorted(_mids))}）：'
+                  f'无命令可按≠没立，靠 Stop/recap 逐轮核对（规则台账 tier=manual）')
         if bad_cmd:
             print(f'   ❌ probe 指向不存在的 conductor 命令：{bad_cmd}')
         prev = None

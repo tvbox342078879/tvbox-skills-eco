@@ -3287,16 +3287,15 @@
    "status": "solidified",
    "dedup_decision": "keep_in_master",
    "probe": {
+    "type": "manual",
     "skill": "ecosys-conductor",
-    "command": "",
-    "expect": "pass",
-    "carrier": "设计原则型·文档锚点",
-    "verify_via": "rules check 三方一致 + 开工核对门禁(standing-check)"
+    "carrier": "会话行为型（无命令可按，靠 Stop/recap 核对）",
+    "note": "会话开工核对 habit_brief 第1节持久指令档；recurring 是否聚类偏好"
    },
    "note": "S154 立法用户偏好固化；S156 补强：会话开工首步须触发生态联动(tvbox brief/chain 开工速览)并核对持久指令(M-R108·开工门禁)，治『技能没人触发』双向盲区。",
    "usage_verdict": "",
    "ask": "我都说了好几遍要中文了怎么又变英文/我都提了三次了这要求怎么还没记住/换个模型我之前的要求怎么全没了",
-   "tier": "declared"
+   "tier": "manual"
   },
   {
    "id": "M-R109",
@@ -3322,15 +3321,14 @@
    "status": "solidified",
    "dedup_decision": "keep_in_master",
    "probe": {
+    "type": "manual",
     "skill": "ecosys-conductor",
-    "command": "",
-    "expect": "pass",
-    "carrier": "设计原则型·文档锚点",
-    "verify_via": "对话回溯：用户短代号须映射到最近一次回复的推荐选项；conductor rules check 三方一致"
+    "carrier": "会话行为型（无命令可按，靠 Stop/recap 核对）",
+    "note": "会话行为：短代号是否直接执行；能否用 AskUserQuestion 样本回测"
    },
    "note": "S118 由用户明确要求固化（\"当我说1.2或a.b等就是刚完成的任务里推荐的选项\"）。代号解析优先级：最近一次含编号/字母选项的回复 ＞ 更早回复。代号无法唯一解析时回退澄清，不臆测。",
    "ask": "2 / a / 1.2 / a.b / 就按你说的第2个来 / 继续（指刚才的选项） / 第一个 / b 那个",
-   "tier": "declared"
+   "tier": "manual"
   },
   {
    "id": "M-R110",
@@ -3356,15 +3354,14 @@
    "status": "solidified",
    "dedup_decision": "keep_in_master",
    "probe": {
+    "type": "manual",
     "skill": "ecosys-conductor",
-    "command": "",
-    "expect": "pass",
-    "carrier": "设计原则型·文档锚点",
-    "verify_via": "对话回溯：任意模型会话抽查回复与中间播报是否全中文；切换模型后复测"
+    "carrier": "会话行为型（无命令可按，靠 Stop/recap 核对）",
+    "note": "会话行为：回复语言是否跟随用户；以历史会话抽样核对"
    },
    "note": "用户 2026-10-18 报告：明确要求中文，但切换模型（如切到 Hy3/深度思考）后回复又变英文。根因是语言指令属会话/模型层，未进生态 SSOT。落地：①规则册+conductor SKILL.md 铁律；②生态内任何技能开场引用本条；③彻底解法需平台层全局语言配置，已记入平台反馈 backlog。",
    "ask": "为什么又变英文了 / 切了模型语言就乱 / 中文铁律",
-   "tier": "declared"
+   "tier": "manual"
   },
   {
    "id": "M-R111",
@@ -3426,15 +3423,14 @@
    "status": "proposed",
    "dedup_decision": "keep_in_master",
    "probe": {
+    "type": "manual",
     "skill": "ecosys-conductor",
-    "command": "",
-    "expect": "pass",
-    "carrier": "设计原则型·文档锚点",
-    "verify_via": "新模型首次会话能复述语言铁律与短代号约定；切换模型有交接摘要；未对齐即判 fail"
+    "carrier": "会话行为型（无命令可按，靠 Stop/recap 核对）",
+    "note": "会话行为：换模型/跨会话是否加载生态规则摘要 + 交接摘要"
    },
    "note": "用户 2026-10-18：快速模型好用、切 Hy3 繁复达不到预期；要求模型间联动提高效率、生态闭环、新模型快速适应使用习惯。现状各模型各起炉灶，习惯不随身。落地：生态规则开场注入（已可做）+ 交接摘要约定 + 平台层模型路由反馈。",
    "ask": "模型联动 / 新模型适应我 / 切模型繁复",
-   "tier": "declared"
+   "tier": "manual"
   },
   {
    "id": "M-R113",

@@ -9,10 +9,10 @@
  },
  "counts": {
   "skills": 13,
-  "rules": 132,
+  "rules": 136,
   "signals": 45,
   "monitors": 45,
-  "commands": 109
+  "commands": 111
  },
  "by_skill": {
   "automation-task-manager": {
@@ -136,7 +136,11 @@
     "M-R119",
     "M-R120",
     "M-R121",
-    "M-R122"
+    "M-R122",
+    "M-R06",
+    "M-R07",
+    "M-R123",
+    "M-R124"
    ],
    "rules_touched": [
     "M-R23",
@@ -179,14 +183,30 @@
     "M-R71",
     "M-R72",
     "M-R73",
+    "M-R74",
+    "M-R75",
     "M-R76",
     "M-R77",
+    "M-R78",
+    "M-R83",
+    "M-R84",
+    "M-R85",
+    "M-R88",
+    "M-R90",
+    "M-R91",
+    "M-R92",
+    "M-R93",
+    "M-R94",
+    "M-R95",
+    "M-R98",
+    "M-R100",
     "M-R105",
     "M-R104",
     "M-R107",
     "M-R108",
     "M-R109",
     "M-R110",
+    "M-R111",
     "M-R112",
     "M-R114",
     "M-R116",
@@ -195,7 +215,9 @@
     "M-R119",
     "M-R120",
     "M-R121",
-    "M-R122"
+    "M-R122",
+    "M-R123",
+    "M-R124"
    ],
    "signals": [],
    "monitors": [],
@@ -325,6 +347,12 @@
     "M-R60",
     "M-R65",
     "P-R1",
+    "M-R96",
+    "M-R97",
+    "M-R99",
+    "M-R101",
+    "M-R102",
+    "M-R103",
     "M-R109",
     "M-R114"
    ],
@@ -642,7 +670,13 @@
     "M-R82",
     "M-R86"
    ],
-   "rules_touched": [],
+   "rules_touched": [
+    "M-R79",
+    "M-R80",
+    "M-R81",
+    "M-R82",
+    "M-R86"
+   ],
    "signals": [],
    "monitors": [],
    "commands": [
@@ -716,6 +750,7 @@
     "has_skill_md": true,
     "has_flow": true,
     "declared_alternative": "优先用 MCP 工具 automation_update（server=scheduler-assistant）",
+    "alt_undetermined": false,
     "note": "有显式替代路径，**不是孤儿**，应走下线流程"
    }
   ],
