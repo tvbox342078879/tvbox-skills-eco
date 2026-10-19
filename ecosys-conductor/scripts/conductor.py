@@ -536,9 +536,12 @@ def cmd_whoami(args):
     #   这是「碎片巧合」与「用户真说了这个词」的分界，不是抬高阈值。
     #   只在本函数加闸，不动 _route_score：那个函数服务全局排序，改它会连带影响已调好的推举结果。
     def _real_hit(blob):
-        """blob 里是否有 ≥2 字的词项（中文）或 ≥4 字符的词（ASCII）整词出现在意图里。
+        """blob 与意图之间是否有**真实词项整词**双向命中（碎片巧合 vs 用户真说了这个词的分界）。
 
-        中文 2 字起（`监测` 是有效词）；ASCII 4 字符起（`tv`/`api` 这种太短，噪音大）。
+        正向：blob 里的词项（中文≥2字 / ASCII≥4字符）整词落在意图里；
+        反向：意图里的真实词项整词落在 blob 里（覆盖「做个学习资料」vs「做学习资料」差一个字）。
+        双向任一成立即算命中；纯 bigram 巧合（如 smoke→monitor 的 sm/mo）两边都不整词命中 → 拒。
+        P021 修复：原只查正向，导致「我做了个学习资料」命不中 learn-hub 的「做学习资料」。
         """
         u = re.sub(r'[^\u4e00-\u9fffA-Za-z0-9]', '', intent)
         for t in blob.split():
@@ -547,6 +550,15 @@ def cmd_whoami(args):
                 continue
             need = 4 if t.isascii() else 2
             if len(t) >= need and t in u:
+                return True
+        # 反向：意图里任意 ≥2 字片段落进 blob 即算命中（覆盖「做个学习资料」vs「做学习资料」差一字）
+        cjk = re.sub(r'[^\u4e00-\u9fff]', '', intent)
+        for L in range(2, len(cjk) + 1):
+            for s in range(0, len(cjk) - L + 1):
+                if cjk[s:s + L] in blob:
+                    return True
+        for t in re.findall(r'[A-Za-z0-9]{4,}', intent):
+            if t in blob:
                 return True
         return False
 
@@ -564,7 +576,7 @@ def cmd_whoami(args):
         _man_ok = False
         print(f'（manifest 读取失败：{type(e).__name__}: {e}——本结果**仅含技能级触发词**，命令级一列未能核验）')
 
-    # 技能级：description 触发词（真源，与 _intents_view 同口径）
+    # 技能级：description 触发词（与 _intents_view()/生产路由同源；P021：查触发词而非只读 manifest）
     _skill_undet = []
     for sk in ECO_SKILLS:
         try:
@@ -588,10 +600,13 @@ def cmd_whoami(args):
             print(f'❓ 意图「{intent}」未命中——但 command manifest 读取失败，**此结论不完整**，'
                   f'请先修 manifest 再判"生态空白"')
             return 1
-        print(f'❓ 意图「{intent}」无命中——考虑 tvbox conductor expand-eco 登记生态空白')
-        # ★ S177 步5：原来裸 `return` → None → rc=0。这是 T1 同型第三次
-        #   （signal-check、tvbox 入口层、这里）。"没找到"不是"跑成功"：
-        #   调用方拿 rc=0 会当成"路由已经给出答案"，于是不再兜底。
+        # ★ P021（M-R60 轻量版）：把「我查的源里没有」写成「没这个技能」是误导。
+        #   三态措辞：① 查了哪些源 ② 各源查到什么 ③ 没查到≠不存在。
+        print(f'❓ 意图「{intent}」未命中——已查两源：① command manifest（命令级）② 各技能触发词（技能级）')
+        print(f'   没查到≠没有这个技能：可能只是该技能触发词表未登记此说法，或命中分未过阈值。')
+        print(f'   先跑 `tvbox conductor ask "{intent}"` 看需求管家能否路由；确属生态空白才 `expand-eco` 登记。')
+        # ★ S177 步5：原来裸 `return` → None → rc=0。"没找到"不是"跑成功"，
+        #   调用方拿 rc=0 会当成"路由已给出答案"而不再兜底。
         return 2
     hits.sort(key=lambda x: -x[3])
     print(f'🎯 意图「{intent}」→ 路由建议:')
