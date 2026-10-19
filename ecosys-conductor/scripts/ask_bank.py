@@ -192,6 +192,15 @@ def check_dups(path=None):
     不会报错。曾经 7 个键定义了两次，下部旧值把上部新值盖掉，
     现象是"改了 ask、分数没动"，排查成本极高。此处按源码文本查。"""
     import re as _re
+    # ★ S177 步8 实测修（T1 假绿的典型样本，pylint E0606 报出、手验证实）：
+    #   本模块**顶部没有 `import os`**，os 只在文件末尾 `if __name__ == '__main__':`
+    #   分支里 import。于是：
+    #     `python3 ask_bank.py`        → 走 __main__ 分支，os 已在**模块全局**绑定 → 正常 ✅
+    #     `import ask_bank; check_dups()` → 分支不执行，os 全局不存在 → NameError ❌
+    #   实测：前者打印「重复键：无 ✅」，后者 `NameError: name 'os' is not defined`。
+    #   **自检脚本只在「自己当脚本跑」这一条路径上绿**，而它的用途恰恰是被别处 import 调用。
+    #   这类"入口能跑、被调用就崩"比直接崩更坏——它先给你一个 ✅，让你不去查。
+    import os
     p = path or os.path.abspath(__file__)
     ids = _re.findall(r"^\s{4}'([A-Z0-9-]+)':", open(p, encoding='utf-8').read(), _re.M)
     dup = sorted({x for x in ids if ids.count(x) > 1})

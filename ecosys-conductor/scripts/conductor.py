@@ -4989,6 +4989,87 @@ def _check_index_links(_txt_override=None, _skills_override=None):
     return (not bad), bad
 
 
+def _sig_code_health():
+    """⑬ 代码健康（S177 新增）：用成熟工具查「名字层 + 控制流层」，不自制 AST 近似。
+
+    为什么单独判据、而不是塞进 ⑫：
+      ⑫ 只做「文件在不在 / 能不能 compile」。**compile 通过 ≠ 代码没错**——
+      `os` 没 import 也能过编译，运行时才 NameError。⑫ 全绿时这类问题一声不响。
+
+    为什么用 pyflakes + pylint 两个、而不是一个：
+      · pyflakes 查名字层：undefined name / 重定义 / 赋值未使用 / f-string 缺占位符
+      · pylint E0601/E0602/E0606 查控制流层：变量是否在所有路径初始化
+      实测（S177）：自制 AST 扫描器报 27 处「未初始化即读」，抽验 4/4 全是误报
+      （它不懂 try/except 与循环变量作用域）；换成 pylint 后全生态只报 1 处，且手验是真崩。
+      **扫描器报得多不等于问题多，可能只是它不懂。**
+
+    三态（M-R60）：工具自身不在 / 跑挂了 → 返回 None = 无法判定，
+      绝不折叠成「通过」。判据变绿的前提是**工具真跑完了**。
+    """
+    import shutil as _sh
+    tools = {}
+    for name, probe in (('pyflakes', ['-m', 'pyflakes']), ('pylint', ['--version'])):
+        try:
+            r = subprocess.run([sys.executable] + probe, capture_output=True, text=True, timeout=20)
+            tools[name] = (r.returncode == 0)
+        except Exception:
+            tools[name] = False
+    if not any(tools.values()):
+        return None, '⚠️ pyflakes/pylint 均不可用 —— 无法判定（不得记为通过）'
+
+    py_files = []
+    for root, dirs, files in os.walk(SKILL_ROOT):
+        dirs[:] = [d for d in dirs if d not in ('__pycache__', '.git', 'node_modules')]
+        for f in files:
+            if f.endswith('.py'):
+                py_files.append(os.path.join(root, f))
+
+    bad = []
+    waived = 0
+    # ① pyflakes：只取「会真出事」的两类。赋值未使用 / f-string 缺占位符属于整洁度，
+    #   120+44 条噪音会把真问题淹掉——判据只要盯名字写错。
+    if tools['pyflakes']:
+        try:
+            r = subprocess.run([sys.executable, '-m', 'pyflakes'] + py_files,
+                               capture_output=True, text=True, timeout=180)
+            for line in (r.stdout or '').splitlines():
+                if 'undefined name' in line or 'referenced before assignment' in line:
+                    # `from x import *` 会让 pyflakes 放弃整个模块的名字检测，
+                    # 报的是「我查不了」不是「这里有问题」。按 M-R60 记为无法判定 → 豁免，
+                    # 但**计数留痕**，不静默丢弃——否则哪天 import * 满天飞会被当成全绿。
+                    if 'unable to detect undefined names' in line:
+                        waived += 1
+                        continue
+                    bad.append(line.strip())
+        except Exception as e:
+            bad.append(f'⚠️ pyflakes 执行失败：{type(e).__name__}')
+
+    # ② pylint：控制流层。E0606 是「可能读了还没赋值」（pylint 4 的编号），
+    #   注意**不是 E0601**——我按记忆写 E0601 跑全生态一条没报，差点误判为"无此问题"。
+    flow = 0
+    if tools['pylint']:
+        try:
+            env = dict(os.environ, PYLINTHOME='/tmp/.plhome')
+            r = subprocess.run([sys.executable, '-m', 'pylint', '--disable=all',
+                                '--enable=E0601,E0602,E0606', '--reports=n', '--score=n',
+                                '--output-format=text', '--jobs=4'] + py_files,
+                               capture_output=True, text=True, timeout=300, env=env)
+            for line in (r.stdout or '').splitlines():
+                if any(k in line for k in ('E0601:', 'E0602:', 'E0606:')):
+                    bad.append(line.strip())
+                    flow += 1
+        except Exception as e:
+            bad.append(f'⚠️ pylint 执行失败：{type(e).__name__}')
+
+    if bad:
+        head = '；'.join(bad[:3])
+        more = f'（另 {len(bad)-3} 条）' if len(bad) > 3 else ''
+        return False, f'{len(py_files)} 个脚本 · 名字/控制流问题 {len(bad)} 处｜{head}{more}'
+    _wv = f'｜豁免 {waived} 处 import *（无法检测，非通过）' if waived else ''
+    return True, (f'{len(py_files)} 个脚本 · pyflakes{"✓" if tools["pyflakes"] else "—"}'
+                  f' + pylint E06xx{"✓" if tools["pylint"] else "—"} 均无问题' + _wv)
+
+
 def cmd_verify(args):
     """终验一键（S060）：把"终验六判据"固化——一条命令跑完全部验收并输出通过/不通过。
     六判据：①探针 N/N（N=注册表信号源数，S069 起派生）②assess 综合 ③evolve scan 6/6 ④watchdog 无遗留 ⑤三件套齐备 ⑥留痕洁净。
@@ -5157,6 +5238,11 @@ def cmd_verify(args):
     _broken = [x for x in _cov if '缺 SKILL.md' in x['evidence'] or '编译' in x['evidence']]
     _gap = [x for x in _cov if x not in _broken]
     _cov_ok = (len(_broken) == 0)
+    # ⑬ 代码健康：三态。工具不可用 → None → **判红**（不放行），但文案写明"无法判定"，
+    #   与"查出问题"区分开——两者处置不同：前者去装工具，后者去改代码。
+    _ch_ok, _ch_msg = _sig_code_health()
+    if _ch_ok is None:
+        _ch_ok = False
     _cov_total = len([n for n in sorted(os.listdir(SKILL_ROOT))
                       if os.path.isdir(os.path.join(SKILL_ROOT, n))
                       and not n.startswith('.') and n != '__pycache__'])
@@ -5194,6 +5280,9 @@ def cmd_verify(args):
         ('⑫ 全技能监护覆盖', _cov_ok,
          f'全 {_cov_total} 技能 · 结构异常 {len(_broken)} · 自监察缺口 {len(_gap)}'
          + ('｜异常: ' + '、'.join(x['skill'] for x in _broken) if _broken else '')),
+        # ⑬ S177：⑫ 只能证明"能编译"，不能证明"名字没写错、变量读了没有"。
+        #   ask_bank.py 就是 ⑫ 全绿、运行时 NameError 的样本 —— 补这一条堵住。
+        ('⑬ 代码健康(名字/控制流)', _ch_ok, _ch_msg),
     ]
     passed = sum(1 for _, ok, _ in checks if ok)
     for name, ok, detail in checks:
