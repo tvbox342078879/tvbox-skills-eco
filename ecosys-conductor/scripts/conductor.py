@@ -4752,6 +4752,19 @@ def _sig_core_db_rows(_api_override=None):
     return out
 
 
+def _norm_evidence(ev):
+    """去重 key 用：剥掉证据里的噪声，使「同一发现」归并为一条（S179 根治雷达重复计数）。
+    三层剥离：① 嵌入时间戳 （YYYY-MM-DD HH:MM）——台账/经验库滞后证据在 16:41/17:02/
+    17:10… 各记一次，剥后全等；② 前置标签 [扩展点]/[清账司派单 2026-10-27] 等；
+    ③ 尾部 ｜sid 之类附言。保留实质正文做精确归并。"""
+    ev = ev or ''
+    ev = re.sub(r'[（(]\s*\d{4}-\d{2}-\d{2}[ ]?\d{2}:\d{2}\s*[）)]', '', ev)
+    ev = re.sub(r'\*\*?\d+(\.\d+)?\s*小时\*\*?', '', ev)  # 滞后实测小时数（同发现、仅测量值不同）
+    ev = re.sub(r'^(\s*\[[^\]]*\]\s*)+', '', ev)
+    ev = re.sub(r'\s*[｜|]\s*\S*\s*$', '', ev)
+    return ev.strip()
+
+
 def cmd_direction(args):
     sugg = []
     # 证据1: backlog 兑现（S058 抽函数，可探针）
@@ -4817,11 +4830,12 @@ def cmd_direction(args):
             hist = json.load(open(PLAN_FILE, encoding='utf-8'))
         old = next((h for h in hist if h.get('date') == today and 'suggestions' in h), None)
         if old:
-            seen = {(x['skill'], x['evidence']) for x in old.get('suggestions', [])}
+            seen = {(x['skill'], _norm_evidence(x['evidence'])) for x in old.get('suggestions', [])}
             for x in sugg:
-                if (x['skill'], x['evidence']) not in seen:
+                k = (x['skill'], _norm_evidence(x['evidence']))
+                if k not in seen:
                     old['suggestions'].append(x)
-                    seen.add((x['skill'], x['evidence']))
+                    seen.add(k)
         else:
             hist.append(rec)
         json.dump(hist, open(PLAN_FILE, 'w', encoding='utf-8'), ensure_ascii=False, indent=2)
