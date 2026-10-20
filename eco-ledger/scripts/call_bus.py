@@ -243,6 +243,23 @@ def _voucher(bnd, seq):
         YYYYMMDD=time.strftime('%Y%m%d'), seq=f'{seq:03d}')
 
 
+def _sync_reg(after):
+    """记完分录后回写登记余额。`after` 只用于告警文案定位（如 '跨界·场景'）。
+
+    ★ S179（M-R38 第四次）：记账分两条通道——`_book`（跨界/调用户）与 `_bump`（指标户），
+      **两条都需要回写，否则立刻多出「⚠️账册不符」**。
+      实测顺序：只修 `_book` → `跨界·场景` 对上了，`指标·调用总次数` 还差 1；
+      再修 `_bump` → 全平。**这就是"同一判据两处实现"的现场**。
+      提成一个函数，两处共用，以后加第三条通道只调它。
+    """
+    try:
+        _s, _f, _e = LED.sync_registered_balances(quiet=True)
+        if _f or _e:
+            print(f'   ⚠️ {after} 登记余额回写未完成（{_e or _f}）——分录已记，账面为准')
+    except Exception as _ex:
+        print(f'   ⚠️ {after} 登记余额回写异常（{type(_ex).__name__}: {_ex}）——分录已记')
+
+
 def _book(bnd, verb, verdict, out, err, elapsed, argv, note=''):
     """落一笔调用分录。**记账失败不掩盖调用结果**（旁路，但必须说出来）。"""
     acct = BOUNDARIES[bnd]['acct']
@@ -257,16 +274,37 @@ def _book(bnd, verb, verdict, out, err, elapsed, argv, note=''):
         note=f'{ICON.get(verdict, "")}{verdict}｜{verb} → tvbox {" ".join(argv)}｜'
              f'{elapsed:.1f}s｜{summ}' + (f'｜{note}' if note else ''))
     ok, msg = L.post(e)
+    # ★ S179 修（M-R38 第四次）：**记了分录必须回写登记余额**。
+    #   实测本轮 `ledger balance` 出 4 行「⚠️账册不符」：
+    #   跨界·任务 账面 10 / 登记 1、指标·调用总次数 36/27 ……
+    #   根因同 S176 那三处（settle / sync-versions / reconcile）——**消费了分录却不更新账户库**。
+    #   这里是第四处：`_book` 由所有 `ledger call` 与清账司收口共用，
+    #   它不回写，那么每一次跨任务调用都在账本上留一道裂缝。
+    if ok:
+        _sync_reg(after=acct)
     return v, ok, msg
 
 
 def _bump(metric, n=1):
-    """指标户 +n（与 reconcile 同口径：余额 = Σ借 − Σ贷）。"""
+    """指标户 +n（与 reconcile 同口径：余额 = Σ借 − Σ贷）。
+
+    ★ S179：`_bump` 与 `_book` 是**两条独立的记账通道**，所以 `_book` 里的回写管不到它。
+      实测：修好 `_book` 后 `跨界·场景` 对上了，但 `指标·调用总次数` 仍差 1——
+      正是 `_bump` 记了分录没回写登记值。**同一判据两处实现，就得两处都修**（M-R38）。
+    """
     acct = METRICS[metric]
     e = L.make_entry(f'M-{time.strftime("%m%d%H%M%S")}-{metric}', acct,
                      '期初·建账基准', n, '事项数', '指标波动',
                      agent='eco-ledger', note=f'call {metric} +{n}')
-    return L.post(e)[0]
+    ok = L.post(e)[0]
+    if ok:
+        try:
+            _s, _f, _err = LED.sync_registered_balances(quiet=True)
+            if _f or _err:
+                print(f'   ⚠️ 指标户登记回写未完成（{_err or _f}）——分录已记，账面为准')
+        except Exception as _ex:
+            print(f'   ⚠️ 指标户登记回写异常（{type(_ex).__name__}: {_ex}）——分录已记')
+    return ok
 
 
 # ══════════════════════════════════════════════════════════════════════════
