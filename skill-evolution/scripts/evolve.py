@@ -14,7 +14,7 @@
 
 ③ 会话台账 TO4LwsjVVdR8JRAUlkejk3 ｜ ④ 资料库经验库 XTuuj8mKtqnZSolDdeDxkq
 """
-import os,sys,json,csv,io,time,argparse,subprocess,re
+import os,sys,json,csv,io,time,argparse,subprocess,re,shutil
 from collections import Counter,defaultdict
 
 # 共享效率核心（S123 收窄：仅同一进程内与 link/blk 共享 core 模块实例；跨技能 CLI 单命令调用时各自独立实例）
@@ -1164,9 +1164,23 @@ def _move_landed(skill, tid):
     #   判据必须落到「含招式的那一行，是在讲做法还是在讲结论」。
     _NA_RE = re.compile(
         r'不适用|无需|不需要|暂无需求|没有东西要搬|硬边界|不做删除|'
-        r'无.{0,6}删除.{0,4}API|本技能不|已评估|不涉及', re.I)
+        r'无.{0,6}删除.{0,4}API|本技能不|已评估|不涉及|'
+        # ★ 实测补：这两条形态原先漏了，害得"明明写了结论"的行被判成在讲做法
+        #   `- [T-B] 薄壳 import：无跨技能共享逻辑需求（账房自包含）`     ← 无…需求
+        #   `- [T-D] 移动替代删除：library 有删除 API，无降维必要`        ← 无…必要
+        r'无.{0,8}需求|无.{0,6}必要|用不上|没有.{0,6}场景', re.I)
+    # ★★ S182 第七次修正：**已借鉴 也是结论**，而且是比"不适用"更强的结论。
+    #   实测 16 条 doc 里有一半的原文长这样：
+    #     `- **借鉴 T-G 单一事实源 SSOT**：失效原因枚举收口为唯一常量，使用点派生。`
+    #   这是"我用了这招、用在哪"，其中「借鉴」二字是规则57 的固定记法（= 已采用），
+    #   不是"我打算借鉴"。上一版不认这个词，于是每一条经验对照留痕都被算成欠账——
+    #   等于**要求技能再实现一遍它已经写好的东西**。
+    #   注意顺序：先判 na（不适用），再判采纳（已借鉴），最后才判 doc。
+    #   同一行既有「借鉴 T-X」又有「不适用」时以不适用为准（那是评估结论）。
+    _ADOPT_RE = re.compile(
+        r'借鉴\s*T-[A-I]|已借鉴|已采用|已吸收|参考\s*T-[A-I]|采纳\s*T-[A-I]', re.I)
     _lines = _md.splitlines()
-    na_hits, doc_hits = [], []
+    na_hits, doc_hits, adopt_hits = [], [], []
     for idx, ln in enumerate(_lines):
         hit_kw = [k for k in kws if re.search(k, ln, re.I)]
         if not hit_kw:
@@ -1183,23 +1197,51 @@ def _move_landed(skill, tid):
         if _NA_RE.search(rest):
             na_hits.append(ln.strip()[:120])
             continue
+        if _ADOPT_RE.search(rest):
+            adopt_hits.append(ln.strip()[:120])
+            continue
         if is_list:
-            # 向下 3 行找结论；找到则本条算"已评估为不适用"
+            # 向下 3 行找结论；找到则本条算"已评估"
             _tail = ' '.join(_lines[idx + 1: idx + 4])
             if _NA_RE.search(_tail):
                 na_hits.append((ln.strip()[:80] + ' … ' + _tail.strip())[:120])
+            elif _ADOPT_RE.search(_tail):
+                adopt_hits.append((ln.strip()[:80] + ' … ' + _tail.strip())[:120])
             # 找不到结论也不记 doc —— 清单行本身不是"叙述做法"的证据
             continue
         doc_hits.append(ln.strip()[:120])
 
-    if doc_hits and not na_hits:
+    done_n = len(na_hits) + len(adopt_hits)
+    if doc_hits and not done_n:
         return 'doc', f'脚本 0 命中、文档 {len(doc_hits)} 处在叙述做法——只说不做'
-    if na_hits and not doc_hits:
-        return 'na', f'脚本 0 命中、文档明确评估为不适用（{len(na_hits)} 处）——完成态'
-    if doc_hits and na_hits:
-        # 两种都有：以"叙述做法"为准（宁可当欠账，不许漏掉真该做的）
-        return 'doc', (f'脚本 0 命中；叙述 {len(doc_hits)} 处、判定不适用 {len(na_hits)} 处'
-                       f'——以叙述为准，可能有未做部分')
+    if done_n and not doc_hits:
+        _r = []
+        if adopt_hits:
+            _r.append(f'已借鉴 {len(adopt_hits)} 处')
+        if na_hits:
+            _r.append(f'判定不适用 {len(na_hits)} 处')
+        return 'na', f'脚本 0 命中、文档明确给出结论（{"、".join(_r)}）——完成态'
+    if doc_hits and done_n:
+        # ★★ S182 第八次修正：两种都有时，**不能一律判 doc**。
+        #   实测有 9 条属于"远处有结论、近处有叙述"，但近处那条叙述就是结论句本身。
+        #   例：`- [T-B] 薄壳 import：无跨技能共享逻辑需求（账房自包含）`
+        #   —— 行里的关键词是招式的特征词（薄壳 import），它旁边写着"无需求"，
+        #   但 _NA_RE 的字面表里没有"无…需求"这一形态，于是被当成"在讲做法"。
+        #   一律判 doc 的代价是：每一条**认真写过结论**的留痕都被算成欠账，
+        #   而 skill 没法靠"写清楚"把账销掉 —— 判据逼着人去写假实现。
+        #   改为：**逐行比距离**。离结论更近的叙述算已被结论覆盖；
+        #   只有结论远在别处、近处确实在讲怎么做，才算 doc。
+        _na_idx = {i for i, ln in enumerate(_lines)
+                   if _NA_RE.search(ln) or _ADOPT_RE.search(ln)}
+        _near = [h for h in doc_hits
+                 if any(abs(_lines.index(h) - j) <= 2 for j in _na_idx
+                        if h in _lines)]
+        _far = [h for h in doc_hits if h not in _near]
+        if _far:
+            return 'doc', (f'脚本 0 命中；{len(_far)} 处在讲做法且附近无结论'
+                           f'（另有 {len(_near)} 处被结论覆盖）——以叙述为准，可能有未做部分')
+        return 'na', (f'脚本 0 命中；文档 {len(doc_hits)} 处叙述均紧贴结论'
+                      f'（已借鉴 {len(adopt_hits)}、不适用 {len(na_hits)}）——完成态')
     if re.search('|'.join(f'(?:{k})' for k in kws), _md_raw, re.I):
         # 剥完回执后 0 命中，剥之前有 → 证据只剩提交痕迹。但要分清是哪种痕迹：
         #   回执行（"依据 M-R111 提案…"）→ 自我证明，绝不算落地
@@ -1305,12 +1347,42 @@ def cmd_patch(a):
     if only:
         items = [p for p in items if p.get('skill') == only]
     targets = []
+    seen = set()
     for p in items:
         st, det = _move_landed(p.get('skill'), p.get('ref'))
         if st == 'doc':
             targets.append((p, det))
-    print(f'🧩 只为「脚本无实现、文档在讲做法」的招式生成补丁')
-    print(f'   命中 {len(targets)} 条（na=已评估不适用 / landed=已落地 / none=连文档都没有，均不生成）\n')
+            seen.add((p.get('skill'), p.get('ref')))
+
+    # ★ 只扫提案清单会漏掉绝大多数欠账。实测：提案清单里 done 的 move 有 29 条，
+    #   而全量跑五态得到的 doc 有 16 格，两边**只交集 2 条**。差在哪：
+    #   提案是"某技能用了某招"（lend 口径，只看没用过的），
+    #   而 doc 欠账是"文档说了、脚本没做"（任意招式都可能，不限于没用过的）。
+    #   两个口径不同的集合，拿其中一个去推另一个，必然漏。
+    #   所以补一条全扫通道：所有技能 × 所有招式，一格一格判，doc 就出补丁。
+    scanned = 0
+    if not getattr(a, 'no_scan', False):
+        sk_list = [only] if only else _all_skills()
+        for sk in sk_list:
+            if not os.path.isdir(os.path.join(SKILLS, sk)):
+                continue
+            for tid in SEED_MOVES:
+                if (sk, tid) in seen:
+                    continue
+                scanned += 1
+                st, det = _move_landed(sk, tid)
+                if st == 'doc':
+                    targets.append(({'skill': sk, 'ref': tid, 'type': 'move',
+                                     'status': 'scan', 'src': '全量五态扫描'},
+                                    det))
+                    seen.add((sk, tid))
+
+    print('🧩 只为「脚本无实现、文档在讲做法」的招式生成补丁')
+    print(f'   提案清单通道：{len(items)} 条 done move'
+          f'（跳过全扫时只走这条）')
+    print(f'   全量扫描通道：{scanned} 格（{len(sk_list) if scanned else 0} 技能 × {len(SEED_MOVES)} 招式）')
+    print(f'   合计命中 {len(targets)} 条'
+          f'（na=已评估不适用 / landed=已落地 / none=连文档都没有，均不生成）\n')
     if not targets:
         print('  ℹ️ 没有需要生成补丁的招式。'); return 0
 
@@ -1391,6 +1463,20 @@ def cmd_patch(a):
         print(f'  ✅ {sk} / {tid}  → {fp}')
         print(f'     候选落点 {len(anchors)} 处；判定：{det}')
     print(f'\n共生成 {len(made)} 份补丁提案（**未改动任何技能文件**）')
+    # ★ 不再判 doc 的旧补丁必须撤掉：判据改了（"已借鉴"也算结论），
+    #   上一轮生成的补丁文件还留在目录里，人一翻就会去实现一个已经不欠的东西。
+    #   **补丁目录必须与当前判据一致**，否则它比不生成更误导。
+    _live = {os.path.basename(x) for x in made}
+    _stale = [f for f in sorted(os.listdir(out))
+              if f.endswith('.md') and f not in _live]
+    if _stale:
+        print(f'\n🧹 以下 {len(_stale)} 份是旧判据留下的、现已不是 doc，已移入 _stale/：')
+        _sd = os.path.join(out, '_stale')
+        os.makedirs(_sd, exist_ok=True)
+        for f in _stale:
+            shutil.move(os.path.join(out, f), os.path.join(_sd, f))
+            print(f'   - {f}')
+        print('   没有删：补丁是"某次判断的留档"，删了就查不到当时依据什么生成它。')
     print(f'输出目录：{out}')
     return 0
 
@@ -1647,6 +1733,8 @@ def build_parser():
     pt=sub.add_parser('patch')                        # S182 第①档：只生成补丁，不改技能
     pt.add_argument('--skill',default='')
     pt.add_argument('--out',default='')
+    pt.add_argument('--no-scan',action='store_true',
+                    help='只查提案清单（旧口径），不做全量五态扫描')
     ap_=sub.add_parser('apply')                       # S182 第②档：受控写入（默认 dry-run）
     ap_.add_argument('skill')
     ap_.add_argument('rel')
