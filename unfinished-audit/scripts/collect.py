@@ -277,7 +277,17 @@ def collect_backlog():
             #   如果整条搜关键词就会误判已结而漏掉它）
             if DONE_TAG.match(t) or DONE_NOTE.match(t):
                 continue
-            items.append(_item('backlog', s, t, _guess_kind(t), f'{fp} backlog[{i}]'))
+            _it = _item('backlog', s, t, _guess_kind(t), f'{fp} backlog[{i}]')
+            # ★★ S182：backlog 条目的归属是**它所在的技能**，不是关键词说了算。
+            #   实测：learn-hub 的 `[本期不处理] 需接资料库（library）云端 API…`
+            #   因为标题里有「云端」，被 FINE_ROUTE 甩给 **tvbox-janitor scan**，
+            #   而这条讲的是"learn-hub 的 store 索引该上云"——janitor 去扫一遍能做什么？
+            #   派错人的后果不是"效率低"，是**这条永远没人做**：收件人看它不关己，
+            #   真正的负责人（learn-hub）在自己 backlog 里看不到派单。
+            #   口径：`skill` 字段本来就是所属技能，直接用它当 owner，关键词不许改判。
+            #   （issues_ledger 是全局账，才需要关键词分诊；backlog 是**某技能自己的**待办。）
+            _it['owner_fixed'] = s
+            items.append(_it)
     return items
 
 

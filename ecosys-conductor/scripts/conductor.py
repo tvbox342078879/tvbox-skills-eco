@@ -7951,9 +7951,90 @@ def _sha16(p):
     return hashlib.sha256(open(p, 'rb').read()).hexdigest()[:16]
 
 
+def _where(rest):
+    """`backup where [文件名]` —— 查文件落在哪些夹，或列某夹里有什么。
+
+    存在理由（P030②）：原状态只记文件名，于是"这个夹里到底有没有这个文件"答不出来。
+    改成 {fname: folder_id} 后，正反两个方向都能答：
+      · 给文件名 → 它在哪些日子的哪个夹（可能多次上传）
+      · 给 folder_id → 该夹里状态记录在案的都有哪些
+    ★ 诚实边界：只回答**状态记录在案的**。云端实际内容仍以服务端为准——
+      这里不做"应有即实有"的推断，那正是本 skill 反复在防的假绿。
+    """
+    import json as _json
+    try:
+        st = _json.load(open(BACKUP_STATE_FP, encoding='utf-8'))
+    except Exception as e:
+        print(f'⚠️ 读不到备份状态（{type(e).__name__}）——无法判定，不等于没有'); return
+    ubd = st.get('uploaded_by_day', {})
+    fbd = st.get('folder_id_by_day', {})
+    f2d = {v: k for k, v in fbd.items()}
+    args = [x for x in (rest or []) if not x.startswith('-')]
+    # ★ `--folder <id>` 的 id 不以 - 开头，会留在 args 里；但 `-f` 形参本身被滤掉后
+    #   顺序就乱了（原来拿 args[0] 判 --folder 永远判不到）。这里先用原始 rest 判选项。
+    raw = list(rest or [])
+
+    if not args:
+        print('📦 备份状态一览（只列状态记录在案的，不含云端实际核对）\n')
+        for day in sorted(ubd):
+            v = ubd[day]
+            n = len(v)
+            fid = fbd.get(day, '?')
+            unknown = sum(1 for x in (v.values() if isinstance(v, dict) else v) if x == '')
+            tail = f'｜归属未知 {unknown}' if unknown else ''
+            print(f'  {day}  {n:3} 件  节点 {fid}{tail}')
+        print('\n  ↪ 查单个：tvbox backup where <文件名> ｜ 查某夹：tvbox backup where --folder <节点id>')
+        return
+
+    if '--folder' in raw or '-f' in raw:
+        _k = '--folder' if '--folder' in raw else '-f'
+        fid = raw[raw.index(_k) + 1] if raw.index(_k) + 1 < len(raw) else ''
+        if not fid:
+            print('用法：backup where --folder <节点id>'); return
+        day = f2d.get(fid, '')
+        print(f'📁 节点 {fid}' + (f'（{day} 的当日备份夹）' if day else '（不是状态里的当日夹）'))
+        if not day:
+            print('  状态里没有这个夹 —— 无法判定，不等于它是空的'); return
+        v = ubd.get(day, {})
+        names = [k for k, x in v.items() if x in (fid, '')] if isinstance(v, dict) else list(v)
+        print(f'  状态记录在案 {len(names)} 件：')
+        for n in names[:40]:
+            print(f'    · {n}')
+        if len(names) > 40:
+            print(f'    … 另有 {len(names)-40} 件')
+        print('\n  ⚠️ 这是**状态记录**，不是云端实测。要确认实际内容请用 space_api 列节点。')
+        return
+
+    pat = args[0]
+    hits = []
+    for day, v in sorted(ubd.items()):
+        if isinstance(v, dict):
+            for name, fid in v.items():
+                if pat in name:
+                    hits.append((day, name, fid))
+        else:
+            for name in v:
+                if pat in name:
+                    hits.append((day, name, ''))
+    if not hits:
+        print(f'🔍 {pat}：状态里没有记录（不等于没传过——可能是旧格式遗留或从别处上传）'); return
+    print(f'🔍 {pat}：{len(hits)} 条记录\n')
+    for day, name, fid in hits:
+        who = f'节点 {fid}' if fid else '归属未知（旧格式遗留）'
+        print(f'  {day}  {name}\n         → {who}')
+    print('\n  ⚠️ 以状态记录为准；云端是否仍在，需 space_api 实测。')
+
+
 def cmd_backup(rest):
     """backup：三层联动闭环——层1生态库(本地产出)→层2资料库(沉淀)→层3云端备份区(后盾)。
     流程：收集资产→manifest(sha256)→建当日子夹→附件上传→与上次对账(新增/变更/缺失)。--dry 只打包不上传。"""
+    rest = rest or []
+    # ★ P030② 配套（S182）：`backup where <文件名>` —— 这个文件到底落在哪个夹。
+    #   P030 原话是"「这个夹里到底有没有文件」永久不可答"，根因是状态只记文件名。
+    #   改成 {fname: folder_id} 之后，这个问题变得可答了，得给一个能问的入口。
+    if rest and rest[0] == 'where':
+        _where(rest[1:])
+        return
     import subprocess as _sp, time as _t, json as _json, hashlib as _hl
     dry = '--dry' in (rest or '')
     stamp = _t.strftime('%Y%m%d')
@@ -8065,25 +8146,35 @@ def cmd_backup(rest):
     elif _pid != BACKUP_ROOT:
         print(f'   ⚠️ 备份夹 {folder_id} 父节点是 {_pid}，既不是备份区也不是收件箱——请人工确认')
     # ④ 逐件上传（当日已传跳过——幂等，M-R24）
-    done = set(st.get('uploaded_by_day', {}).get(stamp, []))
+    # ★★ P030② 修复（S182）：原来 `uploaded_by_day[stamp]` 只存**文件名**，
+    #   于是"这个夹里到底有没有这个文件"永久不可答 —— 同一个文件名可能出现在
+    #   多个夹里（备份夹、收件箱、别的日子），只有名字等于没有归属。
+    #   改成 `{fname: folder_id}`，文件名 → 落到哪个夹，可查可核。
+    #   兼容旧数据：老格式是纯字符串列表，读进来时退化为 `{name: ''}`（未知归属，
+    #   不许冒充成当日 folder_id —— 那是猜的，猜出来的归属比没有更危险）。
+    _ubd = st.get('uploaded_by_day', {}).get(stamp, [])
+    if isinstance(_ubd, list):
+        _ubd = {_n: '' for _n in _ubd}          # 旧格式：归属未知，如实留空
+    done = set(k for k, v in _ubd.items() if v == folder_id or v == '')
     ok = fail = skip = 0
-    done_now = []
+    done_now = {}
     for p in upload:
         nm = os.path.basename(p)
         if nm in done:
             skip += 1
+            _ubd.setdefault(nm, folder_id)      # 旧记录归属空 → 本次确认它在这个夹
             continue
         r = _sp.run([sys.executable, '/root/.codebuddy/skills/library/attachment/attachment.py', 'upload',
                      '--path', p, '--node-id', folder_id, '--file-name', nm],
                     capture_output=True, text=True)
         if '已作为附件上传完成' in r.stdout:
             ok += 1
-            done_now.append(nm)
+            done_now[nm] = folder_id
         else:
             fail += 1
             print(f'   ⚠️ 上传失败：{nm}（{r.stdout[-60:]}{r.stderr[-60:]}）')
-    if done_now:
-        st.setdefault('uploaded_by_day', {}).setdefault(stamp, []).extend(done_now)
+    if done_now or _ubd:
+        st.setdefault('uploaded_by_day', {})[stamp] = {**_ubd, **done_now}
     print(f'   ③ 上传：新传 {ok}｜跳过(当日已传) {skip}｜失败 {fail} → 节点 {folder_id}')
     # ⑤ 状态落地（merge：只更新当日与清单）
     st['last'] = {'date': stamp, 'items': manifest['items'], 'folder_id': folder_id, 'ok': ok, 'fail': fail}

@@ -105,15 +105,15 @@
       "ver_state": "green",
       "ver_ok": 13,
       "ver_total": 13,
-      "cat_biz": 0,
-      "cat_radar": 76
+      "cat_biz": 100,
+      "cat_radar": 81
     },
     "metrics": {
       "ready": "13/13",
-      "watchdog_ok": false,
-      "adopted": "28/37",
+      "watchdog_ok": true,
+      "adopted": "30/37",
       "retracted": 6,
-      "pending": 9,
+      "pending": 7,
       "decided": 2
     }
   }

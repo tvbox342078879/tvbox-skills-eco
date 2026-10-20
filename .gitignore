@@ -11,3 +11,7 @@ __pycache__/
 # 快照含真实技能目录副本，入库等于把代码再存一份，且每次 apply 都会变——
 # 它不是源码，是"退路"。清了只需跑一次 snapshot 重建。
 **/upgrade_patches/_work/
+# 台账迁移前的一次性留档（issues_ledger / backup_state 的结构变更）。
+# 保留是为了"改坏了好查原来长什么样"，但它不是源码，也不该每轮都进 diff。
+# 迁完就归档到这里，目录名带 _bak，语义一目了然。
+**/plans/_bak/

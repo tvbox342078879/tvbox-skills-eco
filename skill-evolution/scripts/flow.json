@@ -110,7 +110,7 @@
  "snapshot_refresh_rule": "纯技能进化（版本/契约/流程）不刷快照（数据计数未变）；涉及③④库写入的复盘须在台账体现",
  "backlog": [
   "[已清零 2026-10-15] scan 发现机制已修（生态库登记∪本地自建，S022 实证前缀硬编码漏 legacy-watchdog）+ flow.json 检查列已加",
-  "[清账司派单 2026-11-02] [待办] store 索引目前是本地 index.json，未上云（library）；跨设备共享待接入 ｜ sid=e389e4886e54 ｜ 下一步 tvbox evolve upgrade <技能名>"
+  "[已清零 2026-10-20]（sid=e389e4886e54）并入 2009bf50299a：同一条 backlog[5] 的两次快照（本条是 S176b 加前缀前的旧文本），已由新 ‖ 原条目：[清账司派单 2026-11-02] [待办] store 索引目前是本地 index.json，未上云（library）；跨设备共享待接入 ｜ sid=e389e4886e54 ｜ 下一步 tvbox evolve upgrade <技能名>"
  ],
  "sop_binding": {
   "authority": "云 RULES 规则 48/52/54（isuY4U01Me0kUggpMN5RfX）+ 本技能 SKILL.md",

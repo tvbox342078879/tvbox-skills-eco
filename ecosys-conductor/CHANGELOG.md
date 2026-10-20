@@ -1,3 +1,56 @@
+## v1.77.2 — P030②：备份「这个文件落在哪个夹」从"答不出"变成可答
+
+### 起象：一个本来"永久不可答"的问题
+
+`backup` 每天把技能备份上传到云盘，按日期建夹（`20261020_生态备份`）。但 `backup_state.json`
+里只记了**当天传过哪些文件名**：
+
+```json
+"uploaded_by_day": { "20261020": ["a.md", "b.json", ...] }
+```
+
+于是"这个文件到底落在哪个夹"这个问题，从数据结构上就**没有答案**。
+S179 发现 12 个孤儿夹（`20261020_生态备份` 等），想判定内容归属，卡在这里——
+只能靠人在客户端逐个点开看。
+
+### 修：记录里带上 folder_id
+
+```json
+"uploaded_by_day": {
+  "20261020": { "a.md": "<folder_id>", "b.json": "<folder_id>" }
+}
+```
+
+历史数据迁移：3 天 **239 条**，用 `folder_id_by_day` 反推归属，**0 条未知**。
+
+兼容旧格式（读到 list 时如实降级，不猜）：
+```python
+_ubd = st.get('uploaded_by_day', {}).get(stamp, [])
+if isinstance(_ubd, list):
+    _ubd = {_n: '' for _n in _ubd}      # 旧格式：归属未知，如实留空
+```
+
+### 新增 `backup where`
+```
+tvbox conductor backup where                    # 一览：每天传了几件、在哪个夹
+tvbox conductor backup where <文件名>            # 正向查：这个文件在哪
+tvbox conductor backup where --folder <id>      # 反向查：这个夹里有什么
+```
+
+### 踩坑：`--folder` 永远判不到
+第一版写成先滤掉所有 `-` 开头的参数、再从 `args[0]` 判是不是 `--folder`：
+```python
+args = [x for x in rest if not x.startswith('-')]
+if args[0] == '--folder':        # ← 永远不成立，--folder 已被滤掉
+```
+`--folder <id>` 的 **id 不以 `-` 开头**，所以它留在 `args` 里，`args[0]` 拿到的是 id。
+改成用原始 `rest` 判选项，再取它后面那位。
+
+### 判据
+- `backup where` 三形态均可答，12 个孤儿夹的归属现在可以**先查再决定**，不必逐个点开
+- `backup --dry` 主流程未坏：收集 82 件 / 1030KB / 新增 77
+- **P030② 关闭**；①③ 仍待人做（见 P030 拆条）
+
 ## v1.77.1 — `issues add` 选项值也被截断（M-R126 的第二病灶，S180）
 
 ### 症状

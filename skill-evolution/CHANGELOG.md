@@ -1,3 +1,53 @@
+## v1.5.3 — apply_guard：靠求值顺序活着的变量（S182 续三）
+
+### 起象：终验判据⑬ 代码健康
+```
+❌ ⑬ 代码健康(名字/控制流)：
+   /root/.codebuddy/skills/skill-evolution/scripts/apply_guard.py:145:60:
+   E0601: Using variable '_backup_err' before assignment (used-before-assignment)
+```
+
+### 它其实不会炸，但这是侥幸
+原代码：
+
+```python
+_backup_ok = True
+try:
+    shutil.copytree(live, bak, ...)
+except Exception as e:
+    _backup_ok = False
+    _backup_err = f'{type(e).__name__}: {e}'      # ← 只有失败时才赋值
+...
+_tail = '' if _backup_ok else f' ⚠️ 备份失败（{_backup_err}）…'   # ← 只有失败时才求值右边
+```
+
+三元表达式只求值一边，所以备份成功时 `_backup_err` 不被读——**逻辑上跑得过**。
+
+但这依赖一件很脆的事：**第 150 行必须永远是三元、且判断方向不变**。任何人把它改写成
+
+```python
+if _backup_ok:
+    _tail = ''
+else:
+    _tail = f' ⚠️ 备份失败（{_backup_err}）…'
+```
+
+只要有一次写错分支，立刻 `UnboundLocalError`——而且发生时机是「还原已经做完、
+只差打一行日志」。**一次成功的回滚会被报成失败**，操作者据此再回滚一次，
+把已经还原好的目录又退回旧快照。这不是"代码风格问题"。
+
+### 修
+```python
+_backup_ok = True
+_backup_err = ''      # 先给默认值，不靠求值顺序活着
+try:
+    ...
+```
+
+### 判据
+- `pylint E06xx` 该处归零，判据⑬ 转绿（185 脚本 · 豁免 1 处 `import *`，明确标「无法检测，非通过」）
+- **不是"让判据闭嘴"**：这个变量确实存在"可能在未赋值时被读"的路径，只是当前写法暂时绕过了它
+
 ## v1.5.2 — 11 条 doc 逐条核实：**没有一条是真欠账**（S182 续二）
 
 ### 一、核实结果

@@ -106,6 +106,11 @@ def restore(skill):
         bak = f'{_base}_{_n}'
     os.makedirs(os.path.dirname(bak), exist_ok=True)
     _backup_ok = True
+    # ★ S182：`_backup_err` 原先只在 except 里赋值，靠"三元表达式只求值一边"侥幸不炸。
+    #   但这是**隐式依赖求值顺序**——任何人把第 145 行的三元改成 if/else 分支，
+    #   备份成功那条路立刻 UnboundLocalError，而且发生在"还原已经做完、只差打日志"时，
+    #   等于把一次成功的还原报成失败。先给默认值，不靠求值顺序活着。
+    _backup_err = ''
     try:
         shutil.copytree(live, bak, ignore=shutil.ignore_patterns('__pycache__', '*.pyc'))
     except Exception as e:

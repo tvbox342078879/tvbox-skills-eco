@@ -1,3 +1,76 @@
+## v1.4.13 — 重复检测不再拿命令模板当证据（S182）
+
+### 起象：`close` 一次报 18 条「疑似重复」
+
+```
+疑似重复 417759c8282d（ecosys-conductor）≈ fbfe1805f955（learn-hub）
+  · 同 due=2026-11-03 同 next=tvbox conductor issues
+```
+这两条内容毫不相干——一条是「会话编号两套体系需要统一」，一条是「probe pan pull 链路真实可用」。
+
+### 两处真缺陷
+
+**① `next` 是命令模板时，"相同"毫无信息量**
+
+`_near_duplicate_open` 判据之一是「同 due + 同 next」。但 `next` 来自 `ROUTE_TABLE[kind]`，
+**同 kind 的条目 next 全都一样**。`kind=unknown` 全指 `tvbox conductor issues`，
+于是所有 unknown 类条目两两之间都"像重复"，一次报 18 条。
+
+假阳性 18 条的实际代价不是"多看了 18 行"，是**人开始整体忽略重复告警**——
+M-R34 说的就是这个：报警器一响就没人听了。
+
+修：
+```python
+_TEMPLATE_NEXT = {v[1] for v in ROUTE_TABLE.values()} | {r[2] for r in FINE_ROUTE}
+...
+_is_template = _nx in _TEMPLATE_NEXT
+if (ia.get('due') == ib.get('due')
+        and _nx and _nx == (ib.get('next') or '').strip()
+        and not _is_template):
+    _emit(...)
+```
+
+**② backlog 条目的 owner 被关键词改判**
+
+learn-hub 自己写的待办：
+> `[本期不处理] 需接资料库（library）云端 API…`
+
+标题里有「云端」→ `FINE_ROUTE` 匹配 → 派给 **tvbox-janitor scan**。
+
+janitor 去扫一遍能做什么？什么也做不了。**派错人的代价不是"效率低"，是这条永远没人做**——
+它出现在某个技能的错误清单里，而唯一能动手的那个技能看不见它。
+
+修：backlog 条目在 `collect()` 时直接记 `owner_fixed = 该条目所在技能`。
+"该谁做"没有歧义的事，不该交给关键词分诊。
+```python
+_it['owner_fixed'] = s
+...
+# dispatch._assign 开头
+_ofixed = (item.get('owner_fixed') or '').strip()
+if _ofixed:
+    item['owner'] = _ofixed
+    item['dispatched_by'] = 'owner_fixed（归属技能自己，关键词不许改判）'
+    return item
+```
+
+### 受控单测
+新增 T16 三条，**保护的是"判据不要变哑"这个方向**：
+
+| 用例 | 断言 |
+|---|---|
+| T16a | 模板 next 相同 **不**判重复（假阳性） |
+| T16b | 具体 next 相同**仍**判重复（不误伤真信号） |
+| T16c | backlog owner 归所属技能，不被「云端」改判 |
+
+T16b 写的时候失败文案是 `'未报出'`——读起来和断言的期望方向相反，看图的人会以为
+"没报出来是对的"。已改成 `'应报出重复却没报（真信号被吞）'`。
+**失败信息必须直接说清"期望什么、实际什么"**，不能只写实际。
+
+### 判据
+- `selftest.py` 17 项全过
+- `close` 噪声：18 条 → **0 条**
+- 「消失未收口」：7 条 → **0 条**
+
 ## v1.4.12 — M-R127 漏了 FINE_ROUTE：显式 kind 仍被关键词改判（S181）
 
 ### 症状

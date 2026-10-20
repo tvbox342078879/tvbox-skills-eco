@@ -1135,9 +1135,32 @@ def check_flow_ref_integrity(m):
         if not os.path.exists(fp):
             continue
         try:
-            txt = json.dumps(json.load(open(fp, encoding='utf-8')), ensure_ascii=False)
+            _obj = json.load(open(fp, encoding='utf-8'))
         except Exception:
             continue
+        # ★★ S182 修判据：**已结条目的历史叙述不是流程步骤**。
+        #   实测 flow.json 里留着一条 `[已清零 2026-10-20]（sid=b990c7ef334c）M45 已补判据
+        #   并实测：tvbox jobs 实测 4 个任务全部启用…`——这是在记录「当初查过 tvbox jobs」，
+        #   不是让人照着跑的一步。整文件 json.dumps 后被正则一扫，就报成
+        #   「tvbox-inspect→jobs 悬空命令引用」，判据④每轮红一次。
+        #   本检查器的判据是「这一跑就失败」，已结留档根本不会被跑。
+        #
+        # ★ 只对「值」剔已结条目，**键一律保留**。第一版把键也剔了，且判据写反：
+        #   写成 `not _backlog_is_open(k)` 才保留，而 _backlog_is_open 返回 True 表示
+        #   **未结**，于是"保留的恰好是已结的"。实测 68 条命令引用被剔到 0 条，
+        #   连人造的 `tvbox inspect zzznonexist` 都留不下来——**检查器被修成哑巴**。
+        #   记住：`_backlog_is_open(x) == True` 意思是 x 未结。
+        def _strip_done(o):
+            if isinstance(o, dict):
+                return {k: _strip_done(v) for k, v in o.items()}
+            if isinstance(o, list):
+                # 列表里以字符串形态存的 backlog 条目才判已结，其余原样保留
+                return [_strip_done(v) for v in o
+                        if not (isinstance(v, str) and not _backlog_is_open(v))]
+            if isinstance(o, str):
+                return '' if not _backlog_is_open(o) else o
+            return o
+        txt = json.dumps(_strip_done(_obj), ensure_ascii=False)
         # S176b 修判据：原正则把 `tvbox box.json` 截成 `tvbox box`，报「悬空命令 probe-hub→box」。
         # 实测：probe-hub/scripts/flow.json 原句是「cluntop/tvbox box.json 抽 21 条」——
         # 描述的是**别人仓库里的文件名**，根本不是本 CLI 的命令。误报一条「耗时」级遗留，

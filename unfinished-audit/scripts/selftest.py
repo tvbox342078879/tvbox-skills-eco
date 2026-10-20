@@ -355,6 +355,41 @@ def t15():
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def t16():
+    """T16 重复检测的两类假阳性（S182·实测一次报 18 条）。
+
+    这两条判据错在"拿没有信息量的字段做判据"，而不是错在阈值：
+      ① `同 due + 同 next` —— next 是 ROUTE_TABLE 的命令模板时，同 kind 全一样。
+         实测「会话编号两套体系」≈「probe pan pull 链路」被判重复，两者毫无关系。
+      ② backlog 的 owner 被关键词改判 —— learn-hub 自己的待办因标题含「云端」
+         被派给 janitor，**派错的代价是这条永远没人做**。
+    """
+    import dispatch
+
+    # ① 模板 next 不构成重复证据；具体 next 相同仍然算
+    _ia = {'sid': 'a1', 'title': '会话编号两套体系需要统一', 'owner': 'ecosys-conductor',
+           'due': '2026-11-03', 'next': 'tvbox conductor issues', 'status': 'open'}
+    _ib = {'sid': 'b2', 'title': 'probe pan pull 链路真实可用', 'owner': 'learn-hub',
+           'due': '2026-11-03', 'next': 'tvbox conductor issues', 'status': 'open'}
+    hit = dispatch._near_duplicate_open([dict(_ia), dict(_ib)])
+    check('T16a 模板 next 相同不算重复（假阳性）', not hit, f'误报 {hit}')
+
+    _ic = dict(_ia, sid='c3', next='tvbox janitor scan --fix')
+    _id = dict(_ib, sid='d4', owner='tvbox-janitor', next='tvbox janitor scan --fix')
+    hit2 = dispatch._near_duplicate_open([_ic, _id])
+    # ★ 失败文案写「未报出」有歧义——和断言的期望方向读起来相反，看图的人会以为
+    #   "没报出来是对的"。失败信息必须直接说清"期望什么、实际什么"。
+    check('T16b 具体 next 相同仍判重复（不误伤真信号）', bool(hit2),
+          '应报出重复却没报（真信号被吞）')
+
+    # ② backlog 的 owner 归所属技能，关键词不许改判
+    it = {'sid': 'e5', 'title': '需接资料库（library）云端 API', 'kind': 'rule',
+          'evidence': '/x/learn-hub/scripts/flow.json backlog[5]', 'owner_fixed': 'learn-hub'}
+    dispatch._assign(it)
+    check('T16c backlog owner 归所属技能（不被「云端」改判）',
+          it.get('owner') == 'learn-hub', f"实际 owner={it.get('owner')}")
+
+
 if __name__ == '__main__':
     print('🧪 清账司受控单测（造真数据 → 跑真采集器 → 断言 → 清理）')
     print()
@@ -372,6 +407,7 @@ if __name__ == '__main__':
     t12()
     t14()
     t15()
+    t16()
     _sandbox_off()
     # 现场洁净自证（M-R32 镜像）：单测跑完不得在生产 flow.json 留任何派单垃圾
     _leaked = []

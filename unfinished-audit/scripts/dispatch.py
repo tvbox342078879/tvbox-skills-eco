@@ -55,6 +55,11 @@ FINE_ROUTE = [
     (('触发词', '_SKILL_INTENTS', '路由'), 'ecosys-conductor', 'tvbox conductor onboard <技能名>'),
 ]
 
+# ★ 命令模板集合：这些 next 是**按性质给的通用命令**，同一 kind 的条目全都一样，
+#   所以"两条 next 相同"不构成任何重复证据。派生自上面两张表，不另维护一份
+#   （另写一份必然漂移：改了 ROUTE_TABLE 忘了改这份，判据就悄悄失效）。
+_TEMPLATE_NEXT = {v[1] for v in ROUTE_TABLE.values()} | {r[2] for r in FINE_ROUTE}
+
 
 def _today():
     return datetime.date.today()
@@ -74,6 +79,18 @@ def _assign(item, today=None):
     today = today or _today()
     kind = item.get('kind') or 'unknown'
     owner, nxt = ROUTE_TABLE.get(kind, ROUTE_TABLE['unknown'])
+    # ★★ S182：`owner_fixed` 是**采集侧认定"归属就是它"**的条目（目前是 backlog）。
+    #   这类条目一个技能自己写在 flow.json 里的待办，"该谁做"没有歧义——
+    #   交给关键词分诊只会派错人，而派错的代价是这条**永远没人做**
+    #   （收件人看它不关己，真正的负责人又看不到派单）。
+    #   `kind`/`next` 仍然正常给（性质、命令模板不妨保留），只有 owner 不动。
+    _ofixed = (item.get('owner_fixed') or '').strip()
+    if _ofixed:
+        item['owner'] = _ofixed
+        item['next'] = item.get('next_fixed') or nxt
+        item['due'] = (today + datetime.timedelta(days=DUE_DAYS.get(kind, 14))).isoformat()
+        item['dispatched_by'] = 'owner_fixed（归属技能自己，关键词不许改判）'
+        return item
     # 只有**人显式声明**过性质，才禁止关键词改判。
     # 采集侧机器猜出来的 kind（`kind_declared` 缺省）不受保护——
     # 否则 FINE_ROUTE 整张表失效，等于把 S180 之前的另一种误判换了个方向。
@@ -479,9 +496,20 @@ def _near_duplicate_open(items, thresh=0.42, min_len=12):
             if _oa and _ob and _oa == _ob:
                 continue          # 同一个 owner 的两条 = 同一人手上两件事，不算互踢
             # ① 结构判据 A：同 due + 同 next（最硬，几乎必然同一件事）
+            #   ★★ S182 修正：**next 是命令模板时，"相同"毫无信息量**。
+            #   实测：`kind=unknown` 的所有条目 next 都是 `tvbox conductor issues`，
+            #   于是"同 due + 同 next"把**内容毫不相干**的两条判成重复：
+            #     417759c8282d「会话编号两套体系需要统一」  ≈
+            #     fbfe1805f955「probe pan pull 链路真实可用」
+            #   一次报出 18 条这种噪声，人只会整体忽略——报警器一响就没人听了。
+            #   改：只有当 next 是**具体命令**（含子命令参数、非通用模板）时，
+            #   相同才有判据力；否则必须再叠加文本重合。
+            _nx = (ia.get('next') or '').strip()
+            _is_template = _nx in _TEMPLATE_NEXT
             if (ia.get('due') and ia.get('due') == ib.get('due')
-                    and ia.get('next') and ia.get('next') == ib.get('next')):
-                _emit(ia, ib, f'同 due={ia.get("due")} 同 next')
+                    and _nx and _nx == (ib.get('next') or '').strip()
+                    and not _is_template):
+                _emit(ia, ib, f'同 due={ia.get("due")} 同 next={_nx}')
                 continue
             # ② 结构判据 B：同 due + 不同 owner + 文本有实质重合
             #    为什么这条必要：实测 becf9081fdbc / 5e79eeb5ba4f——

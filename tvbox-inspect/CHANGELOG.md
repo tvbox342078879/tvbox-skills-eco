@@ -1,3 +1,59 @@
+## v1.3.30 — M16 判据修：已结条目的历史叙述不是流程步骤
+
+### 起象：终验判据④ 每轮红一次
+```
+[耗时] M16 流程命令引用完整性
+    遗留: 1 条悬空命令引用
+    详情: flow.json 引用了 CLI 不存在的命令：tvbox-inspect→jobs
+```
+`tvbox inspect jobs` 确实不存在（实测 `invalid choice: 'jobs'`）。但报出来的这条不是流程步骤——
+`tvbox-inspect/scripts/flow.json` 里躺着的是：
+
+> `[已清零 2026-10-20]（sid=b990c7ef334c）M45 已补判据并实测：tvbox jobs 实测 4 个任务全部启用、停用 0 个…`
+
+这是在**记录当初查过 `tvbox jobs`**，不是让人照着跑的一步。M16 的原实现把整个 `flow.json`
+`json.dumps` 完拿正则一扫，已结欠账里的历史叙述和活动流程步骤在文本上长得一模一样，
+于是每轮都把它当成一条悬空引用报出来。
+
+### 修
+扫描前先剔除「已结条目」的字符串值，键一律保留：
+```python
+def _strip_done(o):
+    if isinstance(o, dict):
+        return {k: _strip_done(v) for k, v in o.items()}
+    if isinstance(o, list):
+        return [_strip_done(v) for v in o
+                if not (isinstance(v, str) and not _backlog_is_open(v))]
+    if isinstance(o, str):
+        return '' if not _backlog_is_open(o) else o
+    return o
+```
+复用已有的 `_backlog_is_open` 判已结，不另造词表（M-R38 单一事实源）。
+
+### 中途修错一次，记下来
+第一版把**键也剔了**，判据还写反了：
+```python
+return {k: _strip_done(v) for k, v in o.items() if not _backlog_is_open(k)}
+```
+`_backlog_is_open(x) == True` 意思是 **x 未结**。写成 `not ...` 才保留，等于"保留的恰好是已结的"。
+
+实测后果：10 个技能的 flow.json 命令引用从 **68 条被剔到 0 条**，连我人造的
+`tvbox inspect zzznonexist` 都留不下来——**检查器被修成了哑巴**，而且它还会打印 ✅。
+这是我这一轮最该防的失败形态：为了让一条假红变绿，把真红的能力一起关掉了。
+
+修订后复验：
+
+| | 剔除前 | 剔除后 |
+|---|---|---|
+| 命令引用总数 | 68 | **59** |
+| 剔掉的 | — | 9 条（全在已结条目里） |
+| 人造悬空引用是否保留 | — | **是** |
+
+### 判据
+- `tvbox inspect scan` → ✅ 无遗留
+- 剔掉的 9 条仍可追溯：原条目在 flow.json 里，只是不参与"会被执行"的扫描
+- 判据边界收紧为「**会被跑的命令**」，已结留档不属于此列
+
 ## v1.3.29 — M44 登记：GitHub token 未配置（docsync drift 归零）
 
 ### 起象：终验卡口① 报 `drift=1`
