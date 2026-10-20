@@ -1089,6 +1089,89 @@ def cmd_propose(a):
     return 0
 
 
+def _move_landed(skill, tid):
+    """回读校验：招式 `tid` 是否**真的落进了技能**。返回 (state, detail)。
+
+    ★ S182（本条是 S181 发现「41 条 done 空转」后的正式落地）：
+      原实现 `for p in ps: p['status']='done'` —— **升级一结束就无条件标 done**，
+      从没看过技能正文有没有变。于是「写了一条提案」被记成「招式已成事实」。
+
+      ★ 但纠正一处我自己的误判：S181 当时说「招式代号 T-A…T-I 出现 0 次 = 全空转」，
+        **那个判据是错的**——技能正文写的是招式的**名字和做法**，不是代号。
+        用代号去 grep，命中的只会是"讨论招式库"的元技能，当然 0 次。
+        重新用 SEED_MOVES 的关键词实测：29 条 move 提案里 **18 条脚本有实现、
+        11 条只有文档痕迹、其中 2 条连文档都没有**。所以不是"全空转"，
+        而是"**有一部分真落地了，另一部分只停留在文档**"——这 11 条才是真问题。
+
+    判据分三态（M-R60：不许把"没查成"折叠成"没做"）：
+      'landed'  脚本里能找到招式关键词（做法进了代码，最可信）
+      'doc'     脚本没有、技能文档里有（只说不做，或本就属于流程约定）
+      'none'    两处都没有（纯空转，最该重开）
+      'unknown' 技能目录不存在 → **不是 none**，不许当"没做"
+    """
+    d = os.path.join(SKILLS, skill)
+    if not os.path.isdir(d):
+        return 'unknown', f'技能目录不存在：{skill}'
+    spec_m = SEED_MOVES.get(tid)
+    if not spec_m:
+        # 非 SEED 招式（如 recur 类提案）没有关键词表 → 无法判定，不得当已落地
+        return 'unknown', f'招式 {tid} 不在 SEED_MOVES，无判据'
+    kws = spec_m['kw']
+    py_txt, md_txt = [], []
+    for root, _dirs, files in os.walk(d):
+        for f in files:
+            p = os.path.join(root, f)
+            try:
+                s = open(p, encoding='utf-8').read()
+            except Exception:
+                continue
+            if f.endswith('.py'):
+                py_txt.append(s)
+            elif f.endswith('.md'):
+                md_txt.append(s)
+    _py, _md = '\n'.join(py_txt), '\n'.join(md_txt)
+    n_py = sum(1 for k in kws if re.search(k, _py, re.I))
+    n_md = sum(1 for k in kws if re.search(k, _md, re.I))
+    if n_py:
+        return 'landed', f'脚本命中 {n_py} 个关键词'
+    if n_md:
+        return 'doc', f'脚本 0 命中、文档命中 {n_md} 个——只说不做'
+    return 'none', '脚本与文档均 0 命中——纯空转'
+
+
+def _prop_key(p):
+    """提案的稳定唯一键。★ S182：原先用 `id(p)` 当键 —— 内存地址既不跨进程稳定，
+    也不在提案结构里（提案根本没有 id 字段）。propose 里判重用的一直是
+    `(skill, type, ref)` 三元组，闸门必须用同一把钥匙，否则「放行过谁」和
+    「该标谁 done」永远对不上。"""
+    return (p.get('skill') or '', p.get('type') or '', p.get('ref') or '')
+
+
+def _gate_moves(ps):
+    """对一批 move 提案做回读闸门。返回 (ok_list, fail_list)。
+
+    不阻断升级（版本号该升还是要升），但**不许把没落地的标成 done**：
+      · landed → 可以 done
+      · doc    → 标 done 但记 `landed='doc'`，CHANGELOG 里写明"仅文档"
+      · none   → **不标 done，退回 pending 并记原因**（这才是"待授权"的真实状态）
+      · unknown→ 不标 done，退回 pending（判据不可用 ≠ 已落地）
+    """
+    ok, bad = [], []
+    for p in ps:
+        tid = p.get('ref')
+        if p.get('type') != 'move' or not tid:
+            ok.append(p)          # 非招式提案（recur 等）不受本闸门管辖
+            continue
+        state, detail = _move_landed(p.get('skill'), tid)
+        p['landed'] = state
+        p['landed_detail'] = detail
+        if state in ('landed', 'doc'):
+            ok.append(p)
+        else:
+            bad.append(p)
+    return ok, bad
+
+
 def cmd_commit(a):
     """★ M-R111 第③④步：用户授权后执行升级（升级版本+写 CHANGELOG+清提案）。
 
@@ -1118,6 +1201,7 @@ def cmd_commit(a):
     bysk={}
     for p in sel: bysk.setdefault(p['skill'],[]).append(p)
     done=0
+    _passed_keys=set()         # ★ S182：闸门放行过的提案键，供下面标 done 时比对
     for sk,ps in bysk.items():
         d=os.path.join(SKILLS,sk)
         if not os.path.exists(os.path.join(d,'SKILL.md')):
@@ -1152,15 +1236,40 @@ def cmd_commit(a):
                     '\n'.join([f'- 依据 M-R111 提案：{p["what"]}（{p["why"]}）' for p in ps])+'\n')
         except Exception as e:
             print(f'  ⚠️ CHANGELOG 置顶失败（{type(e).__name__}），段已追加在末尾，请人工搬移')
-        for p in ps: p['status']='done'
-        done+=len(ps)
-        print(f'  ✅ {sk} 已升级，吸收 {len(ps)} 条提案')
+        # ★ S182：标 done **之前**先回读，没落地的不许记成已成事实。
+        _ok_ps, _bad_ps = _gate_moves(ps)
+        for p in _ok_ps:
+            p['status']='done'
+            _passed_keys.add(_prop_key(p))
+        for p in _bad_ps:
+            # 退回 pending：它本来就还没吸收完，只是"升了版本"而已
+            p['status']='pending'
+            p['landed_blocked']=f'{p.get("landed")}：{p.get("landed_detail")}'
+        if _bad_ps:
+            print(f'    ⛔ {len(_bad_ps)} 条提案**未落地**，已退回 pending（不计入已吸收）：')
+            for p in _bad_ps:
+                print(f'       · [{p.get("ref")}] {p.get("landed")} — {p.get("landed_detail")}')
+        _doc_ps=[p for p in _ok_ps if p.get('landed')=='doc']
+        if _doc_ps:
+            print(f'    ℹ️ {len(_doc_ps)} 条仅在文档出现（脚本无实现），标记 landed=doc')
+        done+=len(_ok_ps)
+        print(f'  ✅ {sk} 已升级，吸收 {len(_ok_ps)} 条提案'
+              + (f'（{len(_bad_ps)} 条未落地已退回）' if _bad_ps else ''))
     # ★ 只把**本次处理过**的提案标 done 并清出待办；其余技能/未处理的 pending 原样保留。
     #   （旧实现 `status not in ('pending','rejected')` 会把所有没处理的提案一起删——假绿式清账，已修）
-    sel_ids={id(p) for p in sel}
+    #
+    # ★★ S182：**这段曾是闸门的漏洞**。原实现「凡是选中的、状态还是 pending 的，一律标 done」
+    #   —— 而闸门刚把没落地的退回成 pending，下一行就被这里重新标回 done。
+    #   等于闸门白装：只要闸门写 `pending`，这段立刻把它的成果抹掉。
+    #   修法：只对闸门**放行过**的键（`_passed_keys`，上面循环里已收集）标 done；
+    #   被退回的保留 pending 且带着 blocked 原因，下轮 propose/commit 能看见，而非静默消失。
+    #   ★★ 再修（S182 第二处）：原句用了 `sel_ids` —— 这个变量在本函数里**从未定义**，
+    #   一旦有提案走到这行必然 NameError（py_compile 查不出来，只有真跑才炸）。
+    #   选中的集合本来就是 `sel`，直接用它。
+    _sel_keys={_prop_key(p) for p in sel}
     for p in items:
-        if id(p) in sel_ids and p.get('status')=='pending':
-            p['status']='done'
+        if _prop_key(p) in _sel_keys and p.get('status') == 'pending' and _prop_key(p) in _passed_keys:
+            p['status'] = 'done'
     props['items']=[p for p in items if p.get('status')!='rejected']
     _save_props(props)
     print(f'\n  共执行 {done} 条（授权=你调用本命令）；其余未选中提案保持不变')
