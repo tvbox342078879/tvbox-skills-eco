@@ -1109,11 +1109,13 @@ def _move_landed(skill, tid):
         11 条只有文档痕迹、其中 2 条连文档都没有**。所以不是"全空转"，
         而是"**有一部分真落地了，另一部分只停留在文档**"——这 11 条才是真问题。
 
-    判据分三态（M-R60：不许把"没查成"折叠成"没做"）：
-      'landed'  脚本里能找到招式关键词（做法进了代码，最可信）
-      'doc'     脚本没有、技能文档里有（只说不做，或本就属于流程约定）
-      'none'    两处都没有（纯空转，最该重开）
-      'unknown' 技能目录不存在 → **不是 none**，不许当"没做"
+    判据分四态（M-R60：不许把"没查成"折叠成"没做"）：
+      'landed'       脚本里能找到招式关键词（做法进了代码，最可信）
+      'na'           **文档里明确评估过并判定不适用**（"不适用…"/"无删除API，这是硬边界"）
+                     —— 这是完成态，不是欠账。认真评估后说"不需要"，比照抄一句话更可信
+      'doc'          脚本没有、文档里在**叙述做法**（只说不做）
+      'none'         两处都没有（纯空转，最该重开）
+      'unknown'      技能目录不存在 / 招式不在库 → **不是 none**，不许当"没做"
     """
     d = os.path.join(SKILLS, skill)
     if not os.path.isdir(d):
@@ -1146,14 +1148,66 @@ def _move_landed(skill, tid):
     _md = re.sub(r'(?m)^[-*]\s*依据\s*M-R111\s*提案：.*$', '', _md)
     _md = re.sub(r'(?m)^[-*]\s*由\s*skill-evolution\s*upgrade\s*自动提升.*$', '', _md)
     n_py = sum(1 for k in kws if re.search(k, _py, re.I))
-    n_md = sum(1 for k in kws if re.search(k, _md, re.I))
     if n_py:
         return 'landed', f'脚本命中 {n_py} 个关键词'
-    if n_md:
-        return 'doc', f'脚本 0 命中、文档命中 {n_md} 个——只说不做'
+
+    # ★★ S182 第五次修正：**行级**判定，而不是整篇布尔。
+    #   上一版只看"文档里有没有出现关键词"，于是把两种完全相反的东西算成一类：
+    #     ①「我在用这招：删除接口不可用时改为移动到回收夹」   ← 叙述做法 = doc
+    #     ②「[T-D] 移动替代删除 — **不适用**：监察司不做删除」← 评估结论 = na
+    #   实测 9 条 doc 里，7 条其实是 ②。把"认真评估后判定不适用"记成欠账，
+    #   等于逼技能去实现一个它根本用不到的招式 —— 这种事做出来就是纯负担。
+    #   判据必须落到「含招式的那一行，是在讲做法还是在讲结论」。
+    _NA_RE = re.compile(
+        r'不适用|无需|不需要|暂无需求|没有东西要搬|硬边界|不做删除|'
+        r'无.{0,6}删除.{0,4}API|本技能不|已评估|不涉及', re.I)
+    _lines = _md.splitlines()
+    na_hits, doc_hits = [], []
+    for idx, ln in enumerate(_lines):
+        hit_kw = [k for k in kws if re.search(k, ln, re.I)]
+        if not hit_kw:
+            continue
+        # 招式名常出现在"清单"行（`T-C 指纹白名单` / `T-F 机械量化` / …）——
+        # 那是登记表，不是叙述也不是结论，单看它不算证据。
+        # 但清单行后面常跟一段总说明（"…— **本技能当前不适用**：清道夫没有白名单结构"），
+        # 那是真结论。所以清单行不直接判，改为**向下看 3 行**找结论。
+        is_list = len(re.findall(r'`?\bT-[A-I]\b', ln)) >= 2
+        # 只看关键词所在的分句，避免整行里"旁边恰好有个不适用"被借来当结论
+        rest = ln
+        for k in hit_kw:
+            rest = re.sub(k, ' ', rest, flags=re.I)
+        if _NA_RE.search(rest):
+            na_hits.append(ln.strip()[:120])
+            continue
+        if is_list:
+            # 向下 3 行找结论；找到则本条算"已评估为不适用"
+            _tail = ' '.join(_lines[idx + 1: idx + 4])
+            if _NA_RE.search(_tail):
+                na_hits.append((ln.strip()[:80] + ' … ' + _tail.strip())[:120])
+            # 找不到结论也不记 doc —— 清单行本身不是"叙述做法"的证据
+            continue
+        doc_hits.append(ln.strip()[:120])
+
+    if doc_hits and not na_hits:
+        return 'doc', f'脚本 0 命中、文档 {len(doc_hits)} 处在叙述做法——只说不做'
+    if na_hits and not doc_hits:
+        return 'na', f'脚本 0 命中、文档明确评估为不适用（{len(na_hits)} 处）——完成态'
+    if doc_hits and na_hits:
+        # 两种都有：以"叙述做法"为准（宁可当欠账，不许漏掉真该做的）
+        return 'doc', (f'脚本 0 命中；叙述 {len(doc_hits)} 处、判定不适用 {len(na_hits)} 处'
+                       f'——以叙述为准，可能有未做部分')
     if re.search('|'.join(f'(?:{k})' for k in kws), _md_raw, re.I):
-        # 剥掉提交痕迹后 0 命中，剥之前有 → 唯一证据是自己的提案回执，不算落地
-        return 'none', '仅命中「提案依据」回执行（自我证明，不算落地）——纯空转'
+        # 剥完回执后 0 命中，剥之前有 → 证据只剩提交痕迹。但要分清是哪种痕迹：
+        #   回执行（"依据 M-R111 提案…"）→ 自我证明，绝不算落地
+        #   清单行（一次列出好几个招式号）→ 只是登记，也不算落地
+        # 判词必须说清是哪一种，否则下次查账的人会被误导去翻"提案依据"。
+        _only_receipt = bool(re.search(r'依据\s*M-R111\s*提案', _md_raw))
+        _only_list = bool(re.search(r'`?\bT-[A-I]\b.*`?\bT-[A-I]\b', _md_raw))
+        if _only_receipt and not _only_list:
+            return 'none', '仅命中「提案依据」回执行（自我证明，不算落地）——纯空转'
+        if _only_list and not _only_receipt:
+            return 'none', '仅命中招式清单行（只是登记，不是落地）——纯空转'
+        return 'none', '仅命中登记/回执痕迹（清单行与提案依据），无真实叙述——纯空转'
     return 'none', '脚本与文档均 0 命中——纯空转'
 
 
@@ -1170,6 +1224,7 @@ def _gate_moves(ps):
 
     不阻断升级（版本号该升还是要升），但**不许把没落地的标成 done**：
       · landed → 可以 done
+      · na     → 可以 done（文档里已明确评估"不适用"，这是完成态，不是欠账）
       · doc    → 标 done 但记 `landed='doc'`，CHANGELOG 里写明"仅文档"
       · none   → **不标 done，退回 pending 并记原因**（这才是"待授权"的真实状态）
       · unknown→ 不标 done，退回 pending（判据不可用 ≠ 已落地）
@@ -1183,11 +1238,157 @@ def _gate_moves(ps):
         state, detail = _move_landed(p.get('skill'), tid)
         p['landed'] = state
         p['landed_detail'] = detail
-        if state in ('landed', 'doc'):
+        if state in ('landed', 'doc', 'na'):
             ok.append(p)
         else:
             bad.append(p)
     return ok, bad
+
+
+def _find_py_anchor(skill, tid):
+    """给一条"只写在文档里"的招式找落点：返回候选插入位置列表。
+
+    只读不写。**宁可返回空，不许凑数。**
+
+    第一版按函数名关键词（save/write/check/probe…）扫，实测两份产物都跑偏：
+      · `_probe_empty_databases` 名字带 probe 被推荐给「活体探针」——它查的是空库，不同事
+      · conductor 12 个候选全是 check-fn，与「物理搬迁」毫无关系
+    关键词匹配函数名，等于用"名字像"替"事情像"。这比不给候选更糟：它会让人
+    照着一个错误的位置改，而错误的位置往往也能通过表面测试。
+    改成：候选必须**函数体里也有招式关键词**，才列进来。
+    """
+    spec_m = SEED_MOVES.get(tid) or {}
+    d = os.path.join(SKILLS, skill)
+    kws = spec_m.get('kw') or []
+    cands = []
+    for root, _dirs, files in os.walk(d):
+        if '__pycache__' in root:
+            continue
+        for f in sorted(files):
+            if not f.endswith('.py'):
+                continue
+            p = os.path.join(root, f)
+            try:
+                src = open(p, encoding='utf-8').read()
+            except Exception:
+                continue
+            lines = src.splitlines()
+            # 先按 def 切段，拿到每个函数的起止行
+            defs = [(i, ln) for i, ln in enumerate(lines, 1)
+                    if re.match(r'\s*def\s+\w+', ln)]
+            for n, (start, sig) in enumerate(defs):
+                end = defs[n + 1][0] - 1 if n + 1 < len(defs) else len(lines)
+                body = '\n'.join(lines[start - 1:end])
+                hit = [k for k in kws if re.search(k, body, re.I)]
+                if hit:
+                    cands.append((os.path.relpath(p, d), start, sig.strip()[:90],
+                                  '函数体内命中 ' + '、'.join(hit[:3])))
+    return cands[:12]
+
+
+def cmd_patch(a):
+    """★ S182 第①档：为"只写在文档里"的招式生成**可审阅补丁**。
+
+    严格边界（本命令的存在前提）：
+      · **只读技能文件，绝不写入**；仅输出到 `--out`（默认 upgrade_patches/）
+      · 生成的是"往哪个函数插什么判断"的提案文本 + 统一 diff 形式的示意
+      · 不适用（na）的招式不生成补丁 —— 那是完成态，不是欠账
+    这是"让它写、让人审"的第一步。**不给它写技能目录的权限**，是本档的核心约束。
+    """
+    props = _load_props()
+    only = getattr(a, 'skill', '') or ''
+    items = [p for p in props['items'] if p.get('type') == 'move' and p.get('status') == 'done']
+    if only:
+        items = [p for p in items if p.get('skill') == only]
+    targets = []
+    for p in items:
+        st, det = _move_landed(p.get('skill'), p.get('ref'))
+        if st == 'doc':
+            targets.append((p, det))
+    print(f'🧩 只为「脚本无实现、文档在讲做法」的招式生成补丁')
+    print(f'   命中 {len(targets)} 条（na=已评估不适用 / landed=已落地 / none=连文档都没有，均不生成）\n')
+    if not targets:
+        print('  ℹ️ 没有需要生成补丁的招式。'); return 0
+
+    out = getattr(a, 'out', '') or os.path.join(ROOT, 'upgrade_patches')
+    os.makedirs(out, exist_ok=True)
+    made = []
+    for p, det in targets:
+        sk, tid = p.get('skill'), p.get('ref')
+        spec_m = SEED_MOVES.get(tid)
+        if not spec_m:
+            continue
+        anchors = _find_py_anchor(sk, tid)
+        body = []
+        body.append(f'# 补丁提案：{sk} / {tid} {spec_m["name"]}')
+        body.append('')
+        body.append('> 本文件由 `evolve patch` 生成，**没有改动任何技能文件**。')
+        body.append('> 审阅后由人决定是否采用。采用方式：照下列位置手工插入，或作为提示交给执行体。')
+        body.append('')
+        body.append('## 为什么需要这一步')
+        body.append('')
+        body.append(f'- 招式适用条件：{spec_m["cond"]}')
+        body.append(f'- 当前判定：`doc` —— {det}')
+        body.append(f'- 判定依据：脚本 `.py` 中对本招式的关键词 0 命中，但文档在**叙述做法**')
+        body.append(f'- 提案原文：{p.get("what", "")}')
+        body.append('')
+        body.append('## 招式要义')
+        body.append('')
+        body.append(f'**{spec_m["name"]}**')
+        body.append('')
+        body.append('判据关键词（落地后应能在脚本里命中）：'
+                    + '、'.join('`%s`' % k for k in spec_m['kw']))
+        body.append('')
+        body.append('## 候选落点（只读扫描得到，需人工判断哪一处才对）')
+        body.append('')
+        if anchors:
+            body.append('候选要求：**函数体内**也出现招式关键词。只名字像的不算。')
+            body.append('')
+            body.append('| 文件 | 行 | 函数 | 依据 |')
+            body.append('|---|---|---|---|')
+            for f, i, sig, why in anchors:
+                body.append(f'| `{f}` | {i} | `{sig}` | {why} |')
+            body.append('')
+            body.append('⚠️ 以上仍是**候选**，不是答案。选错位置比不改更糟。')
+        else:
+            body.append('**未找到候选落点——函数体里一处招式关键词都没有。**')
+            body.append('')
+            body.append('这不等于"必须硬塞一个"。真实情况通常是三者之一：')
+            body.append('')
+            body.append('1. **本技能确实用不到这招** → 应判 `na`，在 CHANGELOG 写明理由；')
+            body.append('2. **做法已在文件/目录结构里体现**（如"搬迁"已把长条外置成 references）'
+                        '→ 脚本层面本就没有对应动作，应在 CHANGELOG 说明"已落地、形式为文件布局"，'
+                        '而不是硬加一个假的搬迁函数；')
+            body.append('3. **函数命名与招式用词完全不同** → 需人工指定落点。')
+            body.append('')
+            body.append('**本工具不替你决定是哪一种。** 但它明确反对：为了让判定变绿而硬塞代码。')
+        body.append('')
+        body.append('## 验收：改完怎么证明真的落地了')
+        body.append('')
+        body.append('如果决定**动手改**，改完必须能回读出 `landed`：')
+        body.append('')
+        body.append('```bash')
+        body.append('python3 -c "import sys; sys.path.insert(0,\'/root/.codebuddy/skills/'
+                    'skill-evolution/scripts\'); import evolve; '
+                    f'print(evolve._move_landed(\'{sk}\', \'{tid}\'))"')
+        body.append('```')
+        body.append('')
+        body.append('否则说明改的地方没生效——**不许改判据来迁就结果**。')
+        body.append('')
+        body.append('如果决定**不改**（判定为不适用 / 已由文件布局体现），'
+                    '则该补丁的收口方式是：在技能 CHANGELOG 写明理由，'
+                    '并让 `_move_landed` 能读到这段话（判为 `na`）。')
+        body.append('')
+        body.append('**两条路都算解决。唯一不算解决的，是把判定改成绿的而代码没动。**')
+        fn = f'{sk}__{tid}.md'.replace('/', '_')
+        fp = os.path.join(out, fn)
+        open(fp, 'w', encoding='utf-8').write('\n'.join(body) + '\n')
+        made.append(fp)
+        print(f'  ✅ {sk} / {tid}  → {fp}')
+        print(f'     候选落点 {len(anchors)} 处；判定：{det}')
+    print(f'\n共生成 {len(made)} 份补丁提案（**未改动任何技能文件**）')
+    print(f'输出目录：{out}')
+    return 0
 
 
 def cmd_commit(a):
@@ -1424,6 +1625,9 @@ def build_parser():
     cm.add_argument('--all',action='store_true')     # 批量授权
     cm.add_argument('--reject',default='')           # 驳回提案序号（逗号分隔）
     cl=sub.add_parser('cross-learn'); cl.add_argument('--move',required=True)  # 跨技能学习招式
+    pt=sub.add_parser('patch')                        # S182 第①档：只生成补丁，不改技能
+    pt.add_argument('--skill',default='')
+    pt.add_argument('--out',default='')
     return ap
 
 AP=build_parser()
@@ -1431,7 +1635,8 @@ DISPATCH={'recurring':cmd_recurring,'solved':cmd_solved,'create':cmd_create,'rev
           'standing':cmd_standing,
           'scan':cmd_scan,'upgrade':cmd_upgrade,
           'mine':cmd_mine,'lend':cmd_lend,'review-lend':cmd_review_lend,
-          'propose':cmd_propose,'commit':cmd_commit,'cross-learn':cmd_cross_learn}
+          'propose':cmd_propose,'commit':cmd_commit,'cross-learn':cmd_cross_learn,
+          'patch':cmd_patch}
 
 def dispatch(argv=None):
     """供调度器 tvbox 在同进程内直接调用，共享 core 缓存与并行池。"""
