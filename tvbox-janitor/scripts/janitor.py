@@ -25,7 +25,7 @@ publish/unpublish）。凡 AI 删不掉的节点 → 本技能**移动**到一�
   · 清单**永不静默丢项**：节点不存在/移动失败 → 显式告警并保留在清单（标"待人工确认"）。
   · 幂等：同一节点重复 add 不重复登记（按 node_id 去重）。
 """
-import os, sys, json, argparse, subprocess, time
+import os, sys, json, argparse, subprocess, time, re
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 LIB = '/root/.codebuddy/skills/library'
@@ -60,6 +60,39 @@ OUT_DIR = '/workspace'
 #   · 名字像运维/入口 —— 是结构性容器，不承载内容
 #   事故链见 cmd_add 护栏注释：一次 scan 差点把 77 个附件的备份夹当空夹投掉。
 EMPTY_KEEP = ('备份', 'backup', '归档', '库', '运维', '入口', '总库', '收件箱', '手册')
+
+# ★ S179（M-R125）：上面这层保护**方向是错的**——它挂在"名字"上。
+#
+#   实测（见 ecosys-conductor/docs/M-R125_evidence.md）：
+#     · node-info 字段全集 16 个，**没有任何附件字段**；
+#     · api-manifest 41 个接口，**没有 attachment-list**；
+#     · get-doc-review 正文对"有 81 个附件"与"真空"返回完全同形；
+#     · 同一批 14 个备份夹，list-nodes 全返回 0 子节点，而 backup_state 记着 81 件已上传。
+#
+#   所以「子节点数 == 0」**不是弱证据，是不成立的证据**：接口返回的 0 是真值，
+#   只是它回答的不是"这里有没有东西"。既然如此，靠 EMPTY_KEEP 关键词兜底就等于
+#   **用命名习惯替代判据**——夹叫 `20261020_eco` 而不是 `20261020_生态备份` 就失守。
+#
+#   改为：**空夹一律不按"空"投递**，只登记为待人工核对的候选（nocontent），
+#   并显式写清"AI 无法判定"。宁可少投（用户照 list 删即可），不可误投（附件的夹删了就没）。
+#   EMPTY_KEEP 保留但降级为"排序权重"，不再承担安全职责。
+EMPTY_NEVER_AUTOPOST = True
+
+# ★ S179：结构性容器词——标题含这些词时，即便同时命中废弃标记也不自动投递（须人工裁决）。
+#   理由同 EMPTY_KEEP 降级：一个"库/归档/总库"被整批搬走，损失远大于少投一条。
+#   ★ 单字词必须带否定前瞻，否则子串误命中：
+#     实测「🗄️ 待清·DmaxPro908（已入库待删）」——"入库"里含"库"，被判成结构性容器，
+#     而它明明是"已入库**待删**"的待清项，本该投递。故 `库` 后面紧跟"存/房/内"时不认。
+STRUCT_KEEP = ('归档', '总库', '备份', '运维', '入口', '手册', '收件箱')
+_STRUCT_RE = re.compile(r'(?<!入)库(?!存|房|内)')
+
+
+def _struct_hits(t):
+    """标题命中的结构性容器词（`库` 用前瞻排除"入库/库存"等动词用法）。"""
+    out = [k for k in STRUCT_KEEP if k in t]
+    if _STRUCT_RE.search(t):
+        out.append('库')
+    return out
 
 # ★ S158：同父同名去重的**默认阈值**。>该值才把多余副本投进收件箱（保留最早一份）。
 #   为什么默认不是 0：实测根层级「生态遗留趋势留档（跨设备）」×23、
@@ -394,6 +427,7 @@ def cmd_scan(a):
     dry = bool(getattr(a, 'dry_run', False))
     dedup_n = int(getattr(a, 'dedup', 0) or 0)
     seen, hits, dup_groups = set(), [], {}
+    nocontent = []      # ★ S179（M-R125）：0 子节点的夹——**不投递**，只登记待人工核对
 
     def walk(pid, depth=0):
         if pid in seen or depth > 12:
@@ -414,13 +448,32 @@ def cmd_scan(a):
                 dup_groups.setdefault((pid, t), []).append(nid)
             reason = None
             kw = next((k for k in KW if k in t), None)
+            # ★ S179：标题同时含「废弃标记」与「结构性容器词」时，**不自动投递**。
+            #   实测「📁 归档·废弃归档库」两边都命中（KW=废弃/弃，STRUCT=归档/库）。
+            #   这类名字无法从标题判断意图（是把整个归档库废了？还是这个库里装着废弃件？），
+            #   自动搬走一个"库"的代价远大于少投一条。改为登记候选、交人裁决。
+            _struct = _struct_hits(t)
+            if kw and _struct:
+                nocontent.append({'id': nid, 'title': t, 'looks_like_keep': True,
+                                  'verdict': f'标题双义（废弃标记「{kw}」+ 容器词「{_struct[0]}」）——须人工裁决'})
+                if kind == 'folder':
+                    walk(nid, depth + 1)
+                continue
             if kw:
                 reason = f'标题含废弃标记「{kw}」'
             elif kind == 'folder' and not _kids(nid):
-                # ★ S158 护栏：空夹不等于垃圾（见 EMPTY_KEEP 注释）。
-                if any(k in t for k in EMPTY_KEEP):
-                    continue   # 结构性/备份类空夹，跳过（不告警也不投递）
-                reason = '空文件夹（无子节点）'
+                # ★ S179（M-R125）：空夹**不再自动投递**。
+                #   原实现在这里 `reason = '空文件夹（无子节点）'` → 直接进 hits → 被 scan 搬走。
+                #   判据错：附件不占目录树槽位，0 子节点与"有 81 个附件"并存（实测）。
+                #   现改为只登记为候选、显式标注"AI 无法判定"，由 list 交给用户核对。
+                _keepish = bool(_struct_hits(t)) or any(k in t for k in EMPTY_KEEP)
+                _cand = {'id': nid, 'title': t, 'looks_like_keep': _keepish,
+                         'verdict': 'AI 无法判定（附件不可见）'}
+                if EMPTY_NEVER_AUTOPOST:
+                    nocontent.append(_cand)
+                else:
+                    reason = '空文件夹（无子节点·仅此一项判据，可能误判）'
+                    hits.append((nid, kind, t, reason))
             if reason:
                 hits.append((nid, kind, t, reason))
             if kind == 'folder':
@@ -437,8 +490,27 @@ def cmd_scan(a):
     if not dedup_n:
         dedup_n = DEFAULT_DEDUP
     print(f'═══ 全局扫描 {len(seen)} 个容器（起点={ROOTS}｜去重阈值 >{dedup_n} 份投递）═══')
+    # ★ S179（M-R125）：先交代"有多少夹我看着是空的，但我不能据此说它是垃圾"。
+    #   这一段的用词必须守住三态：**不出现"空夹/可删"**，只说"从接口看不到内容"。
+    if nocontent:
+        _keepn = sum(1 for c in nocontent if c['looks_like_keep'])
+        print(f'\n  ℹ️ {len(nocontent)} 个文件夹从接口看不到子节点——**不等于空**，本工具不投递它们：')
+        for c in nocontent[:10]:
+            hint = '（名字像结构性容器）' if c['looks_like_keep'] else ''
+            print(f'     {c["id"]}  {c["title"]}{hint}  → {c["verdict"]}')
+        if len(nocontent) > 10:
+            # ★ S179：原来只写"另有 N 个，详见清单"——但清单(`list`)里并没有这一段，
+            #   用户根本找不到。宁可多打几行，也别让"详见"指向不存在的地方。
+            #   ★ 且必须与上面 10 条**同格式**（含 hint）——首版漏了 hint，
+            #   于是同名的 4 个备份夹看起来"没被识别为结构性容器"，白白多查一轮。
+            print(f'     …其余 {len(nocontent) - 10} 个：')
+            for c in nocontent[10:]:
+                hint = '（名字像结构性容器）' if c['looks_like_keep'] else ''
+                print(f'     {c["id"]}  {c["title"]}{hint}  → {c["verdict"]}')
+        print(f'     为什么不能判空：附件不占目录树槽位，`list-nodes` 恒返回 0（M-R125）。'
+              f'要核实请到客户端看附件列表。')
     if not hits and not dup_groups:
-        print('  ✅ 未发现新的垃圾节点')
+        print('  ✅ 未发现新的垃圾节点' + ('（但上面那些夹需人工核对）' if nocontent else ''))
         return 0
     auto = 0
     for nid, kind, t, reason in hits:
@@ -455,22 +527,37 @@ def cmd_scan(a):
         # 「最早」按 title 相同组内 nodes 返回顺序（服务端按 created 排序）取第一个。
         # 注意 cmd_add 的护栏会二次把关：非空容器与"像备份"的名字一律拒收（返回 4），
         # 所以即使误入去重名单也不会被真的搬走——**两道闸，不靠单点判断**。
-        _dup_dropped = 0
+        _dup_dropped, _dup_blocked = 0, 0
         print(f'\n  ⚠️ 发现 {len(dup_groups)} 组重复节点（同目录同名）：')
         for (pid, t), ids in dup_groups.items():
             if len(ids) > dedup_n:
                 keep, drop = ids[0], ids[1:]
-                print(f'    · 目录 {pid} 下「{t}」×{len(ids)} → 保留 {keep}，投递 {len(drop)} 份副本'
+                # ★ S179：先按**同一判据**预筛，别把注定被护栏拒收的项也说成"投递"。
+                #   实测「20261020_生态备份」×13 属同父同名，原逻辑直接打印"投递 12 份副本"，
+                #   而 cmd_add 的护栏会把这 12 个全拒（名字像备份）——于是屏幕上写着投递 12，
+                #   清单里一条没有。这不是护栏没生效，是**输出在替事实撒谎**（M-R117）。
+                _pre = [d for d in drop if not any(k in t for k in STRUCT_KEEP)]
+                _hold = len(drop) - len(_pre)
+                print(f'    · 目录 {pid} 下「{t}」×{len(ids)} → 保留 {keep}，'
+                      f'可投递 {len(_pre)} 份副本'
+                      + (f'，{_hold} 份因名字属结构性容器**不动**' if _hold else '')
                       + ('（预览，未移动）' if dry else ''))
                 if not dry:
                     for d in drop:
+                        if d not in _pre:
+                            _dup_blocked += 1
+                            continue
                         rc = cmd_add(argparse.Namespace(
                             node=d, force=False,
                             reason=f'同目录同名重复（{t}）第 {ids.index(d)+1}/{len(ids)} 份'))
-                        _dup_dropped += 1 if rc == 0 else 0
+                        if rc == 0:
+                            _dup_dropped += 1
+                        else:
+                            _dup_blocked += 1      # 二道闸拦下，也要计数（不藏）
             else:
                 print(f'    · 目录 {pid} 下「{t}」×{len(ids)}：保留（≤{dedup_n} 份视为正常留档）')
-        print(f'  重复副本已投递 {_dup_dropped} 份'
+        print(f'  重复副本：实际投递 {_dup_dropped} 份'
+              + (f'，被护栏/结构性容器拦下 {_dup_blocked} 份（**未移动**）' if _dup_blocked else '')
               + ('（预览）' if dry else ''))
     return 0
 

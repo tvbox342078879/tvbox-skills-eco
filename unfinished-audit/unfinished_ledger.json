@@ -18,21 +18,6 @@
    "last_seen": "2026-10-19"
   },
   {
-   "sid": "4d0c59493246",
-   "source": "issues_ledger",
-   "skill": "ecosys-conductor",
-   "title": "台账回写线的两个未收尾缺口：①`sync-version` 硬编码 ecosys-conductor 自己的 record_id，其余 10 个技能只能走批量入口 ②插件市场技能（library 等无 CHANGELOG）在 `col…",
-   "kind": "cloud",
-   "owner": "ecosys-conductor",
-   "next": "tvbox status",
-   "due": "2026-10-26",
-   "evidence": "/root/.codebuddy/skills/ecosys-conductor/plans/issues_ledger.json #P019 来源=S162 用户指令「还在？」续跑收尾（承接 P018 写源线，本条为 S162 实测撞出的边界）",
-   "signature": "4d0c59493246c320",
-   "status": "open",
-   "first_seen": "2026-10-19",
-   "last_seen": "2026-10-19"
-  },
-  {
    "sid": "648a50120168",
    "source": "issues_ledger",
    "skill": "ecosys-conductor",
@@ -928,6 +913,23 @@
    "last_seen": "2026-10-20",
    "closed_at": "2026-10-20",
    "close_evidence": "M45 已补判据并实测：tvbox jobs 实测 4 个任务全部启用、停用 0 个，阈值『disabled 且创建>30天』可执行且当前计 0（monitors.json proven 已补）"
+  },
+  {
+   "sid": "4d0c59493246",
+   "source": "issues_ledger",
+   "skill": "ecosys-conductor",
+   "title": "台账回写线的两个未收尾缺口：①`sync-version` 硬编码 ecosys-conductor 自己的 record_id，其余 10 个技能只能走批量入口 ②插件市场技能（library 等无 CHANGELOG）在 `col…",
+   "kind": "cloud",
+   "owner": "ecosys-conductor",
+   "next": "tvbox status",
+   "due": "2026-10-26",
+   "evidence": "/root/.codebuddy/skills/ecosys-conductor/plans/issues_ledger.json #P019 来源=S162 用户指令「还在？」续跑收尾（承接 P018 写源线，本条为 S162 实测撞出的边界）",
+   "signature": "4d0c59493246c320",
+   "status": "wontfix",
+   "first_seen": "2026-10-19",
+   "last_seen": "2026-10-19",
+   "closed_at": "2026-10-20",
+   "close_evidence": "重复登记：与 6637b0e2995b 同一问题（S162 同源，仅标题数量词不同导致签名不同），保留后者为唯一在账项"
   }
  ]
 }

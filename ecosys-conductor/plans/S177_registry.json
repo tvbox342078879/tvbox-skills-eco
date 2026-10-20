@@ -9,7 +9,7 @@
  },
  "counts": {
   "skills": 13,
-  "rules": 136,
+  "rules": 138,
   "signals": 45,
   "monitors": 45,
   "commands": 111
@@ -140,7 +140,9 @@
     "M-R06",
     "M-R07",
     "M-R123",
-    "M-R124"
+    "M-R124",
+    "M-R125",
+    "M-R126"
    ],
    "rules_touched": [
     "M-R23",
@@ -217,7 +219,9 @@
     "M-R121",
     "M-R122",
     "M-R123",
-    "M-R124"
+    "M-R124",
+    "M-R125",
+    "M-R126"
    ],
    "signals": [],
    "monitors": [],
@@ -573,7 +577,8 @@
    "rules_touched": [
     "M-R57",
     "M-R60",
-    "M-R116"
+    "M-R116",
+    "M-R125"
    ],
    "signals": [],
    "monitors": [],

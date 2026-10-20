@@ -335,6 +335,52 @@ def m_r122():
 PROBES['M-R122'] = m_r122
 
 
+# ============ M-R126 自由文本入参不许被分词截断 ============
+def m_r126():
+    """双向验证 `issues add` 的标题解析：**直接 import conductor 的解析逻辑**跑。
+
+    为什么不跑真 CLI：`issues add` 会真的落盘进 issues_ledger.json，
+    探针跑一次就给总账加一条假账。故探针测**解析函数**，不测副作用。
+
+    hit  ：标题含空格 + 带 --from/--next → 标题须**逐字完整**、选项须正确切出
+    clean：标题里出现 `--` 但后面不是 from/next 关键字 → 不许被误当选项切走
+    """
+    import importlib.util
+    C = '/root/.codebuddy/skills/ecosys-conductor/scripts/conductor.py'
+    if not os.path.exists(C):
+        print(f'  conductor.py 缺失：{C}')
+        return False
+    spec = importlib.util.spec_from_file_location('_cdr_probe', C)
+    mod = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(mod)          # conductor 顶层无副作用（只有定义）
+    except Exception as e:
+        print(f'  无法载入 conductor（{type(e).__name__}: {e}）')
+        return False
+    parse = getattr(mod, '_parse_issue_add', None)
+    if parse is None:
+        print('  conductor 未暴露 _parse_issue_add——本探针无法验证（不等于通过）')
+        return False
+
+    # ① 截断回归：这就是 S179 出事的那条（原实现只留「备份系统三处遗留：①13」）
+    long_title = ('备份系统三处遗留：① 13 个同名「20261020_生态备份」已改名区分；'
+                  '② uploaded_by_day 只记文件名不记落到哪个夹；③ 探针遗留物待人工清')
+    t1, s1, n1 = parse(f'{long_title} --from "S179 立规" --next "客户端核对后清账"')
+    # ② 误切：`--` 后面不是 from/next，标题必须原样保留
+    t2, s2, n2 = parse('标题里含 -- 符号 但不是选项')
+    hit = (t1 == long_title and s1 == 'S179 立规' and n1 == '客户端核对后清账')
+    clean = (t2 == '标题里含 -- 符号 但不是选项' and s2 == '复盘' and n2 == '')
+    print(f'  长标题须逐字完整={hit}（得 {len(t1)}/{len(long_title)} 字）')
+    print(f'  非选项 -- 不得误切={clean}（得 {t2!r}）')
+    if not hit:
+        print(f'    期望: {long_title[:60]}…')
+        print(f'    实得: {t1[:60]}…')
+    return hit and clean
+
+
+PROBES['M-R126'] = m_r126
+
+
 if __name__ == '__main__':
     if len(sys.argv) < 2 or sys.argv[1] in ('-h', '--help'):
         print(__doc__)

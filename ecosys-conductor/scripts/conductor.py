@@ -7990,6 +7990,37 @@ def cmd_backup(rest):
     except Exception: pass
     folder_id = st.get('folder_id_by_day', {}).get(stamp)
     if not folder_id:
+        # ★ S179 修：先按标题**查已有当日夹**，查到就复用，别急着新建。
+        #   事故（实测）：2026-10-20 一夜跑了 13 次备份，备份区留下 13 个同名空夹
+        #   「20261020_生态备份」——因为建夹无幂等保护，每跑一次 create_folder 就真建一个，
+        #   而 state 只记最后一个 id，前 12 个成了**没有任何引用指向的孤儿空夹**。
+        #   create_folder 不是"有则返回"的 upsert，它每次都建新的；幂等必须在调用方做。
+        _found = None
+        try:
+            _ls = _sp.run([sys.executable, '/root/.codebuddy/skills/library/space_api.py',
+                           'space.workspace.list-nodes', '--space-id', BACKUP_SPACE,
+                           '--parent-node-id', BACKUP_ROOT, '--limit', '200'],
+                          capture_output=True, text=True)
+            for _ln in (_ls.stdout or '').splitlines():
+                if _ln.strip().startswith('{'):
+                    _nodes = ((_json.loads(_ln).get('data') or {}).get('nodes') or [])
+                    _same = [n for n in _nodes
+                             if (n.get('title') or '') == f'{stamp}_生态备份']
+                    if _same:
+                        # 多个同名时取**最新创建**的（最可能是本次会话刚建的）
+                        _same.sort(key=lambda n: -(n.get('createdAt') or 0))
+                        _found = _same[0]['id']
+                        if len(_same) > 1:
+                            print(f'   ⚠️ 备份区已有 {len(_same)} 个同名夹「{stamp}_生态备份」'
+                                  f'——复用最新 {_found}，其余建议移入收件箱')
+                    break
+        except Exception:
+            _found = None
+        if _found:
+            folder_id = _found
+            st.setdefault('folder_id_by_day', {})[stamp] = folder_id
+            print(f'   ♻️ 复用已有当日夹 {folder_id}（未新建，避免孤儿空夹）')
+    if not folder_id:
         r = _sp.run([sys.executable, '/root/.codebuddy/skills/library/manage/create_folder.py',
                      '--title', f'{stamp}_生态备份', '--space-id', BACKUP_SPACE, '--parent-id', BACKUP_ROOT],
                     capture_output=True, text=True)
@@ -8220,6 +8251,37 @@ def cmd_linkmap(rest):
 ISSUES_FP = os.path.join(os.path.dirname(PLAN_FILE), 'issues_ledger.json')
 
 
+def _parse_issue_add(body):
+    """把 `issues add` 的参数段解析成 (title, from, next)。
+
+    **标题是自由文本，不按空白分词**（M-R126）：先定位 `--from/--next` 选项段，
+    其前的全部原文（含空格、冒号、括号、引号）原样作标题。
+    选项值支持 `"带 空格"` 引号形式与裸词两种。
+    只认 `--from` / `--next` 两个关键字；标题里出现别的 `--` 不受影响。
+
+    ★ 抽成独立函数的理由不只是复用：探针 M-R126 要测它，而测 `cmd_issues`
+      会真的往 issues_ledger.json 写假条目。**可测性要求把纯逻辑与副作用分开。**
+    """
+    import shlex
+    body = (body or '')
+    title, src, nxt = body.strip(), '复盘', ''
+    m = re.search(r'(?:^|\s)--(from|next)\s', body)
+    if not m:
+        return title, src, nxt
+    title = body[:m.start()].strip()
+    for k, v in re.findall(r'--(from|next)\s+("[^"]*"|\'[^\']*\'|\S+)', body[m.start():]):
+        if v[:1] in '"\'':
+            try:
+                v = shlex.split(v)[0]
+            except Exception:
+                v = v.strip('"\'')
+        if k == 'from':
+            src = v
+        else:
+            nxt = v
+    return title, src, nxt
+
+
 def _load_issues():
     """三态：不存在=空账（首次）；损坏=显式报（M-R60）不折叠。"""
     try:
@@ -8240,21 +8302,13 @@ def cmd_issues(rest):
     db = _load_issues()
     issues = db.get('issues', [])
     if rest.startswith('add '):
-        import shlex
-        try:
-            toks = shlex.split(rest[4:])
-        except ValueError:
-            toks = rest[4:].split()
-        title = toks[0] if toks else ''
-        src, nxt = '复盘', ''
-        i = 1
-        while i < len(toks) - 1:
-            if toks[i] == '--from':
-                src = toks[i + 1]; i += 2
-            elif toks[i] == '--next':
-                nxt = toks[i + 1]; i += 2
-            else:
-                i += 1
+        # ★ S179 修：原实现 `toks = shlex.split(...)` 后 `title = toks[0]`——
+        #   标题里**一有空格就只剩第一个词**。实测登记「备份系统三处遗留：①13 个同名…」
+        #   被存成「备份系统三处遗留：①13」，后半句全丢，而且**它报的是"✅ 已登记"**。
+        #   与 M-R117 同型：命令说成功，落库的是残句。
+        #   解析逻辑抽成 `_parse_issue_add`（M-R38 单一事实源）：探针 M-R126 直接测它，
+        #   不必为了验证而往真账本里塞假条目。
+        title, src, nxt = _parse_issue_add(rest[4:])
         nid = f'P{len(issues) + 1:03d}'
         issues.append({'id': nid, 'title': title, 'from': src, 'next': nxt,
                        'status': 'open', 'opened': _t.strftime('%Y-%m-%d'), 'closed': ''})

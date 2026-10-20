@@ -1,9 +1,9 @@
 {
  "version": "1.32.0",
- "updated": "2026-10-20",
+ "updated": "20261020",
  "source_master": "/workspace/生态1015_TVBox生态全局规则.md",
  "stats": {
-  "total": 130,
+  "total": 138,
   "solidified": 115,
   "orphan": 0,
   "dup_candidates": 71,
@@ -4063,6 +4063,49 @@
    "primary_owner": "ecosys-conductor",
    "ask": "怎么知道生态的版本仓库有没有被拆成两个？",
    "tier": "enforced"
+  },
+  {
+   "id": "M-R125",
+   "summary": "附件不计入子节点：禁用子节点数推断备份/附件是否落地，一律以 backup_state 或人工核对为判据",
+   "chapter": "云端契约",
+   "master_line": "执行层闭环",
+   "owner": [
+    "ecosys-conductor",
+    "tvbox-janitor"
+   ],
+   "primary_owner": "ecosys-conductor",
+   "landing": "hooks/attach_guard.py · docs/M-R125_evidence.md",
+   "status": "已固化",
+   "tier": "enforced",
+   "probe": {
+    "skill": "ecosys-conductor",
+    "command": "python3 /root/.codebuddy/hooks/attach_guard.py",
+    "expect": "pass"
+   },
+   "ask": "备份夹显示 0 个子节点，是不是空的、能不能删？",
+   "note": "20261019 事故：13 个同名「20261020_生态备份」被 list-nodes 返回 0 子节点，我据此刻成空夹并推进待删收件箱——错。附件挂在节点上不占目录树槽位，node-info 的 16 个字段无任何附件字段，get-doc-review 正文也读不出，api-manifest 41 个接口无 attachment-list。实测同一夹「0 子节点」与「81 个文件已上传」并存（backup_state.last.ok=81）。故子节点数在本题上不具备判定力：不是证据弱，是证据不成立。",
+   "dedup_decision": "并入 M-R60（三态）管辖范围：M-R60 管'读不到不等于没有'，本条补'读得到但读错了对象'——接口返回 0 是真值，只是它回答的不是该问的问题。"
+  },
+  {
+   "id": "M-R126",
+   "summary": "自由文本入参不许被分词截断：标题/摘要这类字段须原样入库，选项先切出，且入库后必须回读比对",
+   "chapter": "会话纪律",
+   "master_line": "执行层闭环",
+   "owner": [
+    "ecosys-conductor"
+   ],
+   "primary_owner": "ecosys-conductor",
+   "landing": "conductor.py `cmd_issues` add 分支 · `_title` 取 `--from/--next` 之前的原文",
+   "status": "已固化",
+   "tier": "enforced",
+   "probe": {
+    "skill": "ecosys-conductor",
+    "command": "python3 /root/.codebuddy/skills/ecosys-conductor/scripts/rule_probe.py M-R126",
+    "expect": "pass"
+   },
+   "ask": "命令行说已登记，但存进去的标题只有半截",
+   "note": "S179 实测：`issues add \"备份系统三处遗留：①13 个同名…\"` 被 shlex 分词后只取 toks[0]，标题存成「备份系统三处遗留：①13」，而命令输出「✅ 已登记 P029」。症状是**报成功、落残句**——比报错危险得多，因为后续检索全按残句匹配，原问题后半段（②③）等于从未登记。同族：M-R117（人不许空口说完成）管人，本条管工具——**程序把用户的原话改了却不说**，是最隐蔽的一类谎报。通用判据：入参是自由文本（标题/摘要/理由/备注）时，先切选项段，其余原样保留；写完必须回读一次与入参比对（本条正由回读抓出）。",
+   "dedup_decision": "与 M-R105/M-R118/M-R119（落地坐标必须真实可执行）不同：那三条管坐标，本条管内容完整性。与 M-R117 不同：M-R117 约束发言人，本条约束程序。"
   }
  ],
  "freeze": {
