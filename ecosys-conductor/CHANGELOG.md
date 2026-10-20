@@ -1,3 +1,41 @@
+## v1.77.0 — 立规 M-R127「分诊不许猜标题」（S180）
+
+### 规则 139：M-R127 显式声明优先于关键词猜
+
+动因是 P030 被派错了技能。`tvbox close --dry` 打出来是：
+
+```
+· f0021b862b2d   [legacy-watchdog   ] 备份系统三处遗留（S179）：① 13 个同名…
+```
+
+可 P030 自己的 `next` 写着「用户在客户端核对孤儿夹附件后清账」。三重错：
+
+1. `_guess_kind` 只看标题关键词，末尾「探针遗留物 `__uptest_s179.md`」命中
+   `code:('探针',)` → `ROUTE_TABLE` → legacy-watchdog。**标题描述的是手段，
+   不是归属**——这一条从根上就不该拿标题当判据。
+2. 改 kind 也没用：`_assign()` 只让 `FINE_ROUTE` 覆盖 owner/next，**kind 不动**，
+   `due` 仍按 code=7 天算，比 cloud/unknown 的 14 天更紧。
+3. 命令模板会覆盖人话：kind 修成 cloud 后，`FINE_ROUTE` 又按「云端/节点/删不掉」
+   把它甩给 `tvbox janitor scan`——**可这件事只能人做**，硬塞命令等于把"等人"
+   改写成"跑命令自欺"。
+
+### 落点（三处）
+
+| 文件 | 改动 |
+|---|---|
+| `unfinished-audit/scripts/collect.py` | `collect_issues` 优先读 `kind` 字段（经 `_KIND_BY_FROM` 校验），其次 `from`，都没有才猜；猜出的原值写进 `evidence` 留痕；账本带 `next` 时带出 `next_fixed` |
+| `unfinished-audit/scripts/dispatch.py` | `_assign` 认 `next_fixed`，**命令模板不许覆盖** |
+| `issues_ledger.json` | P030 补 `"kind": "cloud"` |
+
+### 探针
+
+`rule_probe.py M-R127` 双向：hit = 显式 kind/next 照办（含 due 按 `DUE_DAYS`
+动态算，不写死天数）；clean = 未声明的仍按性质猜（不许一律落到兜底）。
+11 条探针全跑，10 通过。
+
+> M-R95 仍红（8 条旧规则缺探针或缺因果句），本轮未引入新债：
+> M-R127 起初也被点名（summary 只有祈使句），已补因果后退出名单，9 → 8。
+
 ## v1.76.0 — 立规 M-R125「附件不计入子节点」+ M-R126「自由文本入参不许被截断」（S179）
 
 ### 规则 137：M-R125 附件不计入子节点

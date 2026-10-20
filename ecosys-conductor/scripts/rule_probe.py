@@ -336,6 +336,62 @@ PROBES['M-R122'] = m_r122
 
 
 # ============ M-R126 自由文本入参不许被分词截断 ============
+def m_r127():
+    """双向验证分诊：账本显式 `kind`/`next` 必须压过关键词猜与命令模板。
+
+    **不碰真账本**——`collect_issues` 直接读 issues_ledger.json，`_assign` 只改内存
+    对象。故这里只测纯函数 `_assign`：构造两条假条目（一条带显式声明、一条不带），
+    看它是否按声明办、以及对没声明的仍走猜。
+
+    hit  ：显式 kind=cloud + 显式 next → owner/next 照办，命令模板不许覆盖
+    clean：没写 kind/next 的条目 → 仍按标题猜（不许因为加了通道就全都落到兜底）
+    """
+    import importlib.util
+    D = '/root/.codebuddy/skills/unfinished-audit/scripts/dispatch.py'
+    S = '/root/.codebuddy/skills/unfinished-audit/scripts'
+    if not os.path.exists(D):
+        print(f'  dispatch.py 缺失：{D}')
+        return False
+    if S not in sys.path:
+        sys.path.insert(0, S)          # dispatch 顶层 `import collect`
+    spec = importlib.util.spec_from_file_location('_dsp_probe', D)
+    mod = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(mod)
+    except Exception as e:
+        print(f'  无法载入 dispatch（{type(e).__name__}: {e}）')
+        return False
+    assign = getattr(mod, '_assign', None)
+    if assign is None:
+        print('  dispatch 未暴露 _assign——本探针无法验证（不等于通过）')
+        return False
+
+    # ① 显式声明：P030 原样（标题含「探针」会被猜成 code，但它是 cloud + 等人做）
+    import datetime
+    a = {'sid': 'probe0000001', 'title': '备份系统三处遗留：③ 探针遗留物待人工清',
+         'kind': 'cloud', 'evidence': 'issues_ledger #P030',
+         'next_fixed': '用户在客户端核对孤儿夹附件后清账'}
+    assign(a)
+    # due 按 DUE_DAYS[kind] 算——**从表里读，不写死天数**（写死就变成第二个真源）
+    want_due = (datetime.date.today()
+                + datetime.timedelta(days=mod.DUE_DAYS.get('cloud', 7))).isoformat()
+    hit = (a['owner'] == 'ecosys-conductor'
+           and a['next'] == '用户在客户端核对孤儿夹附件后清账'
+           and a['due'] == want_due)
+
+    # ② 无声明：仍走关键词猜（'脚本' → code → legacy-watchdog），不许一律兜底
+    b = {'sid': 'probe0000002', 'title': 'checker 脚本 语法 失效',
+         'kind': 'code', 'evidence': 'x'}
+    assign(b)
+    clean = (b['owner'] == 'legacy-watchdog' and bool(b['next']))
+
+    print(f'  显式 kind/next 须照办={hit}（owner={a["owner"]} next={a["next"][:18]}…）')
+    print(f'  无声明仍按性质猜={clean}（owner={b["owner"]} next={b["next"][:22]}…）')
+    if not hit:
+        print(f'    ↑ 期望 owner=ecosys-conductor / next=用户在客户端核对… / due={want_due}')
+    return hit and clean
+
+
 def m_r126():
     """双向验证 `issues add` 的标题解析：**直接 import conductor 的解析逻辑**跑。
 
@@ -379,6 +435,7 @@ def m_r126():
 
 
 PROBES['M-R126'] = m_r126
+PROBES['M-R127'] = m_r127
 
 
 if __name__ == '__main__':

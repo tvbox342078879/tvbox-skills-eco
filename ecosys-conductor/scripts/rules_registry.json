@@ -4106,6 +4106,27 @@
    "ask": "命令行说已登记，但存进去的标题只有半截",
    "note": "S179 实测：`issues add \"备份系统三处遗留：①13 个同名…\"` 被 shlex 分词后只取 toks[0]，标题存成「备份系统三处遗留：①13」，而命令输出「✅ 已登记 P029」。症状是**报成功、落残句**——比报错危险得多，因为后续检索全按残句匹配，原问题后半段（②③）等于从未登记。同族：M-R117（人不许空口说完成）管人，本条管工具——**程序把用户的原话改了却不说**，是最隐蔽的一类谎报。通用判据：入参是自由文本（标题/摘要/理由/备注）时，先切选项段，其余原样保留；写完必须回读一次与入参比对（本条正由回读抓出）。",
    "dedup_decision": "与 M-R105/M-R118/M-R119（落地坐标必须真实可执行）不同：那三条管坐标，本条管内容完整性。与 M-R117 不同：M-R117 约束发言人，本条约束程序。"
+  },
+  {
+   "id": "M-R127",
+   "summary": "分诊不许猜标题：账本自带 kind/next 时必须照办——否则「探针/备份」这类手段词会被误判成归属，欠账派给错的技能、下一轮没人认领，且命令模板会把「等人做」改写成「跑一遍自欺」",
+   "chapter": "会话纪律",
+   "master_line": "执行层闭环",
+   "owner": [
+    "unfinished-audit"
+   ],
+   "primary_owner": "unfinished-audit",
+   "landing": "collect.collect_issues 读 `kind`/`next` · dispatch._assign 认 `next_fixed` 不覆盖",
+   "status": "已固化",
+   "tier": "enforced",
+   "probe": {
+    "skill": "unfinished-audit",
+    "command": "python3 /root/.codebuddy/skills/ecosys-conductor/scripts/rule_probe.py M-R127",
+    "expect": "pass"
+   },
+   "ask": "这条欠账派给了错的技能，下一步还被换成了跑一遍命令",
+   "note": "S180 实测：P030「备份系统三处遗留…③ 探针遗留物 __uptest_s179.md」因末尾有「探针」命中 KIND_HINTS 的 code 桶 → 派给 legacy-watchdog；而它自己的 next 写着「用户在客户端核对孤儿夹附件后清账」。三重错：①性质靠标题猜，标题写的是**手段**不是**归属**；②改 kind 也没用，_assign 只让 FINE_ROUTE 覆盖 owner/next、kind 不动，due 仍按 code=7 天更紧；③命令模板把人话换成 `tvbox janitor scan`，等于把「等人」改写成「跑命令自欺」。口径：能落到「等人做/等外部确认」的欠账**必须显式写 next**；猜出来的 kind 要写进 evidence 留痕。与 M-R117 同族：M-R117 管人不许空口说完成，本条管工具不许把人的判断覆盖成自动动作。",
+   "dedup_decision": "与 M-R79（未完成不得无主）不同：M-R79 管**有没有** owner/next/due，本条管 owner/next **对不对**。与 M-R126 不同：M-R126 管内容不许被截断，本条管判断不许被覆盖。"
   }
  ],
  "freeze": {

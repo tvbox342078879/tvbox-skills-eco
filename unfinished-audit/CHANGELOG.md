@@ -1,3 +1,52 @@
+## v1.4.11 — 分诊不再猜标题：显式 `kind` / 显式 `next` 优先（S180）
+
+### 症状
+
+`close --dry` 里 P030（备份系统三处遗留）被派给 **legacy-watchdog**：
+
+```
+· f0021b862b2d   [legacy-watchdog   ] 备份系统三处遗留（S179）：① 13 个同名…
+```
+
+可这条的下一步明明白白写着「**用户在客户端核对孤儿夹附件后清账**」，跟
+legacy-watchdog 的代码遗留巡检毫无关系。三重错误叠在一起：
+
+1. **性质靠标题猜**：`_guess_kind` 只看关键词，标题末尾「③ 探针遗留物
+   `__uptest_s179.md`」命中 `code:('探针',)` → `kind=code` → `ROUTE_TABLE`
+   → legacy-watchdog。
+2. **更正 kind 也没用**：`_assign()` 只让 `FINE_ROUTE` 覆盖 owner/next，
+   **kind 不动**，于是 `due` 仍按 code=7 天算（比 cloud/unknown 的 14 天更紧）。
+3. **命令模板会覆盖人话**：即使 kind 修成 cloud，`FINE_ROUTE` 又按
+   「云端/节点/删不掉」把它甩给 `tvbox janitor scan`——可这件事**只能人做**，
+   硬塞一条命令等于把"等人"改写成"跑命令自欺"。
+
+### 修法（两条通道，都归账本自己说了算）
+
+问题总账是**人写的**，最了解这事归谁。所以给它两个直通车：
+
+| 字段 | 作用 | 落点 |
+|---|---|---|
+| `kind` | 显式性质，优先于标题猜 | `collect_issues` 读 `_KIND_BY_FROM` 映射 |
+| `next` | 显式下一步，**覆盖** ROUTE_TABLE 命令模板 | 采集侧带 `next_fixed`，`_assign` 见即用 |
+
+都取不到才退回原来的标题猜，且把**猜出来的原值写进 evidence**
+（`kind=route（标题猜·未声明性质，猜原值=route）`）——分诊是不是被关键词带跑，
+事后一眼能查。
+
+### 实测（改前 → 改后）
+
+| | kind | owner | next |
+|---|---|---|---|
+| 改前 | `code` | legacy-watchdog | `tvbox watchdog scan` |
+| 改后 | `cloud` | ecosys-conductor | 用户在客户端核对孤儿夹附件后清账 |
+
+`close` 落账后回读确认：`f0021b862b2d / cloud / ecosys-conductor / due 2026-10-27`，
+`items 25`（新增 1，无重复），`closed 33`。
+
+> 顺带记一笔：P030 之所以此前一直**没进账本**，不是采集漏了——`collect_issues`
+> 一直采得到它（23 条里有它）。是它每次都被分派到错误 owner，落账后看的人
+> 去 legacy-watchdog 那边找不到对应事情，才显得像"丢了"。
+
 ## v1.4.10 — 收口接入任务界账 + 标题解析改走 `_parse_issue_add`（S179）
 
 ### 收口自动入账

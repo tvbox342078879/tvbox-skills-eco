@@ -147,11 +147,11 @@
   "[已清零 2026-10-19]（sid=475d962e6484）M33 proven 已补（mtime 2026-10-19 08:56）：janitor 现 1.2.5 远超 1.1 ‖ 原条目：[清账司派单 2026-11-01] M33「tvbox-janitor 升级后回退风险」未实证：检查器有效性无证明 ｜ sid=475d962e6484 ｜ 下一步 tvbox inspect signal-check",
   "[已清零 2026-10-18]（sid=51fc8bf55bda）S156 受控注入实证：① 注入 40 天前仍挂账的暂记分录 → M34 命中 1 条并给出账龄；② 删除该分录 → 命 ‖ 原条目：[清账司派单 2026-11-01] M34「暂记账龄高危」未实证：检查器有效性无证明 ｜ sid=51fc8bf55bda ｜ 下一步 tvbox inspect signal-check",
   "[已清零 2026-10-19]（sid=686e8f5529cb）M36 proven 已补：本轮实测两次真实触发（①docsync 上界判据错 ②账实差额 3 户），各自定位根因并修复 ‖ 原条目：[清账司派单 2026-11-02] M36「账实/账账不符」未实证：检查器有效性无证明 ｜ sid=686e8f5529cb ｜ 下一步 tvbox inspect signal-check",
-  "[本期不处理·等外部数据 S176b] 需每日巡检 12854499 首次推送回来才能实证，我方无法自证；推送到达后按 EXIT 值判定。 ｜ 原条目：[清账司派单 2026-11-02] M39「调度沙箱退出码可信性待验」未实证：检查器有效性无证明 ｜ sid=de76ca3bca38 ｜ 下一步 tvbox inspect signal-check",
+  "[已清零 2026-10-20]（sid=de76ca3bca38）M39 已实证：tvbox ledger call 健康态 rc=0、未知动词/未知界 rc=2 → 退出码可信可作门禁 ‖ 原条目：[本期不处理·等外部数据 S176b] 需每日巡检 12854499 首次推送回来才能实证，我方无法自证；推送到达后按 EXIT 值判定。 ｜ 原条目：[清账司派单 2026-11-02] M39「调度沙箱退出码可信性待验」未实证：检查器有效性无证明 ｜ sid=de76ca3bca38 ｜ 下一步 tvbox inspect signal-check",
   "[本期不处理·平台侧限制 S176b] auth.proxy 对 expert/project 返回 403 path not allowed（白名单制），非我方代码可解，等平台放开接口。 ｜ 原条目：[清账司派单 2026-11-02] M40「发现页专家/项目域无数据 API」未实证：检查器有效性无证明 ｜ sid=7e42282f948d ｜ 下一步 tvbox inspect signal-check",
   "[已清零 2026-10-20]（sid=a32e4ed03168）S179 证据：M43.proven=S177 实测 tvbox size all 13/13 达标，检查器实证有效 ‖ 原条目：[本期不处理·未破线观察 S176b] 实测 interface 余量 2373B / source-hub 3968B，均在缓冲线内（<3072 才预警）；破线时按 M-R77⑥ 瘦身。 ｜ 原条目：[清账司派单 2026-11-02] M43「SKILL.md 体积逼近缓冲线（interface / source-hub / probe-hub）」未实证：检查器有效性无证明 ｜ sid=a32e4ed03168 ｜ 下一步 tvbox inspect signal-check",
-  "[真欠账·待用户决策 S176b] 实测无 .gh_token、无 GITHUB_TOKEN 环境变量，匿名 60/h 确不够；需用户提供 token 或授权改用其它认证。 ｜ 原条目：[清账司派单 2026-11-02] M44「GitHub token 未配置，匿名配额 60/h 撑不住巡检」未实证：检查器有效性无证明 ｜ sid=5162629869ac ｜ 下一步 tvbox inspect signal-check",
-  "[清账司派单 2026-11-03] M45「一次性任务停用后未清理」未实证：检查器有效性无证明 ｜ sid=b990c7ef334c ｜ 下一步 tvbox inspect signal-check",
+  "[已清零 2026-10-20]（sid=5162629869ac）M44 已决断：用户 2026-10-20 决定不配 GitHub token，改按需预警（余量≥10 时恒零属正常，非 ‖ 原条目：[真欠账·待用户决策 S176b] 实测无 .gh_token、无 GITHUB_TOKEN 环境变量，匿名 60/h 确不够；需用户提供 token 或授权改用其它认证。 ｜ 原条目：[清账司派单 2026-11-02] M44「GitHub token 未配置，匿名配额 60/h 撑不住巡检」未实证：检查器有效性无证明 ｜ sid=5162629869ac ｜ 下一步 tvbox inspect signal-check",
+  "[已清零 2026-10-20]（sid=b990c7ef334c）M45 已补判据并实测：tvbox jobs 实测 4 个任务全部启用、停用 0 个，阈值『disabled 且创建>3 ‖ 原条目：[清账司派单 2026-11-03] M45「一次性任务停用后未清理」未实证：检查器有效性无证明 ｜ sid=b990c7ef334c ｜ 下一步 tvbox inspect signal-check",
   "[已清零 2026-10-20]（sid=4b56468d86e3）S179 证据：M46.proven=S177 复核，语义为『automation-task-manager 未采 N  ‖ 原条目：[清账司派单 2026-11-03] M46「automation-task-manager 招式借鉴停滞」未实证：检查器有效性无证明 ｜ sid=4b56468d86e3 ｜ 下一步 tvbox inspect signal-check",
   "[已清零 2026-10-20]（sid=277e18d18dbe）S179 证据：M47.proven=S177 复核，语义为『learn-hub 未采 N 条跨技能热招』，恒零属实非失 ‖ 原条目：[清账司派单 2026-11-03] M47「learn-hub 招式借鉴停滞」未实证：检查器有效性无证明 ｜ sid=277e18d18dbe ｜ 下一步 tvbox inspect signal-check"
  ]

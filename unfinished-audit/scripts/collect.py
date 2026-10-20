@@ -184,7 +184,18 @@ def _read_json(path, source):
 
 # ---------------- ① 问题总账 issues_ledger.json ----------------
 def collect_issues():
-    """未结 = status ∈ {open, next}。done/wontfix 视为已结。"""
+    """未结 = status ∈ {open, next}。done/wontfix 视为已结。
+
+    ★ S180：问题总账是**人写的**，最了解这件事归谁。所以它有两条通道可以
+      直接指定分诊，不必让清账司再猜：
+        `kind`  —— 性质（cloud/rule/route/code/...），决定 owner/next/due
+        `next`  —— 下一步**做什么**（自由文本），覆盖掉 ROUTE_TABLE 的命令模板
+      这解决了两类真实误派：
+        ① P030 只因标题里有「探针遗留物」被猜成 code→legacy-watchdog；
+        ② 即便更正为 cloud，FINE_ROUTE 又按「云端/节点/删不掉」把它甩给
+           tvbox-janitor scan —— 可 P030 的下一步是**用户在客户端核对**，
+           不是扫一遍再说。命令模板解决不了"这一步只能人做"的情况。
+    """
     fp = os.path.join(SKILL_ROOT, 'ecosys-conductor', 'plans', 'issues_ledger.json')
     d = _read_json(fp, 'issues_ledger')
     if d is None:
@@ -193,10 +204,34 @@ def collect_issues():
     for it in d.get('issues', []):
         if it.get('status') not in ('open', 'next'):
             continue
+        # ★ S180（真实缺陷，实测复现）：**问题总账自带 from，就不该再靠标题猜性质**。
+        #   原实现 `_guess_kind(title)` 只看标题关键词，于是：
+        #     P030「…③ 探针遗留物 __uptest_s179.md…」 命中 KIND_HINTS 的
+        #     `code:('探针',)` → kind=code → ROUTE_TABLE → **legacy-watchdog**。
+        #   可 P030 自己写着 `from=S179`、`next=用户在客户端核对孤儿夹附件后清账`——
+        #   它是**云端/账本口径**的事，跟 legacy-watchdog（代码遗留巡检）毫无关系。
+        #   更糟的是 _assign 只让 FINE_ROUTE 覆盖 owner/next，**kind 不动**，
+        #   于是 due 也按 code=7 天算，比 unknown=14 天更紧——错上加错。
+        #   口径：这一类条目**优先用它自己显式声明的性质**
+        #   （issues add --kind，落在 `kind` 字段；或 `from` 是已知语义词如「云端」），
+        #   都没有才退回标题猜。猜出来的值一律留在 evidence 里，便于事后复核
+        #   分诊是不是被关键词带跑。
+        _raw_title = it.get('title', '')
+        _from = (it.get('from') or '').strip()
+        _declared = (it.get('kind') or '').strip()
+        _explicit = (_KIND_BY_FROM.get(_declared)
+                     or _KIND_BY_FROM.get(_from))
+        _guessed = _guess_kind(_raw_title)
+        _kind = _explicit or _guessed
+        _how = (f'kind={_kind}（显式声明 {_declared or _from}，不猜标题）'
+                if _explicit else f'kind={_kind}（标题猜·未声明性质，猜原值={_guessed}）')
         items.append(_item('issues_ledger', 'ecosys-conductor',
-                           f"{it.get('title', '')}（{it.get('id')}·{it.get('status')}）",
-                           _guess_kind(it.get('title', '')),
-                           f"{fp} #{it.get('id')} 来源={it.get('from', '')}"))
+                           f"{_raw_title}（{it.get('id')}·{it.get('status')}）",
+                           _kind,
+                           f"{fp} #{it.get('id')} 来源={_from or '未记'} {_how}"))
+        # 显式 next：账本自己写了下一步就照办，**不让 ROUTE_TABLE 再改一遍**
+        if (it.get('next') or '').strip():
+            items[-1]['next_fixed'] = it['next'].strip()
     return items
 
 
@@ -401,6 +436,21 @@ def _guess_kind(text):
         if any(w in t for w in words):
             return kind
     return 'unknown'
+
+
+# 问题总账的 `from` 字段 → 性质。**有映射的就不要猜标题**（S180）：
+# 标题是给人读的自由文本，会出现「探针」「备份」「规则」等词，但那些词描述的是
+# **手段**，不是**归属**。P030 三项全是运维/云端核对，只因写了「探针遗留物」
+# 就被判成 code→legacy-watchdog，是典型的「被关键词带跑」。
+# 只登记**语义明确**的 from；其余（如 S179 这种纯会话号）留空，退回标题猜。
+_KIND_BY_FROM = {
+    '云端': 'cloud',   'cloud':  'cloud',
+    '规则': 'rule',    'rule':   'rule',
+    '路由': 'route',   'route':  'route',
+    '源线': 'datasource', 'datasource': 'datasource',
+    '监测': 'monitor', 'monitor': 'monitor',
+    '总库': 'library', 'library': 'library',
+}
 
 
 def collect_promises():

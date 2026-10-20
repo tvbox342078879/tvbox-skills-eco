@@ -71,7 +71,10 @@ def _assign(item, today=None):
             owner, nxt = o, n
             break
     item['owner'] = owner
-    item['next'] = nxt
+    # ★ S180：采集侧已带 `next_fixed` 的，**命令模板不许覆盖它**。
+    #   现实里确有一类欠账的下一步「只能人做」（如 P030「用户去客户端核对孤儿夹附件」），
+    #   拿 `tvbox xxx scan` 去替换，等于把"等人"改写成"跑命令自欺"。
+    item['next'] = item.get('next_fixed') or nxt
     item['due'] = (today + datetime.timedelta(days=DUE_DAYS.get(kind, 14))).isoformat()
     # 无主自检：M-R79 三重必填
     miss = [k for k in ('owner', 'next', 'due') if not item.get(k)]
