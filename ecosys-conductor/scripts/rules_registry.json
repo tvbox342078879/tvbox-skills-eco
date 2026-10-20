@@ -1,6 +1,6 @@
 {
  "version": "1.32.0",
- "updated": "20261020",
+ "updated": "2026-10-20 16:58",
  "source_master": "/workspace/生态1015_TVBox生态全局规则.md",
  "stats": {
   "total": 138,
@@ -4160,6 +4160,55 @@
    "status": "active",
    "ask": "为什么不能在前台等（sleep）？",
    "chapter": "后台执行与可对话"
+  },
+  {
+   "id": "M-R128",
+   "tier": "enforced",
+   "summary": "交付报告一律按七段闭环写：①原因 ②过程 ③过程坑 ④解决方案 ⑤后续带出的问题 ⑥后续问题解决过程 ⑦完工经验总结。用户 2026-10-20 明确要求「以后的交付报告都按这个来」，并追加「这个规则是跨场景，跨对话的，就是在我使用这个app期间都给我按照这个走」。适用于任何交付报告／复盘／验收报告／治理回溯，不限于某个技能或某类任务。前四段回答「这次发生了什么」，后三段回答「解决之后又怎样了」——少了后三段，报告只对这一次有用，而用户的下游读者是别的任务。",
+   "master_line": "M-R128 交付报告必须七段闭环，缺段即不合规",
+   "statement": "任何交付报告类文档必须完整包含七段且顺序固定：①原因（机制层，不许只写现象）②过程（带时间线，不许只有结论）③过程坑（必须含自己造成的坑，不许写「一切顺利」）④解决方案（文件+行+可复跑验证命令+结果）⑤后续带出的问题（确实没有也要明写「无」，不许省略该节）⑥后续问题解决过程（逐条对应⑤，不许跳号）⑦完工经验总结（写成判断句「X 情况下必须 Y，因为 Z」，不许写成感想或表态）。未解决事项如实标 open，禁止写成已完成或「后续跟进」。文件名须含 MMDD 日期段（规则51），格式 类别_MMDD_描述.md。",
+   "judge": {
+    "command": "python3 /root/.codebuddy/skills/ecosys-conductor/scripts/rule_probe.py M-R128",
+    "expect": "rc=0 且输出含「模板七段齐且有序=True」「注入「合并③+删⑤」→ 被判红=True」"
+   },
+   "probe": {
+    "skill": "ecosys-conductor",
+    "command": "python3 /root/.codebuddy/skills/ecosys-conductor/scripts/rule_probe.py M-R128"
+   },
+   "landing": [
+    {
+     "skill": "ecosys-conductor",
+     "anchor": "references/交付报告_七段模板.md（七段结构 + 五条硬性要求 + 退化写法对照）",
+     "type": "documentation"
+    },
+    {
+     "skill": "ecosys-conductor",
+     "anchor": "scripts/habit_brief.py 第 0 节 STATIC_DELIVERY（每份会话开场摘要最前面）",
+     "type": "code"
+    },
+    {
+     "skill": "ecosys-conductor",
+     "anchor": "scripts/habit_brief.py cmd_check（体检项含七段闭环，防摘要丢段无人知）",
+     "type": "code"
+    },
+    {
+     "skill": "ecosys-conductor",
+     "anchor": "scripts/user_standing_instructions.json → pref_delivery_report_7sec",
+     "type": "config"
+    },
+    {
+     "skill": "ecosys-conductor",
+     "anchor": "scripts/rule_probe.py → m_r128()（七段名字+顺序+骨架+摘要+注入判红，五项）",
+     "type": "code"
+    }
+   ],
+   "source": "S183：用户 2026-10-20 16:56「从原因+过程+过程坑+解决方案+后续带出的问题+后续问题解决过程+完工经验总结，形成这样一个闭环，给我一份报告，以后的交付报告都按这个来」，17:00 追加「这个规则是跨场景，跨对话的……把这个加上去」。此前我已按此结构交付过 1020 卡顿报告，但仅停留在单次产物，未成为约束——故登记为 enforced 并落到会话开场必读摘要里。",
+   "primary_owner": "ecosys-conductor",
+   "owner": "ecosys-conductor",
+   "status": "active",
+   "ask": "为什么交付报告必须七段齐全？",
+   "chapter": "交付与汇报",
+   "dedup_decision": "与 M-R126（内容不许被截断）、M-R127（owner/next 不许被覆盖）不同：那两条管**单点信息对不对**，本条管**整份交付物的结构完整性**。与 M-R108（持久指令档）不同：M-R108 管\"用户重复要求怎么固化成常驻\"，本条是它固化的**内容**之一，二者是容器与内容的关系。未与任何既有条目合并——检索既有 141 条，无\"交付报告七段结构\"类条目。"
   }
  ],
  "freeze": {

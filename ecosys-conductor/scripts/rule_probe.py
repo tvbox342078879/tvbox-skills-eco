@@ -467,6 +467,78 @@ PROBES['M-R126'] = m_r126
 PROBES['M-R127'] = m_r127
 
 
+# ============ M-R128 交付报告七段闭环 ============
+# 为什么探针要做得这么细（S183 立规时的自我提醒）：
+#   M-R128 守的是**交付物格式**。格式要求最容易的失效方式是"文件还在、段落被悄悄合并或改名"——
+#   看起来有报告，实际上 ③过程坑 被并进 ②过程、⑤后续问题 被删掉。
+#   只验"模板文件存在"等于没验：文件存在但它可以一个月前就写错了。
+#   故本探针验三件，缺一即红：
+#     ① 模板文件里的七段**名字与顺序**逐字对；
+#     ② 模板里"代码块内的正文骨架"也完整（防只改目录、骨架漏段）；
+#     ③ 会话开场必读摘要 user_habit_brief.md 里 M-R128 段真的在（防"规则登记了但开场读不到"）。
+#   再做**注入验证**：临时造一份"合并了③、删掉⑤"的坏模板文本喂给同一个校验函数，
+#   必须被抓住——只验正例的话，校验函数写成恒真也照样通过（M-R47③ 双侧验证）。
+def m_r128():
+    import re
+
+    SEVEN = [('一', '原因'), ('二', '过程'), ('三', '过程坑'), ('四', '解决方案'),
+             ('五', '后续带出的问题'), ('六', '后续问题解决过程'), ('七', '完工经验总结')]
+
+    def audit(txt):
+        """返回 (七段是否齐且顺序对, 实际解析到的段名列表, 缺失项)。"""
+        got = re.findall(r'^## ([一二三四五六七])、\s*(.+?)\s*$', txt, re.M)
+        # 去重：模板里"代码块骨架"与"正文示例"同名段会各出现一次，按首次出现判顺序
+        seen, order = set(), []
+        for num, name in got:
+            if num not in seen:
+                seen.add(num)
+                order.append((num, name))
+        miss = [(n, nm) for n, nm in SEVEN if n not in seen]
+        # 顺序：七段在文本中的首次出现位置必须递增
+        pos = [txt.find(f'## {n}、') for n, _ in SEVEN]
+        ordered = all(p >= 0 for p in pos) and pos == sorted(pos)
+        return (not miss) and ordered, order, miss
+
+    T = os.path.join(os.path.dirname(COND), 'references', '交付报告_七段模板.md')
+    B = os.path.join(os.path.dirname(COND), 'references', 'user_habit_brief.md')
+    if not os.path.exists(T):
+        print(f'  ❌ 模板缺失：{T}')
+        return False
+    tmpl = open(T, encoding='utf-8').read()
+    ok1, order, miss = audit(tmpl)
+
+    # ② 代码块骨架也须完整（防"目录改了、骨架还是旧的"）
+    i = tmpl.find('````markdown')
+    j = tmpl.find('````', i + 10) if i >= 0 else -1
+    if i < 0 or j < 0:
+        print('  ❌ 模板里找不到 ````markdown 骨架块')
+        ok2 = False
+    else:
+        ok2, _, miss2 = audit(tmpl[i:j])
+        if not ok2:
+            print(f'     骨架缺段：{miss2}')
+
+    # ③ 会话开场必读摘要须含 M-R128 段（否则"登记了但没人读到"）
+    ok3 = os.path.exists(B) and 'M-R128' in open(B, encoding='utf-8').read()
+
+    # ④ 注入：合并③ + 删⑤ 的坏模板，audit 必须判红
+    bad = tmpl.replace('## 三、过程坑', '## 三、过程（含过程坑）')
+    bad = re.sub(r'^## 五、后续带出的问题.*?^## 六、', '## 六、', bad, flags=re.S | re.M)
+    caught, _, badmiss = audit(bad)
+    ok4 = (not caught) and len(badmiss) >= 1
+
+    print(f'  模板七段齐且有序={ok1}（{len(order)} 段：{"/".join(n for _, n in order)}）')
+    if not ok1:
+        print(f'     缺段：{miss}')
+    print(f'  正文骨架同步完整={ok2}')
+    print(f'  开场摘要含 M-R128={ok3}')
+    print(f'  注入「合并③+删⑤」→ 被判红={ok4}（识别缺段 {[n for n, _ in badmiss]}）')
+    return ok1 and ok2 and ok3 and ok4
+
+
+PROBES['M-R128'] = m_r128
+
+
 if __name__ == '__main__':
     if len(sys.argv) < 2 or sys.argv[1] in ('-h', '--help'):
         print(__doc__)

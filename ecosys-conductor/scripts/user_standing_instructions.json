@@ -34,6 +34,19 @@
    "solidified_via": "M-R120（后台化门禁）+ habit_brief.py 第 2 节 + conductor guard-bg",
    "status": "solidified",
    "check_at_session_start": true
+  },
+  {
+   "id": "pref_delivery_report_7sec",
+   "instruction": "交付报告一律按七段闭环写，跨场景、跨会话、跨模型长期有效（用户 2026-10-20 16:56 原话：「这个规则是跨场景，跨对话的，就是在我使用这个app期间都给我按照这个走」）。七段固定顺序：①原因 ②过程 ③过程坑 ④解决方案 ⑤后续带出的问题 ⑥后续问题解决过程 ⑦完工经验总结。硬性要求：a) 过程坑必须写真实踩过的坑，包括我自己造成的，不许只写「一切顺利」；b) 后续带出的问题若确实没有，必须明写「无」，不许省略该节；c) 未解决的事必须如实标 open，不许写成已完成；d) 完工经验要能直接搬走，写成判断句而非感想；e) 文件名须含 MMDD 日期段（规则51），格式「类别_MMDD_描述.md」。适用范围：任何交付报告／复盘／验收报告／治理回溯，不限于某个技能或某类任务。",
+   "requested_count": 1,
+   "first_seen": "2026-10-20",
+   "instances": [
+    "给我报告，从原因+过程+过程坑+解决方案+后续带出的问题+后续问题解决过程+完工经验总结，形成这样一个闭环，给我一份报告，以后的交付报告都按这个来",
+    "这个规则是跨场景，跨对话的，就是在我使用这个app期间都给我按照这个走，把这个加上去"
+   ],
+   "solidified_via": "M-R128（交付报告七段闭环）+ habit_brief.py 第 0 节 + 模板文件 references/交付报告_七段模板.md + conductor deliver-check",
+   "status": "solidified",
+   "check_at_session_start": true
   }
  ]
 }
