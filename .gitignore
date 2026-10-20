@@ -7,3 +7,7 @@ __pycache__/
 **/daily_snapshot.json
 **/findings_history.json
 **/search_results.json
+# 第②档受控写入的工作区：全是派生数据（技能副本快照 / 行为基线 / 改前备份）
+# 快照含真实技能目录副本，入库等于把代码再存一份，且每次 apply 都会变——
+# 它不是源码，是"退路"。清了只需跑一次 snapshot 重建。
+**/upgrade_patches/_work/

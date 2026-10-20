@@ -865,7 +865,11 @@ def _lend_rows(name):
         if ns<2: continue
         if tid in used: continue
         unused.append((tid, r.get('招式名',''), r.get('适用条件',''), ns))
-    unused.sort(key=lambda x:-x[3])
+    # ★ 排序必须全键确定：只按 `-跨技能数` 排，同数者顺序取决于云端返回顺序，
+    #   列表会在一模一样的输入下换行——对外这是"输出不稳定"，对内它把
+    #   equiv_check 变成恒报红的假警报（实测踩到：T-I 与 T-C 都是 10 技能，
+    #   入库后 T-I 从第 10 行跳到第 8 行）。补招式编号兜底，同数永远同序。
+    unused.sort(key=lambda x: (-x[3], x[0]))
     return used, unused, undet
 
 
@@ -1391,6 +1395,21 @@ def cmd_patch(a):
     return 0
 
 
+def cmd_apply(a):
+    """★ S182 第②档：受控写入——**给权限，但关进笼子**。
+
+    三道锁（缺一不动手）：
+      ① 白名单：只改 `<技能>/scripts/*.py`；SKILL.md / CHANGELOG / 数据文件一律拒绝
+      ② 顺序：snapshot → 写入 → 语法检查 → 行为等价比对；任一不过**自动回滚**
+      ③ 退路独立：`apply_guard.py restore <技能>` 随时可撤，不依赖本次是否成功
+
+    默认 dry-run。只有 `--yes` 才真改文件。
+    """
+    import staged as S
+    rc = S.apply_staged(a.skill, a.rel, a.old, a.new, getattr(a, 'yes', False))
+    return rc
+
+
 def cmd_commit(a):
     """★ M-R111 第③④步：用户授权后执行升级（升级版本+写 CHANGELOG+清提案）。
 
@@ -1628,6 +1647,12 @@ def build_parser():
     pt=sub.add_parser('patch')                        # S182 第①档：只生成补丁，不改技能
     pt.add_argument('--skill',default='')
     pt.add_argument('--out',default='')
+    ap_=sub.add_parser('apply')                       # S182 第②档：受控写入（默认 dry-run）
+    ap_.add_argument('skill')
+    ap_.add_argument('rel')
+    ap_.add_argument('old')
+    ap_.add_argument('new')
+    ap_.add_argument('--yes',action='store_true')
     return ap
 
 AP=build_parser()
@@ -1636,7 +1661,7 @@ DISPATCH={'recurring':cmd_recurring,'solved':cmd_solved,'create':cmd_create,'rev
           'scan':cmd_scan,'upgrade':cmd_upgrade,
           'mine':cmd_mine,'lend':cmd_lend,'review-lend':cmd_review_lend,
           'propose':cmd_propose,'commit':cmd_commit,'cross-learn':cmd_cross_learn,
-          'patch':cmd_patch}
+          'patch':cmd_patch,'apply':cmd_apply}
 
 def dispatch(argv=None):
     """供调度器 tvbox 在同进程内直接调用，共享 core 缓存与并行池。"""
