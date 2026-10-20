@@ -1099,6 +1099,84 @@ def cmd_propose(a):
     return 0
 
 
+def _verify_decl(skill_dir, tid):
+    """核实 CHANGELOG 里的「实现位置 [T-X] / 证据文件 [T-X]」声明。
+
+    返回 (ok_desc, bad_desc)。ok_desc 非空表示指针全部核实通过。
+
+    ★ 为什么要有这一步（S182 第九次修正）：
+      11 条 doc 逐条查原文后，**没有一条是真欠账**：
+        · automation-task-manager/T-I → 实现在 scheduler-api.sh（判据不扫 .sh）
+        · legacy-watchdog/T-H        → 实现在 tvbox-inspect 的 inspect_engine.py（代码在对岸）
+        · tvbox-interface/T-C        → 用的是 hashlib.md5，判据只找 sha1
+        · tvbox-source-blacklist/T-G → 枚举收口成 REASON_* 常量，判据只找"SSOT/单一事实源"字样
+        · ecosys-conductor/T-B       → 落地形式是 references/ 文件布局，没有代码可命中
+      这些技能其实**都写清了实现在哪**，只是判据从不顺手去看一眼。
+
+    ★ 防洗账（关键约束，不许放松）：
+      1. 声明必须带**可核实的文件路径**，指不出文件 → 不认，仍判 doc；
+      2. 路径必须在生态内真实存在（逐个 `os.path.exists`），少一个 → 不认；
+      3. 声明必须点名本招式号 [T-X]，拿别的招式的声明来蒙不算。
+      话术无效、口号无效，只有"指得出、验得着的东西"才算。
+    """
+    p = os.path.join(skill_dir, 'CHANGELOG.md')
+    if not os.path.exists(p):
+        return '', ''
+    try:
+        body = open(p, encoding='utf-8').read()
+    except Exception:
+        return '', ''
+    lines = body.splitlines()
+    paths, seen_decl = [], False
+    tag = f'[{tid}]'
+    for idx, ln in enumerate(lines):
+        if tag not in ln:
+            continue
+        if '实现位置' in ln:
+            seen_decl = True
+            # ★ 只从「证据文件」行取路径，绝不从「实现位置」行取。
+            #   第一版从两行都取，结果把行内点缀的反引号内容当路径：
+            #     `REASON_FULL` `REASON_PART` `hashlib.md5` `import brake as _brake`
+            #   全被当成要核实的文件 → "声明了不存在的文件" → 判据反而更严了。
+            #   教训：核实路径时，别在同一段话里捡反引号——那里的反引号多半是代码片段。
+        elif '证据文件' in ln and seen_decl:
+            for raw in re.findall(r'`([^`]+)`', ln):
+                # 只认像路径的：带目录分隔符或常见文件后缀
+                if ('/' in raw or re.search(r'\.(py|sh|bash|md|json|ya?ml|toml|txt)$', raw)):
+                    paths.append(raw)
+    if not seen_decl:
+        return '', ''
+
+    ok, bad = [], []
+    kws = SEED_MOVES.get(tid, {}).get('kw', [])
+    for raw in paths:
+        if raw.startswith('/'):
+            ap = raw
+        else:
+            ap = os.path.join(skill_dir, raw)
+        if not os.path.exists(ap):
+            bad.append(raw)
+            continue
+        # ★★ 关于"内容是否相关"这层校验，我加过一版又撤了，记下为什么：
+        #   加它的理由是防"随便指一份存在文件销账"。实测它把 4 条真落地打回去了：
+        #     tvbox-interface/T-E  → pipeline.py 里 `cmd_probe` 做全量测活，全文没有"探针"二字
+        #     tvbox-source-hub/T-B → link.py 真写了 sys.path.insert + import brake，没写"薄壳"
+        #     tvbox-source-blacklist/T-G → blk.py 真把 REASON_* 收口成常量，没写"单一事实源"
+        #   要求代码里出现招式术语，等于**要求实现者抄招式名字**——这正是判据一直在犯的错。
+        #   相关性能证明的只有"人读过并写明"，代码层证不了。所以校验止血在"文件真实存在"，
+        #   另加一条：指针必须落在本生态 skills/ 目录内（不许指到 /tmp 或外部路径去凑数）。
+        p_abs = os.path.realpath(ap)
+        if not p_abs.startswith(os.path.realpath(SKILLS) + os.sep):
+            bad.append(raw + '（不在生态 skills/ 内，不予采信）')
+            continue
+        ok.append(raw)
+    if bad:
+        return '', f'指针核实不通过：{bad[:3]}'
+    if not ok:
+        return '', '声明无实现文件（评估结论类，应走 na 判定，不算落地）'
+    return '、'.join(ok[:3]), ''
+
+
 def _move_landed(skill, tid):
     """回读校验：招式 `tid` 是否**真的落进了技能**。返回 (state, detail)。
 
@@ -1129,7 +1207,7 @@ def _move_landed(skill, tid):
         # 非 SEED 招式（如 recur 类提案）没有关键词表 → 无法判定，不得当已落地
         return 'unknown', f'招式 {tid} 不在 SEED_MOVES，无判据'
     kws = spec_m['kw']
-    py_txt, md_txt = [], []
+    py_txt, md_txt, sh_txt = [], [], []
     for root, _dirs, files in os.walk(d):
         for f in files:
             p = os.path.join(root, f)
@@ -1141,7 +1219,16 @@ def _move_landed(skill, tid):
                 py_txt.append(s)
             elif f.endswith('.md'):
                 md_txt.append(s)
+            # ★★ S182 第九次修正：**脚本不只有 .py**。
+            #   automation-task-manager 的写后回读验证整个实现在 scheduler-api.sh 里
+            #   （verify_created_params 真做回读比对、不一致 return 3），是 T-I 最标准的落地，
+            #   但判据只 walk `.py`，于是判成"只说不做"。
+            #   她那条 `.sh` 里连注释都点明了起因（retry-count 0 返回 success 却存成 3），
+            #   —— 证据摆在眼前，判据却说没有。补 `.sh`/`.bash`。
+            elif f.endswith(('.sh', '.bash')):
+                sh_txt.append(s)
     _py, _md = '\n'.join(py_txt), '\n'.join(md_txt)
+    _sh = '\n'.join(sh_txt)
     # ★★ S182 终验抓到的自证闭环（必须堵）：
     #   commit 会把提案原文 `- 依据 M-R111 提案：吸收通用招式 [T-D] 移动替代删除（…）`
     #   写进 CHANGELOG。闸门回读 CHANGELOG 时，这行**恰好含招式全名**，于是判成 doc。
@@ -1151,9 +1238,41 @@ def _move_landed(skill, tid):
     _md_raw = _md
     _md = re.sub(r'(?m)^[-*]\s*依据\s*M-R111\s*提案：.*$', '', _md)
     _md = re.sub(r'(?m)^[-*]\s*由\s*skill-evolution\s*upgrade\s*自动提升.*$', '', _md)
+    # ★★ S182 第九次修正之四：**落地声明块也是"关于招式的元话"**，不是做法叙述。
+    #   刚给 11 个技能补了 `实现位置 [T-X]：…` 声明，里面必然会写招式名
+    #   （"活体探针…本条判定不适用"），结果这些行自己成了新的 doc 证据 —— 越补越红。
+    #   声明块由 _verify_decl 单独核实（指得出真实文件才算数），
+    #   核实完就从正文剥掉，不然"我声明它在哪"会被读成"我在讲怎么做"。
+    _md = re.sub(r'(?m)^.*实现位置\s*\[T-[A-I]\].*$', '', _md)
+    _md = re.sub(r'(?m)^.*证据文件\s*\[T-[A-I]\].*$', '', _md)
+    # ★★ S182 第九次修正之七（第一版做错了，此处记录为什么改回来）：
+    #   原想「整段 `## 招式对照` 剥掉，不让它污染 doc 判定」。实测这样做**把账算崩了**：
+    #   na 从 26 掉到 4、none 从 1 涨到 25 —— 因为技能里**唯一**写结论的地方就在那一段，
+    #   剥掉等于全生态没人给过结论，只剩 landed 与空转。
+    #   错在把"段"当单位。段里既有结论行也有做法行，只能**逐行**判。
+    #   正确做法是让 _NA_RE 认得出「已用 / 已落地 / 已做 / 已实现」这些**完成态词形**
+    #   （见下方 _DONE_RE），而不是把整段一锅端掉。
+    #   —— 教训：判据收不进去的时候，先看是不是"词形不够"，别一上手就改结构。
     n_py = sum(1 for k in kws if re.search(k, _py, re.I))
     if n_py:
         return 'landed', f'脚本命中 {n_py} 个关键词'
+
+    # ★★ S182 第九次修正之二：**明确的落地声明 + 指针核实**。
+    #   11 条 doc 逐条核实后发现，没有一条是真欠账，全部是判据认不出真实形态：
+    #     换语言（.sh）· 换词（md5 / 常量 / 自检）· 换位置（代码在对岸技能）
+    #     · 换形式（落地为 references/ 文件布局，没有一行代码可命中）
+    #   这些技能 CHANGELOG 里其实都写清了实现在哪，问题是判据从不顺着去看。
+    #   所以补一条：CHANGELOG 写 `实现位置 [T-X]：…` + `证据文件 [T-X]：…`，
+    #   判据**逐个核实指针指向的真实文件存在**，全都在才算落地。
+    #   防洗账：指针指错/指空 → 打回，仍走后面的 doc 判定。
+    #   这不是"写段话让判定变绿"——话里必须带可核实的位置，指不出东西就无效。
+    _decl_ok, _decl_bad = _verify_decl(d, tid)
+    if _decl_ok:
+        return 'landed', f'CHANGELOG 声明实现位置，指针核实通过（{_decl_ok}）'
+
+    n_sh = sum(1 for k in kws if re.search(k, _sh, re.I))
+    if n_sh:
+        return 'landed', f'脚本命中 {n_sh} 个关键词（.sh 实现层）'
 
     # ★★ S182 第五次修正：**行级**判定，而不是整篇布尔。
     #   上一版只看"文档里有没有出现关键词"，于是把两种完全相反的东西算成一类：
@@ -1169,6 +1288,15 @@ def _move_landed(skill, tid):
         #   `- [T-B] 薄壳 import：无跨技能共享逻辑需求（账房自包含）`     ← 无…需求
         #   `- [T-D] 移动替代删除：library 有删除 API，无降维必要`        ← 无…必要
         r'无.{0,8}需求|无.{0,6}必要|用不上|没有.{0,6}场景', re.I)
+    # ★★ S182 第九次修正之七（收口）：**完成态词形不止"不适用"一种**。
+    #   实测「规则57 对照」段里，真结论长这样：
+    #     `- T-B 物理搬迁+薄壳 import — **已用**：learn.py:39 _load_core() 就是薄壳 import`
+    #     `- T-D 移动替代删除 — **已用**：删不掉的残留一律 _to_janitor() 投递进清道夫`
+    #   "已用"跟"已借鉴"是同一性质（做了、只是没叫招式名），却不在任何正则里 → 判成 doc。
+    #   而"写了结论反而多一处欠账"会直接教人别写结论，这是最坏的激励。
+    _DONE_RE = re.compile(
+        r'已用|已落地|已实现|已做|已补|已加|已收口|已有|已按|已完成|已引入|已接|已跑|已验证|已测|'
+        r'不适用|已判定|结论[:：]', re.I)
     # ★★ S182 第七次修正：**已借鉴 也是结论**，而且是比"不适用"更强的结论。
     #   实测 16 条 doc 里有一半的原文长这样：
     #     `- **借鉴 T-G 单一事实源 SSOT**：失效原因枚举收口为唯一常量，使用点派生。`
@@ -1190,24 +1318,79 @@ def _move_landed(skill, tid):
         # 但清单行后面常跟一段总说明（"…— **本技能当前不适用**：清道夫没有白名单结构"），
         # 那是真结论。所以清单行不直接判，改为**向下看 3 行**找结论。
         is_list = len(re.findall(r'`?\bT-[A-I]\b', ln)) >= 2
-        # 只看关键词所在的分句，避免整行里"旁边恰好有个不适用"被借来当结论
-        rest = ln
-        for k in hit_kw:
-            rest = re.sub(k, ' ', rest, flags=re.I)
-        if _NA_RE.search(rest):
+        # ★★ S182 第九次修正之六：**表格行不是叙述**。
+        #   probe-hub 遗留的那条原文是张表的**数据行**：
+        #     `| 真实测活判据（livecheck.py·S097） | 直接 import 复用，不重写（M-R38 单一事实源） |`
+        #   它在讲"这张表里某个字段用的是什么"，属于登记/对照，不是"我打算这么做"。
+        #   表格跟清单行同理：登记表不构成落地证据，也不构成欠账证据。
+        if ln.lstrip().startswith('|'):
+            # ★ 但表格里也可能写着真结论（`云端无删除 API，这是硬边界`）——
+            #   一律跳过会把真评估也丢掉（实测 ecosys-conductor/T-D 就是这么丢的）。
+            #   表格行不记 doc（登记性质），但行内有明确结论词就算已评估。
+            if _NA_RE.search(ln) or _ADOPT_RE.search(ln) or _DONE_RE.search(ln):
+                na_hits.append(ln.strip()[:120])
+            continue
+        # ★★ S182 第九次修正之五：**"剥掉关键词再找结论词"会自己造出结论**。
+        #   probe-hub 实际原文：
+        #     `[T-B] 物理搬迁+薄壳 import（跨技能共享逻辑）、[T-D] 移动替代删除（无删除 API 时降维）。`
+        #   这是**在讲做法**（两招各讲一句），可关键词表里有 `sw[^,]*API` 之类，
+        #   剥完只剩 `无删除 API 时降维` —— 而 _NA_RE 里恰好有 `无.{0,6}删除.{0,4}API`，
+        #   于是"讲做法"的句子被剥成了"判定不适用"。空转了一圈：判据拿自己的结论词
+        #   去匹配被自己剥剩的碎片，永远匹配得上。
+        #   改法：**先看整行有没有结论词，再看关键词剥完还剩什么**。
+        #   整行都没有结论词 → 它根本不是结论句，别再拿碎片去凑。
+        # ★★ 光有"已用/不适用"这两个字不算结论，**必须有实质**（S182 第九次·收口）：
+        #   实测这个漏洞是真的 —— 往任何技能 CHANGELOG 里贴一行
+        #     `- 量化替补：已用。`
+        #   就能把 doc 洗成 na。判据一旦能被一句话骗过，就等于没有判据。
+        #   要求：结论行除结论词外，还得有**可指认的东西**——反引号里的路径/函数名、
+        #   或冒号/破折号后有一段说明（≥8 个字符）。口令式的"已用""已评估"一概不认。
+        #   ★ 第一版没拦住：`- 量化替补：已用。` 里冒号后只有 3 字，却因为
+        #     字符类 `[:：—\-–]{1}.{8,}` 把冒号本身和前后空白都算进长度，判成有实质。
+        #     改成分开量：冒号/破折号**之后**那段（去掉空白）≥8 字。
+        _tail_txt = re.split(r'[:：—–]|(?<=\S)-\s', ln, 1)
+        _has_substance = bool(re.search(r'`[^`]{3,}`', ln)) or \
+            (len(_tail_txt) > 1 and len(_tail_txt[1].strip()) >= 8)
+        if (_NA_RE.search(ln) or _DONE_RE.search(ln)) and _has_substance:
             na_hits.append(ln.strip()[:120])
             continue
-        if _ADOPT_RE.search(rest):
+        if _ADOPT_RE.search(ln):
             adopt_hits.append(ln.strip()[:120])
             continue
         if is_list:
             # 向下 3 行找结论；找到则本条算"已评估"
-            _tail = ' '.join(_lines[idx + 1: idx + 4])
-            if _NA_RE.search(_tail):
+            # ★ 但"3 行"有时不够：janitor 的清单是**折成两条**写的
+            #     L250 `- T-C … / T-F … / T-E 活体探针 / T-H … / T-B … /`   ← 关键词在这一行
+            #     L251 `` `T-D 移动替代删除` — 本技能当前不适用：…``        ← 结论在第 2 行
+            #     L252 `  它的判定是…单条规则；也没有跨技能共享逻辑…`        ← 理由续行
+            #   所以跳到第 4 行；同时要求命中行**紧邻**（下一行或下两行），
+            #   不是"整个 3 行窗口里随便哪里飘来一个不适用"。
+            _tail = ' '.join(_lines[idx + 1: idx + 5])
+            if _NA_RE.search(_tail) or _ADOPT_RE.search(_tail) or _DONE_RE.search(_tail):
                 na_hits.append((ln.strip()[:80] + ' … ' + _tail.strip())[:120])
-            elif _ADOPT_RE.search(_tail):
-                adopt_hits.append((ln.strip()[:80] + ' … ' + _tail.strip())[:120])
             # 找不到结论也不记 doc —— 清单行本身不是"叙述做法"的证据
+            continue
+        # ★★ S182 第九次修正之三：**结论常被折行，不在关键词同一行**。
+        #   实测两条遗留 doc 都是这个形态：
+        #     probe-hub:   "审阅 3 条…——[T-F] 机械量化…、[T-B] 物理搬迁…"   ← 关键词行
+        #                  "评估结论：本技能当前改动**不涉及**这三类场景…声明不适用"  ← 结论在下一行
+        #     janitor:     "…`T-E 活体探针` / `T-H 哑巴检测` /…— **本技能当前不适用**"  ← 关键词行
+        #                  "清道夫没有"白名单/评分/自检探针"这些结构"                     ← 理由在下一行
+        #   判据只盯关键词那一行，于是"写了结论"被读成"在讲做法"。
+        #   人写字本来就是"先说这招叫什么、再说适不适用"，判据却要求两件事挤在同一行。
+        #   改为：关键词行向下看 2 行，范围内有结论即算已评估。
+        #   为什么是 2 行（不是 3、不是 5）：3 行已能跨过整段落到下一节的标题上，
+        #   会把隔壁话题的"不适用"借过来；2 行只覆盖"折行"这一种自然形态。
+        _win = ' '.join(_lines[idx + 1: idx + 3])
+        # ★ 但结论也可能**写在上一行**（关键词那行是清单尾巴、结论紧跟着抬起）：
+        #   janitor 原文是
+        #     L250 `- T-C 指纹白名单 / T-F 机械量化 / T-E 活体探针 / …`   ← 关键词
+        #     L251 `` `T-D 移动替代删除` — 本技能当前不适用：…``          ← 结论（跨两条清单）
+        #   只向下找就把这种"总起+结论"的写法漏了。向上也看一行，代价很小。
+        _up = _lines[idx - 1] if idx > 0 else ''
+        if _NA_RE.search(_win) or _ADOPT_RE.search(_win) or _DONE_RE.search(_win) \
+                or _DONE_RE.search(_up) or _NA_RE.search(_up):
+            na_hits.append((ln.strip()[:70] + ' … ' + (_up + ' ' + _win).strip())[:120])
             continue
         doc_hits.append(ln.strip()[:120])
 
@@ -1231,8 +1414,15 @@ def _move_landed(skill, tid):
         #   而 skill 没法靠"写清楚"把账销掉 —— 判据逼着人去写假实现。
         #   改为：**逐行比距离**。离结论更近的叙述算已被结论覆盖；
         #   只有结论远在别处、近处确实在讲怎么做，才算 doc。
+        #   ★ 但"距离近"这一条也有被利用的时候（S182 第九次）：
+        #     只要在真结论旁边两行内贴一句带关键词的空话（`- 量化替补：已用。`），
+        #     这句空话就会被"紧贴结论"豁免掉。实测确认**确实如此**。
+        #     所以 `_na_idx` 必须用**同一套实质校验**——只有真结论才配当参照点。
         _na_idx = {i for i, ln in enumerate(_lines)
-                   if _NA_RE.search(ln) or _ADOPT_RE.search(ln)}
+                   if (_NA_RE.search(ln) or _ADOPT_RE.search(ln) or _DONE_RE.search(ln))
+                   and (bool(re.search(r'`[^`]{3,}`', ln))
+                        or (len(re.split(r'[:：—–]', ln, 1)) > 1
+                            and len(re.split(r'[:：—–]', ln, 1)[1].strip()) >= 8))}
         _near = [h for h in doc_hits
                  if any(abs(_lines.index(h) - j) <= 2 for j in _na_idx
                         if h in _lines)]
@@ -1384,6 +1574,10 @@ def cmd_patch(a):
     print(f'   合计命中 {len(targets)} 条'
           f'（na=已评估不适用 / landed=已落地 / none=连文档都没有，均不生成）\n')
     if not targets:
+        # ★ 早退也不能跳过归档（S182）：一条都没命中时，**旧补丁恰恰是最该收走的那批**——
+        #   它们对应的格子现在都判 landed/na 了，留着会让人照着去实现一个已不欠的东西。
+        #   原来这里直接 return，于是"欠账清完"之后补丁目录永远停在清完前的样子。
+        _arch_stale(getattr(a, 'out', '') or os.path.join(ROOT, 'upgrade_patches'), [])
         print('  ℹ️ 没有需要生成补丁的招式。'); return 0
 
     out = getattr(a, 'out', '') or os.path.join(ROOT, 'upgrade_patches')
@@ -1466,19 +1660,27 @@ def cmd_patch(a):
     # ★ 不再判 doc 的旧补丁必须撤掉：判据改了（"已借鉴"也算结论），
     #   上一轮生成的补丁文件还留在目录里，人一翻就会去实现一个已经不欠的东西。
     #   **补丁目录必须与当前判据一致**，否则它比不生成更误导。
+    _arch_stale(out, made)
+    print(f'输出目录：{out}')
+    return 0
+
+
+def _arch_stale(out, made):
+    """把「已不再是 doc」的旧补丁移进 _stale/。抽成函数，因为早退路径也要走。"""
+    if not os.path.isdir(out):
+        return
     _live = {os.path.basename(x) for x in made}
     _stale = [f for f in sorted(os.listdir(out))
               if f.endswith('.md') and f not in _live]
-    if _stale:
-        print(f'\n🧹 以下 {len(_stale)} 份是旧判据留下的、现已不是 doc，已移入 _stale/：')
-        _sd = os.path.join(out, '_stale')
-        os.makedirs(_sd, exist_ok=True)
-        for f in _stale:
-            shutil.move(os.path.join(out, f), os.path.join(_sd, f))
-            print(f'   - {f}')
-        print('   没有删：补丁是"某次判断的留档"，删了就查不到当时依据什么生成它。')
-    print(f'输出目录：{out}')
-    return 0
+    if not _stale:
+        return
+    print(f'\n🧹 以下 {len(_stale)} 份是旧判据留下的、现已不是 doc，已移入 _stale/：')
+    _sd = os.path.join(out, '_stale')
+    os.makedirs(_sd, exist_ok=True)
+    for f in _stale:
+        shutil.move(os.path.join(out, f), os.path.join(_sd, f))
+        print(f'   - {f}')
+    print('   没有删：补丁是"某次判断的留档"，删了就查不到当时依据什么生成它。')
 
 
 def cmd_apply(a):

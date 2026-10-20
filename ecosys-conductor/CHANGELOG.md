@@ -2531,3 +2531,9 @@ manifest 登记了 `tvbox inspect *`（8 条）与 `tvbox janitor *`（4 条）�
 **③ 规则账**
 注册表 1.27.0 → **1.28.0**，共 **107 条**；S144 净增 5 / 废止 4 = **净 +1**，符合 M-R98。
 三方一致 ✅；`close link` 4/4；`self-check` **20/20**。
+
+## 招式落地声明 [T-B]（S182 核实）
+
+- 实现位置 [T-B]：本技能的"搬迁"落地形式是文件布局：SKILL.md 只留路由与判据，长条已外置到 references/ 下 9 个文件，不靠 import 薄壳（本身就是路由器，被依赖方而非依赖方）
+- 证据文件 [T-B]：`references/eco_layers.md`、`references/rules_铁律长条外置.md`、`references/rules_铁律坐标明细.md`、`references/pitfalls_checklist.md`、`references/gray_zones.md`、`references/self_probe_spec.md`、`references/user_habit_brief.md`、`references/rules_纳管细则.md`
+- 说明：本条代码在，判据此前只扫 `.py`+特定词形，换语言（`.sh`）、换词（md5/常量/自检）、换位置（对岸技能）就认不出，被误判成"只说不做"。此处如实登记真实位置，供 `_move_landed` 沿指针核实。
