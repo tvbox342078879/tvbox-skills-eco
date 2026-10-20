@@ -3,6 +3,7 @@ name: extract-images
 version: 1.0.1
 display_name: 提取图片
 display_name_en: Web Image Extractor
+description: 提取网页或公众号文章正文图片并保存为 JPG。自动定位正文区域，去除广告图、Logo、头像、二维码、图标、背景图等无关内容。当用户需要从网页链接、公众号文章链接、新闻页面、博客文章中提取正文配图、下载文章图片、抓取页面图片时使用。触发词：提取图片、下载文章图片、抓取网页图片、保存正文配图、提取公众号图片。
 description_zh: 提取网页或公众号文章正文图片并保存为 JPG。自动定位正文区域，去除广告图、Logo、头像、二维码、图标、背景图等无关内容，统一转换为 JPG 格式并保存到同一文件夹。当用户需要从网页链接、公众号文章链接、新闻页面、博客文章中提取正文配图、下载文章图片、抓取页面图片时使用。触发词：提取图片、下载文章图片、抓取网页图片、保存正文配图、提取公众号图片。
 description_en: Extracts main-content images from web pages or WeChat official-account articles and saves them as JPG files. Automatically locates the article body, filters out ads, logos, avatars, QR codes, icons and background images, converts everything to JPG, and saves all images into one folder. Use when the user needs to extract or download article images from a web link, news page or blog post.
 ---
