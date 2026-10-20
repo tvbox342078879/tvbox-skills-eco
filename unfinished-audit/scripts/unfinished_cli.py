@@ -196,7 +196,38 @@ def cmd_done(rest, status='done'):
     print(f"   {hit.get('title', '')[:80]}")
     print(f"   证据：{ev[:120]}")
     print('   （已移入已结区，下次 close 会列在「本次完成」）')
+    _book_task_boundary(hit, status, ev)
     return 0
+
+
+def _book_task_boundary(hit, status, ev):
+    """收口一笔 = 任务界的一次跨界调用，必须落账（S179）。
+
+    为什么必须补：`close done` 原先只写自己的欠账清单，**从不记「跨界·任务」分录**——
+    实测任务界全生态只有 1 笔，不是没人跨任务交接，是这条路根本没接线。
+    账房 audit-call 的 ②「接线了却没人记账」查的正是这种事。
+
+    走账房 `_book` 同一通道，凭证前缀（TSK-）、科目（跨界·任务）、指标户口径全部一致，
+    不另造第二套记账（M-R38 单一事实源）。记账失败**不掩盖收口结果**，只如实说一句。
+    """
+    if status not in ('done', 'wontfix'):
+        return
+    try:
+        cb_dir = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'eco-ledger', 'scripts')
+        if cb_dir not in sys.path:
+            sys.path.insert(0, cb_dir)
+        import call_bus as CB
+        vno, booked, msg = CB._book(
+            'task', 'done', 'ok' if status == 'done' else 'fail',
+            f"{hit.get('sid')} → {status}：{hit.get('title', '')[:50]}", '',
+            0.0, ['close', status, str(hit.get('sid')), ev[:60]],
+            note=f'清账司收口｜{ev[:80]}')
+        CB._bump('total')
+        CB._bump('ok' if status == 'done' else 'fail')
+        print(f'   📒 已入任务界账 {vno}' if booked else f'   ⚠️ 入账失败：{msg}')
+    except Exception as e:
+        # 旁路失败必须说出来，不能静默——否则又变成"收了口却没人记账"
+        print(f'   ⚠️ 任务界入账未完成（{type(e).__name__}: {e}）——收口本身已生效')
 
 
 def cmd_defer(rest):
