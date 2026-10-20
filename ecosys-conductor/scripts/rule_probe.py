@@ -385,11 +385,26 @@ def m_r127():
     assign(b)
     clean = (b['owner'] == 'legacy-watchdog' and bool(b['next']))
 
+    # ③ S181 复发：显式 kind 必须压过 FINE_ROUTE 关键词（S180 只压过了 ROUTE_TABLE）
+    #    实测病灶：P032 kind=monitor，标题里「云端优先」命中 FINE_ROUTE → 又派回 janitor
+    c = {'sid': 'probe0000003', 'kind': 'monitor', 'kind_declared': True,
+         'title': '探源司谎报（云端优先须走 save_targets）', 'evidence': 'x'}
+    assign(c)
+    hit_c = (c['owner'] == 'tvbox-inspect')
+
+    # ④ 但机器猜的 kind **不许**因此把 FINE_ROUTE 整张表废掉（否则换个方向误判）
+    d = {'sid': 'probe0000004', 'kind': 'unknown',
+         'title': '云端第⑤源只扫本地缓存', 'evidence': 'x'}
+    assign(d)
+    hit_d = (d['owner'] == 'tvbox-janitor')
+
     print(f'  显式 kind/next 须照办={hit}（owner={a["owner"]} next={a["next"][:18]}…）')
     print(f'  无声明仍按性质猜={clean}（owner={b["owner"]} next={b["next"][:22]}…）')
+    print(f'  显式 kind 压过 FINE_ROUTE={hit_c}（owner={c["owner"]}）')
+    print(f'  猜测型不得废 FINE_ROUTE={hit_d}（owner={d["owner"]}）')
     if not hit:
         print(f'    ↑ 期望 owner=ecosys-conductor / next=用户在客户端核对… / due={want_due}')
-    return hit and clean
+    return hit and clean and hit_c and hit_d
 
 
 def m_r126():

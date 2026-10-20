@@ -1593,11 +1593,35 @@ def cmd_monitor_check(a):
         act = _activity_verdict(rec.get('n_commits_30d'), rec.get('pushed_at'))
         # 回写目标字段（S088：补齐 18 字段——文件数/近30天提交/当前commit/下次到期，
         # 使云端库的"最近一次采样快照"列全部活起来）
-        t['存活状态'] = rec['alive']
+        # ★ S181：**存活状态同上，不许用「本轮无法判定」抹掉上期结论**。
+        #   实测：限流轮里 IPTV2 的「存活」被刷成「无法判定」（它上一轮是「存活」）。
+        #   与活跃度同一口径：测到了就更新，没测到就沿用并注明，都没有才写「无法判定」。
+        _prev_alive = t.get('存活状态')
+        _alive_carry = bool(rec['alive'] == '无法判定' and _prev_alive
+                            and _prev_alive != '无法判定')
+        if not _alive_carry:
+            t['存活状态'] = rec['alive']
         t['内容指纹'] = rec.get('content_sha', '')
-        t['活跃度'] = act
+        # ★ S181（实测）：**「本轮无法判定」不许覆盖「上期已知结论」**（M-R82 同款）。
+        #   原实现 `t['活跃度'] = act` 无条件写，于是限流那轮一跑，6 个仓库里
+        #   5 个的「活跃」全被刷成「无法判定」——明明上一轮才实测到 近30天提交=74。
+        #   这不是"更诚实"，是**用一次测量失败抹掉已有事实**：账面从此看不出
+        #   这些仓库到底活不活跃，下游读到「无法判定」会当成"从没测过"。
+        #   判据分层（与 n_files/n_commits_30d 的 isinstance 保护同一口径）：
+        #     · 本轮测到了      → 覆盖（事实更新）
+        #     · 没测到、上期有值 → **保留上期值**，摘要里明写「本轮未重测，沿用上期」
+        #     · 上期也没有      → 才写「无法判定」（真的没有事实可依）
+        _prev_act = t.get('活跃度')
+        _carried = bool(act == '无法判定' and _prev_act and _prev_act != '无法判定')
+        if _carried:
+            _note = (rec.get('note') or '') + f'；⚠️ 本轮活跃度未重测，沿用上期「{_prev_act}」'
+        else:
+            t['活跃度'] = act
+            _note = rec.get('note', '')
+        if _alive_carry:
+            _note += f'；⚠️ 本轮存活未判定，沿用上期「{_prev_alive}」'
         t['上次检查'] = now_iso()
-        t['变更摘要'] = rec.get('note', '')
+        t['变更摘要'] = _note
         if isinstance(rec.get('n_files'), int):
             t['文件数'] = rec['n_files']
         if isinstance(rec.get('n_commits_30d'), int):
@@ -1610,10 +1634,44 @@ def cmd_monitor_check(a):
     _astate, _alog = load_alog()
     aload_repos = _alog.get('repos', {}) if _astate == 'ok' else {}
     for t, rec, act, diff, saved in rows:
-        mark = {'存活': '✅', '已封禁/删除': '⛔', '无法判定': '⚠️'}.get(rec['alive'], '❓')
+        # 打印用「账面结论」而非「本轮结论」：沿用上期时要说清，不能装作本轮测到。
+        # **必须先算显示值再打标题**——mark 图标也要跟着账面结论走，
+        # 否则限流轮会把一个已知「存活」的仓库打成 ⚠️（看着像死了）。
+        _act_show = t.get('活跃度') or act
+        if _act_show != act:
+            _act_show = f'{_act_show}（沿用上期·本轮未重测）'
+        _alive_show = t.get('存活状态') or rec['alive']
+        _alive_raw = _alive_show
+        if _alive_show != rec['alive']:
+            _alive_show = f'{_alive_show}（沿用上期·本轮未判定）'
+        mark = {'存活': '✅', '已封禁/删除': '⛔', '无法判定': '⚠️'}.get(_alive_raw, '❓')
         print(f'\n  {mark} {t.get("仓库名") or t.get("仓库URL")}')
-        print(f'     存活={rec["alive"]}  活跃度={act}  文件数={rec["n_files"]}'
-              f'  近30天提交={rec["n_commits_30d"]}  指纹={rec.get("content_sha") or "—"}')
+        # ★ S181（实测）：**None 不是「没数据」，是「没取到」**。
+        #   原实现直接 f-string 插值，取不到就印出字面量 `None`：
+        #      文件数=None  近30天提交=None
+        #   而紧跟着的 note 仍写「GitHub API 正常」——同一条输出里自相矛盾。
+        #   实测场景：匿名配额 60/h 耗尽后，后半批仓库的 tree/commits 接口被限流，
+        #   n_files/n_commits_30d 变 None，可 meta 主干（repos 元信息）是 ok 的，
+        #   于是 note 照旧报"正常"。人看到 `None` 只会当成"这个仓库没数据"，
+        #   不会想到"是我配额没了"。这正是 M-R60 禁的「空值冒充结论」。
+        _nf = rec.get('n_files')
+        _nc = rec.get('n_commits_30d')
+        _nf_s = _nf if isinstance(_nf, int) else '未取到'
+        _nc_s = _nc if isinstance(_nc, int) else '未取到'
+        print(f'     存活={_alive_show}  活跃度={_act_show}  文件数={_nf_s}'
+              f'  近30天提交={_nc_s}  指纹={rec.get("content_sha") or "—"}')
+        if (_nf is None or _nc is None) and rec.get('note') \
+                and '部分字段未取到' not in (rec.get('note') or ''):
+            # 补一句"为什么是未取到"——note 说"API 正常"时尤其要说清，
+            # 否则读者会以为这就是该仓库的真实值。（幂等：加过就不再加）
+            rec['note'] += '；⚠️ 部分字段未取到（文件数/提交数接口失败，多为配额耗尽或限流）'
+        # ★ S181：本轮没测到、账面沿用上期时，note 不能说「无法判定」——
+        #   那与上一行的「存活=存活」直接打架。改成「本轮未取到，账面沿用上期」。
+        if (_act_show != act or _alive_raw != rec['alive']) and rec.get('note'):
+            rec['note'] = (rec['note']
+                           .replace('——无法判定；', '——本轮未取到，账面沿用上期；')
+                           .replace('——无法判定', '——本轮未取到')
+                           .replace('存活=无法判定', '存活本轮未判定'))
         if rec.get('note'):
             print(f'     note: {rec["note"]}')
         if diff and not diff.get('error'):

@@ -61,15 +61,29 @@ def _today():
 
 
 def _assign(item, today=None):
-    """给单条欠账定 owner/next/due。返回 item（原地补字段）。"""
+    """给单条欠账定 owner/next/due。返回 item（原地补字段）。
+
+    ★ S181：**显式声明 > 关键词覆盖**，这是 M-R127 的完整口径。
+      S180 立规时只做到了「显式 kind 压过 ROUTE_TABLE」，**漏了 FINE_ROUTE**——
+      实测立刻复发：P032 的 kind 已改写为 `monitor`（→tvbox-inspect），可标题里
+      「③改本地白改（云端优先须走 save_targets）」含「云端」，FINE_ROUTE 又把它
+      甩回 tvbox-janitor。改完重跑 `close` 仍漂回去，**看起来像补丁没生效**。
+      结论：只要账本显式写了 kind，**任何基于关键词的二次覆盖都必须让路**——
+      否则立法等于没立，人每次都要跟关键词搏斗。
+    """
     today = today or _today()
     kind = item.get('kind') or 'unknown'
     owner, nxt = ROUTE_TABLE.get(kind, ROUTE_TABLE['unknown'])
+    # 只有**人显式声明**过性质，才禁止关键词改判。
+    # 采集侧机器猜出来的 kind（`kind_declared` 缺省）不受保护——
+    # 否则 FINE_ROUTE 整张表失效，等于把 S180 之前的另一种误判换了个方向。
+    _declared = bool(item.get('kind_declared'))
     blob = f"{item.get('title', '')} {item.get('evidence', '')}"
-    for words, o, n in FINE_ROUTE:
-        if any(w in blob for w in words):
-            owner, nxt = o, n
-            break
+    if not _declared:
+        for words, o, n in FINE_ROUTE:
+            if any(w in blob for w in words):
+                owner, nxt = o, n
+                break
     item['owner'] = owner
     # ★ S180：采集侧已带 `next_fixed` 的，**命令模板不许覆盖它**。
     #   现实里确有一类欠账的下一步「只能人做」（如 P030「用户去客户端核对孤儿夹附件」），

@@ -368,6 +368,22 @@
    "last_seen": "2026-10-20"
   },
   {
+   "sid": "1113bd37aa8e",
+   "source": "issues_ledger",
+   "skill": "ecosys-conductor",
+   "title": "探源司限流轮三处谎报已修（v1.16.1）：①None 直接印成空值 ②「无法判定」抹掉上期活跃/存活 ③改本地白改（云端优先须走 save_targets）——剩余：token 仍需用户配置，配额 60/h 对 6 仓库巡检本就偏紧…",
+   "kind": "monitor",
+   "owner": "tvbox-inspect",
+   "next": "请用户配 GitHub token（`tvbox probe token --set <串>` 或 export GITHUB_TOKEN，升至 5000/h）；在此之前每次 check 前看配额预检，剩 0 就别跑——会让整轮变成「沿用上期」，看着像在监测其实没测",
+   "due": "2026-11-03",
+   "evidence": "/root/.codebuddy/skills/ecosys-conductor/plans/issues_ledger.json #P032 来源=S181 kind=datasource（标题猜·未声明性质，猜原值=datasource）",
+   "signature": "1113bd37aa8ea51e",
+   "next_fixed": "请用户配 GitHub token（`tvbox probe token --set <串>` 或 export GITHUB_TOKEN，升至 5000/h）；在此之前每次 check 前看配额预检，剩 0 就别跑——会让整轮变成「沿用上期」，看着像在监测其实没测",
+   "status": "open",
+   "first_seen": "2026-10-20",
+   "last_seen": "2026-10-20"
+  },
+  {
    "sid": "7e42282f948d",
    "source": "monitors",
    "skill": "tvbox-inspect",

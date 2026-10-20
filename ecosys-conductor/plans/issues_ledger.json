@@ -319,6 +319,16 @@
    "status": "open",
    "opened": "2026-10-20",
    "closed": ""
+  },
+  {
+   "id": "P032",
+   "title": "探源司限流轮三处谎报已修（v1.16.1）：①None 直接印成空值 ②「无法判定」抹掉上期活跃/存活 ③改本地白改（云端优先须走 save_targets）——剩余：token 仍需用户配置，配额 60/h 对 6 仓库巡检本就偏紧，配额耗尽时监测面等于停摆",
+   "from": "S181",
+   "next": "请用户配 GitHub token（`tvbox probe token --set <串>` 或 export GITHUB_TOKEN，升至 5000/h）；在此之前每次 check 前看配额预检，剩 0 就别跑——会让整轮变成「沿用上期」，看着像在监测其实没测",
+   "status": "open",
+   "opened": "2026-10-20",
+   "closed": "",
+   "kind": "monitor"
   }
  ]
 }

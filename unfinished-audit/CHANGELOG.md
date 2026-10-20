@@ -1,3 +1,53 @@
+## v1.4.12 — M-R127 漏了 FINE_ROUTE：显式 kind 仍被关键词改判（S181）
+
+### 症状
+
+P032（探源司限流轮三处谎报）在 `issues_ledger.json` 里 `kind` 已改成 `monitor`，
+`ROUTE_TABLE['monitor']` → `tvbox-inspect`。但 `close` 落下去还是
+**tvbox-janitor**，改一次、重跑一次、漂回一次，连着两次。
+
+### 根因
+
+S180 立 M-R127 时只做了「显式 kind 压过 `ROUTE_TABLE`」，**`FINE_ROUTE` 没动**：
+
+```python
+owner, nxt = ROUTE_TABLE.get(kind, ...)   # ← kind 只到这里有效
+for words, o, n in FINE_ROUTE:            # ← 无条件覆盖，kind 白声明
+```
+
+P032 标题里「③改本地白改（**云端**优先须走 save_targets）」命中
+`FINE_ROUTE` 的 `('云端','节点','删不掉','收件箱') → tvbox-janitor`。
+**标题里一句解释性文字，把整条分诊改判了。**
+
+### 修法与关键判断
+
+不是简单地在有 `kind` 时就跳过 `FINE_ROUTE`——那样会把**机器猜出来的**
+`kind` 也当成「人声明的」，`FINE_ROUTE` 整张表直接失效（比原误判更糟）。
+
+故采集侧多传一个标志：
+
+| 字段 | 含义 | 谁写 |
+|---|---|---|
+| `kind` | 性质（可能是猜的） | 采集侧 |
+| `kind_declared` | **人显式声明过**性质 | 仅当 issues 写了 `kind` 或 `from` 命中 `_KIND_BY_FROM` |
+
+`_assign` 只在 `kind_declared` 时禁止关键词改判。判据：
+
+- 显式声明 → 关键词**不许**改判（人说的话最大）
+- 机器猜的 → 关键词**可以**纠正（`FINE_ROUTE` 保持原能力）
+
+### 探针（M-R127 由 2 项扩到 4 项）
+
+| 项 | 断言 |
+|---|---|
+| ① 显式 kind/next 须照办 | owner + next + due 三项 |
+| ② 无声明仍按性质猜 | 不许一律落到兜底 |
+| ③ **显式 kind 压过 FINE_ROUTE** | `kind=monitor` + 标题含「云端」→ 必须 tvbox-inspect |
+| ④ **猜测型不得废 FINE_ROUTE** | `kind` 为猜值 + 标题含「云端」→ 仍 tvbox-janitor |
+
+③④ 是一对反向约束——**只测一边就会把误判换个方向**。
+四项全 True；清账司 selftest 15/15 通过。
+
 ## v1.4.11 — 分诊不再猜标题：显式 `kind` / 显式 `next` 优先（S180）
 
 ### 症状

@@ -229,6 +229,12 @@ def collect_issues():
                            f"{_raw_title}（{it.get('id')}·{it.get('status')}）",
                            _kind,
                            f"{fp} #{it.get('id')} 来源={_from or '未记'} {_how}"))
+        # ★ S181：把「这个 kind 是**人显式声明**的还是机器猜的」传下去。
+        #   分诊层需要区分：显式声明 → 关键词不许再改判；机器猜 → 关键词可以纠正。
+        #   不传这个标志，dispatch 只能看到 kind 有值，会把「猜的」也当成「声明的」，
+        #   于是 FINE_ROUTE 整张表失效（比原来的误判更糟）。
+        if _explicit:
+            items[-1]['kind_declared'] = True
         # 显式 next：账本自己写了下一步就照办，**不让 ROUTE_TABLE 再改一遍**
         if (it.get('next') or '').strip():
             items[-1]['next_fixed'] = it['next'].strip()

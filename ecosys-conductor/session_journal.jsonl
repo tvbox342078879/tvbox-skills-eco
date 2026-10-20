@@ -10199,3 +10199,7 @@
 {"ts": "2026-10-20T11:01:32", "verb": "conductor", "arg": "recap", "ok": true, "exit": 0}
 {"ts": "2026-10-20T11:01:33", "verb": "conductor", "arg": "ask", "ok": true, "exit": 0}
 {"ts": "2026-10-20T11:01:33", "verb": "conductor", "arg": "audit-growth", "ok": true, "exit": 0}
+{"ts": "2026-10-20T11:03:11", "verb": "conductor", "arg": "registry", "ok": false, "exit": 0, "err": "dispatch 返回 3（int 非0，命令自报失败）"}
+{"ts": "2026-10-20T12:02:17", "verb": "conductor", "arg": "recap", "ok": true, "exit": 0}
+{"ts": "2026-10-20T12:02:18", "verb": "conductor", "arg": "ask", "ok": true, "exit": 0}
+{"ts": "2026-10-20T12:02:18", "verb": "conductor", "arg": "audit-growth", "ok": true, "exit": 0}
