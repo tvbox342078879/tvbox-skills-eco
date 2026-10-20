@@ -4127,6 +4127,39 @@
    "ask": "这条欠账派给了错的技能，下一步还被换成了跑一遍命令",
    "note": "S180 实测：P030「备份系统三处遗留…③ 探针遗留物 __uptest_s179.md」因末尾有「探针」命中 KIND_HINTS 的 code 桶 → 派给 legacy-watchdog；而它自己的 next 写着「用户在客户端核对孤儿夹附件后清账」。三重错：①性质靠标题猜，标题写的是**手段**不是**归属**；②改 kind 也没用，_assign 只让 FINE_ROUTE 覆盖 owner/next、kind 不动，due 仍按 code=7 天更紧；③命令模板把人话换成 `tvbox janitor scan`，等于把「等人」改写成「跑命令自欺」。口径：能落到「等人做/等外部确认」的欠账**必须显式写 next**；猜出来的 kind 要写进 evidence 留痕。与 M-R117 同族：M-R117 管人不许空口说完成，本条管工具不许把人的判断覆盖成自动动作。",
    "dedup_decision": "与 M-R79（未完成不得无主）不同：M-R79 管**有没有** owner/next/due，本条管 owner/next **对不对**。与 M-R126 不同：M-R126 管内容不许被截断，本条管判断不许被覆盖。"
+  },
+  {
+   "id": "R-BG03",
+   "tier": "enforced",
+   "summary": "前台禁止一切 sleep/等待。「等」这个动作本身也是长任务，它同样必须消失在会话里。2026-10-20 凌晨 00:21~02:05 前台跑了 41 次 sleep（最长 sleep 240），用户三次截图取证「打字切不进来」——后台任务已经放出去了，却又用前台 sleep 去等它写完，把「放后台」的意义整个抵消。",
+   "master_line": "R-BG03 前台禁止 sleep≥3 秒的等待，等也是长任务",
+   "statement": "前台命令里出现 sleep（≥3 秒）一律违规。后台任务完成会有 task-notification 自动推进，收到通知再读文件，不主动轮询；要看进度用 TaskOutput block=false 或直接读落盘文件（均瞬时返回）。",
+   "judge": {
+    "command": "printf '{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"sleep 40\"}}' | python3 /root/.codebuddy/hooks/chain_guard.py",
+    "expect": "rc=2 且 stderr 含「前台 sleep 等待」"
+   },
+   "probe": {
+    "skill": "ecosys-conductor",
+    "command": "printf '{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"sleep 40\"}}' | python3 /root/.codebuddy/hooks/chain_guard.py >/dev/null 2>&1; test $? -eq 2"
+   },
+   "landing": [
+    {
+     "skill": "ecosys-conductor",
+     "anchor": "/root/.codebuddy/hooks/chain_guard.py（HEAVY 清单第 5 条，sleep≥3 即 exit 2）",
+     "type": "code"
+    },
+    {
+     "skill": "ecosys-conductor",
+     "anchor": "plans/S177_施工进度板.md（R-BG03 四条判据）",
+     "type": "documentation"
+    }
+   ],
+   "source": "S182：16:45 实测「sleep 40」经 chain_guard 与 bg_guard 双双放行——规则写了但没有任何钩子执行它，退化成自觉。补 HEAVY 条目 + 登记本规则。",
+   "primary_owner": "ecosys-conductor",
+   "owner": "ecosys-conductor",
+   "status": "active",
+   "ask": "为什么不能在前台等（sleep）？",
+   "chapter": "后台执行与可对话"
   }
  ],
  "freeze": {
