@@ -564,6 +564,12 @@ def _route_of_tvbox():
     out = {}
     for verb, mod in re.findall(r"'([\w\-]+)'\s*:\s*(\w+)", body):
         out[verb] = alias.get(mod, mod)
+    # ★ S179 修：S165 起的「域命令」不走 ROUTE 字典，而是 `if verb == 'jobs': return cmd_jobs(...)`
+    #   特例分支直接分发。只解析 ROUTE 会把它们误报成「幽灵命令」（实测 `tvbox jobs` 明明能跑，
+    #   audit-call 却报 2 条幽灵）。这里把 `if verb == 'x':` 分支同样算作入口动词——
+    #   判据要覆盖入口的**两种**注册方式，否则检测器自己就是缺陷源。
+    for v in re.findall(r"^\s*if\s+verb\s*==\s*['\"]([\w\-]+)['\"]", src, re.M):
+        out.setdefault(v, 'inline')
     return out, ''
 
 
