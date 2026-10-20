@@ -9,9 +9,9 @@
  },
  "counts": {
   "skills": 13,
-  "rules": 139,
+  "rules": 141,
   "signals": 45,
-  "monitors": 45,
+  "monitors": 46,
   "commands": 111
  },
  "by_skill": {
@@ -37,7 +37,8 @@
     "M41",
     "M43",
     "M44",
-    "M45"
+    "M45",
+    "M48"
    ]
   },
   "eco-ledger": {
@@ -142,7 +143,9 @@
     "M-R123",
     "M-R124",
     "M-R125",
-    "M-R126"
+    "M-R126",
+    "R-BG03",
+    "M-R128"
    ],
    "rules_touched": [
     "M-R23",
@@ -221,7 +224,9 @@
     "M-R123",
     "M-R124",
     "M-R125",
-    "M-R126"
+    "M-R126",
+    "R-BG03",
+    "M-R128"
    ],
    "signals": [],
    "monitors": [],
@@ -269,7 +274,8 @@
     "M41",
     "M43",
     "M44",
-    "M45"
+    "M45",
+    "M48"
    ]
   },
   "learn-hub": {
@@ -427,7 +433,8 @@
     "M44",
     "M45",
     "M46",
-    "M47"
+    "M47",
+    "M48"
    ]
   },
   "tvbox-inspect": {
@@ -541,7 +548,8 @@
     "M44",
     "M45",
     "M46",
-    "M47"
+    "M47",
+    "M48"
    ],
    "commands": [
     "tvbox inspect scan",

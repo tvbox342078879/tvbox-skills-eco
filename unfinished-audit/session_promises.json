@@ -79,6 +79,16 @@
    "opened": "2026-10-19",
    "closed": "",
    "evidence": ""
+  },
+  {
+   "id": "C009",
+   "text": "<在本会话中，用户设定的 deliveries 七段闭环规则须持久生效",
+   "owner": "ecosys-conductor",
+   "due": "2026-10-23",
+   "status": "done",
+   "opened": "2026-10-20",
+   "closed": "2026-10-20",
+   "evidence": "habit_brief.py第0节STATIC_DELIVERY + cmd_check体检项 + references/交付报告_七段模板.md + rules_registry M-R128(141条三方一致) + rule_probe.py m_r128()五项全过含注入判红；提交1665090/fe9d11a"
   }
  ]
 }

@@ -94,16 +94,16 @@
   },
   {
     "date": "2026-10-20",
-    "overall": 98,
+    "overall": 100,
     "scores": {
       "cat_health": 100,
       "cat_gain": 100,
       "cat_noise": 100,
       "noise_state": "green",
       "cat_active": 100,
-      "cat_contract": 92,
-      "ver_state": "drift×1",
-      "ver_ok": 12,
+      "cat_contract": 100,
+      "ver_state": "green",
+      "ver_ok": 13,
       "ver_total": 13,
       "cat_biz": 0,
       "cat_radar": 81

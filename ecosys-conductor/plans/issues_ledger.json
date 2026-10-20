@@ -342,6 +342,15 @@
    "opened": "2026-10-20",
    "closed": "",
    "kind": "monitor"
+  },
+  {
+   "id": "P034",
+   "title": "tvbox-inspect 明细表缺登记项：M45/M46/M47/M48 未在 SKILL.md 3.6 明细表出现，导致 ledger finalcheck ①库坐标(docsync) drift=1 恒红",
+   "from": "S183 收尾发现",
+   "next": "在 tvbox-inspect/SKILL.md 的 3.6 明细表补 M45-M48 四行登记",
+   "status": "open",
+   "opened": "2026-10-20",
+   "closed": ""
   }
  ]
 }
