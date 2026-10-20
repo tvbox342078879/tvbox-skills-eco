@@ -1,3 +1,49 @@
+## v1.34.5 — 锚点回写补回读校验（S182 · 招式 T-I 真落地）
+
+### 病灶：`print('锚点已回写')` 是自称，不是事实
+
+`watchdog.py` 的 `cmd_report` 在云端直传成功后会回写 `last_report_node.json` 作为锚点：
+
+```python
+json.dump(payload, open(anchor, 'w', encoding='utf-8'), ensure_ascii=False, indent=2)
+print(f'   锚点已回写: {anchor}')
+```
+
+dump 完直接宣布"已回写"。**写了 ≠ 写成了。**
+
+- 磁盘满、只读、权限不足 → `json.dump` 抛异常 → 被外层 `except` 抓到 → 打印"回写失败"（这条还行）
+- **写了一半截断** → 不抛异常 → 打印"已回写" → 下一轮 `json.load` 拿到坏 JSON →
+  走 `except` 当"没有锚点" → **每次都新建云端节点，且全程零报错**
+
+这是最坏的失败形态：不是报错，是安静地做错事。
+
+### 修法
+
+写后立即回读并比对 `latest`：
+
+```python
+back = json.load(open(anchor, encoding='utf-8'))
+if back.get('latest') != node:
+    print(f'   ⚠️ 锚点回读不一致（写 {node} / 读 {back.get("latest")}）'
+          f'——已保留原文件，请人工核对 {anchor}')
+else:
+    print(f'   锚点已回写（回读校验通过）: {anchor}')
+```
+
+### 为什么现在才补
+
+这条对应招式库 **T-I「写路径写后回读验证」**，本技能在 2026-10-18 就把它标成了"已吸收"。
+`skill-evolution` v1.4.0 给 `commit` 加了回读闸门后复查，发现本技能里**只有** `save_snapshot`
+那一路做了校验（`saved, _ = save_snapshot(...)`），锚点这路没有 —— 一条招式只落了一半。
+
+同批复查还发现 T-I 的判据关键词漏了"saved 布尔 / 拒绝覆盖"这类形态，导致本技能被误判成
+"纯空转"。已反馈给 `skill-evolution` 补齐（见其 v1.4.0）。
+
+### 实测
+
+三情形验证：正常写回读一致 ✅ / 截断写回读抛 `JSONDecodeError`（旧代码正是被它吞掉）✅ /
+内容不符能被比对抓到 ✅。
+
 ## v1.34.4 — 快照死副本：S105 迁移后留下的 M-R40 孤儿（S163）
 
 ### 实测发现（用户「查历史遗留」撞上）

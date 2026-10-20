@@ -473,9 +473,20 @@ def cmd_report(a):
                     hist = json.load(open(anchor, encoding='utf-8')).get('history', [])
                 hist.append({'ts': now.strftime('%Y-%m-%d %H:%M'), 'title': title,
                              'node_id': node, 'local': out})
-                json.dump({'latest': node, 'title': title, 'history': hist[-20:]},
-                          open(anchor, 'w', encoding='utf-8'), ensure_ascii=False, indent=2)
-                print(f'   锚点已回写: {anchor}')
+                payload = {'latest': node, 'title': title, 'history': hist[-20:]}
+                json.dump(payload, open(anchor, 'w', encoding='utf-8'),
+                          ensure_ascii=False, indent=2)
+                # ★ S182（招式 T-I「写后回读验证」）：写了 ≠ 写成了。
+                #   原来 dump 完直接 print「锚点已回写」——磁盘满/只读/权限不足时
+                #   dump 抛异常会被下面 except 抓到，但**写了一半截断**这种情形不抛异常，
+                #   于是下一轮读锚点拿到坏 JSON，走 except 当"没有锚点"，
+                #   表现为「每次都新建节点」而毫无报错。必须回读比对。
+                back = json.load(open(anchor, encoding='utf-8'))
+                if back.get('latest') != node:
+                    print(f'   ⚠️ 锚点回读不一致（写 {node} / 读 {back.get("latest")}）'
+                          f'——已保留原文件，请人工核对 {anchor}')
+                else:
+                    print(f'   锚点已回写（回读校验通过）: {anchor}')
             except Exception as e:
                 print(f'   ⚠️ 锚点回写失败: {e}')
         else:

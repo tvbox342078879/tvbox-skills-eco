@@ -61,15 +61,55 @@ legacy-watchdog/T-D  none   → pending（landed_blocked=none：脚本与文档�
 | 判据 | 结果 |
 |---|---|
 | 正文+脚本有命中 | 27/29 |
-| **只看脚本 `.py`** | **18 landed / 9 doc / 2 none** |
+| **只看脚本 `.py`（最终）** | **19 landed / 9 doc / 1 none** |
 
 正确结论是「**有一部分真落地了，另一部分只停留在文档**」，不是「全空转」。
 
 `doc` 9 条分布：`tvbox-janitor` 4、`ecosys-conductor` 2、`unfinished-audit` 2、`tvbox-inspect` 1。
-`none` 2 条全在 `legacy-watchdog`（T-D、T-I）—— 而这恰好是它最该守的两条：
-它自己有删除动作（T-D 适用）、写库写文件频繁（T-I 适用），却连一行提示都没写。
-`watchdog.py` 里那 2 条关键词命中经核实只是 `print('请人工修复该文件（勿直接删除…')`，
-在报告人"别删"，不是在教机器"移动替代删除"。
+这 9 条是**只把做法写进了文档、脚本里没有对应实现**，不是空转，但也还没真吸收。
+
+### 判据第三次修正：关键词只认自己的黑话，会把真落地判成空转
+
+首轮跑出 `none` 2 条（`legacy-watchdog` 的 T-D、T-I）。逐条核对后发现**判错了一条**：
+
+`watchdog.py:458` 写的是
+
+```python
+saved, _ = save_snapshot(findings)   # 落盘本期指纹，供下期 diff
+if not saved:
+    print('   ⚠️ 快照未落盘：… 已**保留原文件不覆盖**（防销毁上期基准）')
+```
+
+`save_snapshot` 在 `tvbox-inspect` 里是 `return False, []  # 写失败：不得谎报已落盘`。
+**这就是 T-I「写后回读验证」本身** —— 写函数自报 saved 布尔、失败时拒绝覆盖、保留现场。
+只因为它没写"回读验证"四个字，被 T-I 原有 8 条关键词判成 0 命中。
+
+T-I 关键词已补 7 条同义形态：`saved\s*,` / `不得谎报` / `拒绝覆盖` / `写失败` /
+`落盘失败` / `回读.{0,6}不一致` / `回读.{0,4}校验`。补完实测：只有
+`legacy-watchdog/T-I` 一条从 `none` 变 `landed`，**其余 10 条判定无一动**（未放宽其他口径）。
+
+> 教训与上一节同源：**判据不许只认自己的黑话。** 一个招式在真实代码里往往不叫自己那个名字。
+
+`legacy-watchdog/T-D`（移动替代删除）维持 `none`，但**不是欠账**：
+该技能全库无删除动作（只有 `report`/`trend`/`aging`/`diff`/`upload` 五类命令），
+T-D 的适用条件是"目标没有删除能力时"，它压根没触发场景。这类应在 `propose` 层就不提案，
+属提案精度问题，另账。
+
+### 顺手补的真缺陷：`watchdog.py` 锚点回写是假的"已回写"
+
+`last_report_node.json` 的回写原来是这样：
+
+```python
+json.dump(payload, open(anchor, 'w', encoding='utf-8'), ensure_ascii=False, indent=2)
+print(f'   锚点已回写: {anchor}')
+```
+
+dump 完直接宣布成功。磁盘满/只读会抛异常被 except 抓到，但**写了一半截断**不抛异常 ——
+下一轮读锚点拿到坏 JSON，走 except 当"没有锚点"，表现为「每次都新建云端节点」而毫无报错。
+已改为写后回读比对 `latest`，不一致就告警并提示保留原文件。
+
+实测三情形：正常写回读一致 ✅ / 截断写回读抛 `JSONDecodeError`（旧代码正是被 except 吞掉）✅ /
+内容不符能被比对抓到 ✅。
 
 ### 实证：招式挖掘是"事后统计"，不是"驱动力"
 
