@@ -1,6 +1,6 @@
 {
   "board": "/root/.codebuddy/skills/ecosys-conductor/plans/S179_重做生态方案.md",
-  "current_step": "N5",
+  "current_step": "N6",
   "steps": [
     {
       "id": "N0",
@@ -58,7 +58,20 @@
         "ecosys-conductor"
       ],
       "verify": "tvbox close audit",
-      "status": "pending"
+      "status": "done"
+    },
+    {
+      "id": "N6",
+      "title": "治理收口：验收无回归+触发条件全量体检+探针全舰队实弹（extract-images 补 description 已入库）",
+      "scope": [
+        "ecosys-conductor",
+        "hooks",
+        "skill_2104583436307918848",
+        "unfinished-audit",
+        "tvbox-source-hub"
+      ],
+      "verify": "python3 /tmp/acceptance.py + tvbox conductor signal-check",
+      "status": "in_progress"
     }
   ]
 }
