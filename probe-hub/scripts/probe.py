@@ -315,9 +315,33 @@ def _rate_limit(timeout=15):
     这不是本地 bug，但会让用户困惑，故：
       · 若 `reset` 已过期（早于当前时间）→ 标注 'stale'，提示"数据可能陈旧，以实际
         调用返回的限流响应为准"，**不得当作"额度已满"阻断后续操作**。
+
+    ★ S181（实测，比上面那条更严重）：**CDN 缓存能返回「剩余 58」而真实是 0。**
+      实测经过：配额耗尽后等 143 秒，`probe token` 报「剩余 58 · 重置 13:05」，
+      于是放心跑 `monitor check`——6 个仓库全部限流空转。直连 `/rate_limit`
+      复核：`remaining=0, reset=12:35`。缓存的是一小时前的快照。
+      「报剩余充足」比「报已耗尽」危险得多：前者让人**主动去做无效的事**。
+      两层修：
+        ① 请求加 `Cache-Control: no-cache`（打掉 CDN 缓存这一类）；
+        ② 对 `remaining > 0` 的结果**不无条件相信**——`_api_get` 真撞上 403/429 时，
+           调用方应把「本端点说还有额度」与「实际已限流」并列呈现，不许只信前者。
+      ② 的落点在 `cmd_monitor_check` 的预检里（见 where 参数）。
+
+    ★★ S181 第二轮实测（更重要，推翻了上面「CDN 缓存」的解释）：
+      加禁缓存头后，**同一秒内连查三次仍会在两个值之间跳**：
+          shell 路径: (0, reset=1792470954)   py 路径: (45, reset=1792472730)
+          shell 路径: (45, reset=1792472730)  py 路径: (0, reset=1792470954)
+      两个 reset 相差 **30 分钟**，说明不是缓存，而是 **GitHub 侧存在多个配额桶**
+      （不同边缘节点各自计数），请求随机落到哪个桶就报哪个值。
+      结论：**「查配额」这个动作从原理上就答不准**，无论怎么加头。
+      故本函数的 remaining 只能作**参考值**，判决权必须交给**实际调用的返回码**：
+        · 真撞 403/429 → 就是没额度，不管本函数说还有多少
+        · 真返回 200  → 就是有额度，不管本函数说 0
+      调用方（`cmd_monitor_check` 预检 / `cmd_token` 展示）都按这个口径写。
     """
     url = 'https://api.github.com/rate_limit'
-    rc, out = _sh([CURL, '-sS', '-L', '-m', str(timeout), '-A', UA]
+    rc, out = _sh([CURL, '-sS', '-L', '-m', str(timeout), '-A', UA,
+                   '-H', 'Cache-Control: no-cache', '-H', 'Pragma: no-cache']
                   + _gh_headers() + [url], timeout=timeout + 5)
     if rc != 0 or not out:
         return 'fail', {}
@@ -1572,6 +1596,12 @@ def cmd_monitor_check(a):
             print(f'   ⚠️ 配额预检：剩余 {_rl["remaining"]} < 本次约需 {_need}'
                   f'（{len(sel)} 仓库×3 请求）——后半批大概率「无法判定」白跑。'
                   f'可先 `tvbox probe token --set <串>` 升至 5000/h，{_tail}')
+            # ★ S181：这个预检**只是提示，不是判决**。实测反例很多：
+            #   预检说「剩余 0」，单仓库那一跑却完整取到 文件数=778。
+            #   原因是 /rate_limit 在多个配额桶间跳值。不加这句，用户会以为
+            #   「剩 0 就一定白跑」而放弃，白白错过能跑的那几轮。
+            print('   ℹ️ 但该预检**不可靠**（GitHub 配额桶有多套，同一时刻可能查到不同的桶）：'
+                  '实测出现过「预检说 0、实际取到数据」。仍可照跑，看末尾的实测结论。')
     # ★ P1（S163）：探测阶段接入生态统一并发入口（M-R38：用 concurrency.run_bounded，
     #   不另造 ThreadPoolExecutor——S111 遗留正是"5 处直接吃 --workers 绕过统一入口"）。
     #   只并发**网络探测**（_probe_repo，纯读、无共享态）；回写/落盘仍在主线程串行做
@@ -1691,6 +1721,26 @@ def cmd_monitor_check(a):
         _h = ((aload_repos or {}).get(t.get('仓库URL', '')) or {}).get('history', [])
         if diff and diff.get('dirs_undecidable') and len(_h) <= 1:
             print('     📁 首轮基线已建立——下次检查起，目录变更即可对比')
+
+    # ★ S181：**用实测结果判决本轮到底有没有在监测**，而不是信 `/rate_limit`。
+    #   实测依据：`/rate_limit` 会在两个配额桶之间乱跳（同一秒连查三次，0 与 45 交替，
+    #   reset 相差 30 分钟）——**这个端点从原理上答不准**。而「本轮实际拿到了几个字段」
+    #   是确定的事实。用它做判决，才不会出现「报额度充足、实际全空转」。
+    _got = sum(1 for _t, _r, _a, _d, _s in rows
+               if isinstance(_r.get('n_files'), int)
+               or isinstance(_r.get('n_commits_30d'), int))
+    _n = len(rows)
+    if _n and _got == 0:
+        print(f'\n  ⛔ 本轮 0/{_n} 取到数据——**实际等于没监测**（全部沿用上期账面）。')
+        _ls, _rl = _rate_limit()
+        _rem = _rl.get('remaining') if _ls == 'ok' else None
+        print(f'     配额端点自报「剩余 {_rem}」，但实测全限流——'
+              f'该端点会在多个配额桶间跳值，**不可作为判断依据**。')
+        print('     确定解法：`tvbox probe token --set <串>`（60/h → 5000/h）。')
+    elif _n and _got < _n:
+        print(f'\n  ⚠️ 本轮 {_got}/{_n} 个目标取到新数据，其余沿用上期（配额偏紧）。')
+    elif _n:
+        print(f'\n  ✅ 本轮 {_got}/{_n} 个目标全部取到新数据。')
 
     ck, lk = save_targets(targets)
     if not ck:
@@ -5030,6 +5080,12 @@ def cmd_token(a):
         mins = max(0, int((reset - time.time()) / 60)) if reset else 0
         print(f'   限额 {lim}/h · 剩余 {rem} · 重置于 {mins} 分钟后'
               f'（{time.strftime("%H:%M", time.localtime(reset)) if reset else "—"}）')
+        # ★ S181：**必须声明这个数字不可靠**。实测同一秒连查三次，0 与 45 交替、
+        #   reset 相差 30 分钟——GitHub 侧有多个配额桶，落到哪个桶就报哪个值。
+        #   不加这句，用户会拿它当准数：看到 58 就放心跑，结果全轮空转（真实发生过）。
+        print('   ℹ️ 该数字**仅供参考**：GitHub 侧存在多个配额桶，同一时刻查询可能'
+              '在不同桶间跳（实测 0 与 45 交替、reset 相差 30 分钟）。'
+              '真实额度以 `monitor check` 的实测结论为准。')
         if rl.get('stale'):
             print('   ℹ️ 该数值疑似**上一时间窗的缓存快照**（reset 已过期）——'
                   '仅供参考，实际以调用返回的限流响应为准')
