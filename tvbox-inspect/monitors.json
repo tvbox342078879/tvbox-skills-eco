@@ -558,6 +558,17 @@
       "severity": "耗时",
       "action": "逐条确认「借鉴 / 不适用」并留痕（规则57）；不适用须写理由。命令：tvbox evolve mine --skill learn-hub",
       "proven": "S179 判据补实：2026-10-20 实测 0 条候选（此前无判据、恒 0 不可证）"
+    },
+    {
+      "id": "M48",
+      "name": "legacy-watchdog 升级后回退风险",
+      "check": "manual_track",
+      "desc": "legacy-watchdog 升级到 1.34.5 后若出现功能回退，升级后 7 天内人工复核 ｜ 登记于 skill-evolution commit 回读闸门试点，由 register_monitor 自动挂入；本项无自动检查器，如实标 manual_track",
+      "threshold": "升级/改造后 7 天内跑 `tvbox watchdog regress` 必须全绿；任一红了即回退（注：watchdog.py 无 selftest 子命令，S182 实测已修正判据）",
+      "cadence": "升级/改造后 7 天内（并非常驻巡检）",
+      "severity": "耗时",
+      "action": "复跑 `tvbox watchdog regress`；红了按项回滚到上一个 commit（git log /root/.codebuddy/skills）。锚点回写补回读校验那一版若出现回读不一致告警，须人工核对锚点文件",
+      "proven": "S182 升级点实测：v1.34.5 改了锚点回写路径（加回读校验），属写路径改动，按规矩登记 7 天复核窗；本项为人工跟踪，无自动判定器"
     }
   ],
   "expansion_log": [
