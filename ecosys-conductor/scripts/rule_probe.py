@@ -426,12 +426,26 @@ def m_r126():
     t2, s2, n2 = parse('标题里含 -- 符号 但不是选项')
     hit = (t1 == long_title and s1 == 'S179 立规' and n1 == '客户端核对后清账')
     clean = (t2 == '标题里含 -- 符号 但不是选项' and s2 == '复盘' and n2 == '')
+
+    # ③ 选项值同样是自由文本，不许被 \S+ 截断（S180 实测：P031 next 只剩「先补」）
+    bare_next = '先补 TYPE2SKILL 两映射（否则复发源一直在漏）；再定 commit 的落点'
+    t3, s3, n3 = parse(f'某标题 --from S180 --next {bare_next}')
+    hit3 = (t3 == '某标题' and s3 == 'S180' and n3 == bare_next)
+    # ④ 两个裸值挨着：不许把下一个选项吞进上一个值
+    t4, s4, n4 = parse('标题 --from 甲 乙 丙 --next 丁 戊')
+    hit4 = (t4 == '标题' and s4 == '甲 乙 丙' and n4 == '丁 戊')
+
     print(f'  长标题须逐字完整={hit}（得 {len(t1)}/{len(long_title)} 字）')
     print(f'  非选项 -- 不得误切={clean}（得 {t2!r}）')
+    print(f'  裸值 --next 不得截断={hit3}（得 {n3!r}）')
+    print(f'  两个裸值不得互吞={hit4}（from={s4!r} next={n4!r}）')
     if not hit:
         print(f'    期望: {long_title[:60]}…')
         print(f'    实得: {t1[:60]}…')
-    return hit and clean
+    if not hit3:
+        print(f'    期望 next: {bare_next!r}')
+        print(f'    实得 next: {n3!r}')
+    return hit and clean and hit3 and hit4
 
 
 PROBES['M-R126'] = m_r126

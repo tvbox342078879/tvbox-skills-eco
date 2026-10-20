@@ -8269,12 +8269,20 @@ def _parse_issue_add(body):
     if not m:
         return title, src, nxt
     title = body[:m.start()].strip()
-    for k, v in re.findall(r'--(from|next)\s+("[^"]*"|\'[^\']*\'|\S+)', body[m.start():]):
-        if v[:1] in '"\'':
+    # ★ S180 第二修：**选项值同样是自由文本**，不许被 \S+ 截断。
+    #   原实现 `\S+` 遇空格即停，于是 `--next 先补 TYPE2SKILL 两映射（…）`
+    #   只存进「先补」——与 M-R126 立规时修的标题截断**是同一个病的两个病灶**：
+    #   当时只改了标题，选项值照旧。实测 P031 落库 next="先补"。
+    #   正确切法：值一直取到「下一个 --from/--next」或串尾；带引号的整体剥引号。
+    for k, v in re.findall(
+            r'--(from|next)\s+(.*?)(?=\s+--(?:from|next)\s|\Z)',
+            body[m.start():], re.S):
+        v = v.strip()
+        if len(v) >= 2 and v[0] in '"\'' and v[-1] == v[0]:
             try:
                 v = shlex.split(v)[0]
             except Exception:
-                v = v.strip('"\'')
+                v = v[1:-1]
         if k == 'from':
             src = v
         else:
