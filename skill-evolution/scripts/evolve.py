@@ -1136,12 +1136,24 @@ def _move_landed(skill, tid):
             elif f.endswith('.md'):
                 md_txt.append(s)
     _py, _md = '\n'.join(py_txt), '\n'.join(md_txt)
+    # ★★ S182 终验抓到的自证闭环（必须堵）：
+    #   commit 会把提案原文 `- 依据 M-R111 提案：吸收通用招式 [T-D] 移动替代删除（…）`
+    #   写进 CHANGELOG。闸门回读 CHANGELOG 时，这行**恰好含招式全名**，于是判成 doc。
+    #   等于：我写下"我要吸收T-D" → 闸门看到"T-D" → 认为已吸收。
+    #   越用越像真的，且同一招下次永远判 doc。这是判据的自我污染，比误判更坏。
+    #   修法：回读前先剥掉「提案依据」这类**提交痕迹**，只认真实叙述。
+    _md_raw = _md
+    _md = re.sub(r'(?m)^[-*]\s*依据\s*M-R111\s*提案：.*$', '', _md)
+    _md = re.sub(r'(?m)^[-*]\s*由\s*skill-evolution\s*upgrade\s*自动提升.*$', '', _md)
     n_py = sum(1 for k in kws if re.search(k, _py, re.I))
     n_md = sum(1 for k in kws if re.search(k, _md, re.I))
     if n_py:
         return 'landed', f'脚本命中 {n_py} 个关键词'
     if n_md:
         return 'doc', f'脚本 0 命中、文档命中 {n_md} 个——只说不做'
+    if re.search('|'.join(f'(?:{k})' for k in kws), _md_raw, re.I):
+        # 剥掉提交痕迹后 0 命中，剥之前有 → 唯一证据是自己的提案回执，不算落地
+        return 'none', '仅命中「提案依据」回执行（自我证明，不算落地）——纯空转'
     return 'none', '脚本与文档均 0 命中——纯空转'
 
 
