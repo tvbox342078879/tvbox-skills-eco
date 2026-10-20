@@ -351,6 +351,15 @@
    "status": "open",
    "opened": "2026-10-20",
    "closed": ""
+  },
+  {
+   "id": "P035",
+   "title": "automation-task-manager 脚本通道长期兜底：MCP automation_update 能力就绪前，scheduler-api.sh 仍是唯一定时任务入口，不得因 MCP 规划而提前下线脚本",
+   "from": "S183 雷达 13 条分诊",
+   "next": "等 MCP automation_update 可用后，实测直连能否覆盖 建/改/删/查 四类动作，再决定脚本通道降级为兜底还是保留并行",
+   "status": "open",
+   "opened": "2026-10-20",
+   "closed": ""
   }
  ]
 }

@@ -1,6 +1,7 @@
 {
   "board": "/root/.codebuddy/skills/ecosys-conductor/plans/S179_重做生态方案.md",
   "current_step": "N6",
+  "note": "N0-N6 全部 done（S183 17:21 收口）。S178 四期总览的 ②③④ 期属开新工，不在本板六步内，需另立 board。",
   "steps": [
     {
       "id": "N0",
@@ -71,7 +72,8 @@
         "tvbox-source-hub"
       ],
       "verify": "python3 /tmp/acceptance.py + tvbox conductor signal-check",
-      "status": "in_progress"
+      "status": "done",
+      "evidence": "S183 17:21 实跑 python3 /tmp/acceptance.py → 验收结论 ✅ 全部通过：[1] 体积 0 超硬限/0 超缓冲；[2] 43 条残留重复 0，已撤回 13/已采纳 30/待兑现 0；[3] whoami 命中 learn-hub rc=0；[4] 真源 141 = 镜像 141。过程中修了本脚本自身口径缺陷（漏 retracted 短路，把 13 条已证伪的旧建议算成未认领）。"
     }
   ]
 }
