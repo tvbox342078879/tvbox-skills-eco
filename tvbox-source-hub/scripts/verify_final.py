@@ -22,14 +22,9 @@ URLS = [
 
 
 def probe(url):
-    import urllib.request
-    try:
-        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req, timeout=10) as r:
-            r.read(2048)
-        return True
-    except Exception:
-        return False
+    import core                                   # ECO 对齐：走共享核心 http_get
+    st, _, _ = core.http_get(url, timeout=10, max_bytes=2048)
+    return st == 'ok'
 
 
 def main():

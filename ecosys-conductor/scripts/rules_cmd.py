@@ -25,7 +25,13 @@ import json, os, re, sys, datetime, subprocess
 HERE = os.path.dirname(os.path.abspath(__file__))
 SKILLS = os.path.dirname(os.path.dirname(HERE))          # /root/.codebuddy/skills
 REG = os.path.join(HERE, "rules_registry.json")
-MASTER = "/workspace/生态1015_TVBox生态全局规则.md"
+# ★ S201 修正：原指向 /workspace 下的旧总册（已归档不存在），
+#   （全盘零命中），导致三方一致的第一项永远「无法判定」＝检查形同虚设，
+#   且读它抛出的异常被误报成「contracts 读取失败」——两条报错同源。
+#   按 M-R38 单一事实源，权威源是 scripts/rules_registry.json；
+#   此处「总册」的人读版由铁律坐标明细承担（它自身也声明了权威源，故 _is_index 成立，
+#   只查「总册有·注册表无」的漏登记，不会拿 168 条去比 72 条产生假幽灵）。
+MASTER = "/root/.codebuddy/skills/ecosys-conductor/references/rules_铁律坐标明细.md"
 PLANS = os.path.join(os.path.dirname(HERE), "plans")
 
 
@@ -120,8 +126,11 @@ def cmd_detail(ids):
         r = idx.get(rid)
         if not r:
             print(f"❓ {rid}：注册表中无此编号（无法判定）"); continue
-        print(f"\n[{rid}] {r['summary']}")
-        print(f"  正本: {r['primary_owner']}  {r['chapter']}")
+        print(f"[{rid}] {r['summary']}")
+        # 缺 chapter 不得让整条命令崩（T36 实测：M-R06/M-R07 无此字段，查一条就 KeyError）。
+        # 与 solidify_rules.chapter_of 同口径：缺 = 显式写「章节未登记」，不假称某章。
+        _ch = str(r.get('chapter') or '').replace('§', '').strip() or '章节未登记'
+        print(f"  正本: {r['primary_owner']}  {_ch}")
         # `owner` 在 registry 里是**字符串**（单守），`for x in 'unfinished-audit'`
         # 会按字符拆成 u, n, f, i, n, i, s, h...  ——这条 bug 一直存在，
         # 只是「共守」多数为空所以没显形；单守技能（如 unfinished-audit）一查就露。
@@ -156,16 +165,56 @@ def cmd_orphan():
         print(f"  {r['id']}  {r['summary'][:60]}")
 
 
-def cmd_owner(skill):
+def cmd_owner(skill, todo_only=False):
+    """列表技能名下规则；todo_only=True 时只列「SKILL.md 与 references/ 都没有编号」的。
+
+    ★ T36 增（M-R92）：新增 `--todo`。缘由是 `solidify_rules.py` 那套「把规则表
+      整体抄进 SKILL.md」的做法被判为错：SKILL.md 是模型整体载入的上下文（M-R77
+      体积硬上限就是为此），往里塞几十行索引会挤掉真正要用的判据，而 M-R92 已定
+      「总册只放判据主干，推演过程归正本」——技能该写判据，不该当索引库。
+      于是「落地了没」改为**按需可查**：`rules --owner <技能> --todo` 实时算，
+      不占 SKILL.md 一个字，且判定口径与 `rules check` 完全同源（都走 `_skill_has`）。
+
+      为什么不另写一份判据：若这里自己再拼一遍「文中有没有这个编号」的正则，
+      就会重演 S158 那次事故——检测器扫描面与实际存储位置不一致，报出一堆假阳性。
+      单一判据源 = `_skill_has()`。
+    """
     st, reg = _load()
     if st != 'ok':
         print(f"❌ 规则注册表不可用（状态={st}）"); return 3   # S177：读不出=无法判定(M-R60)，不是成功也不是「没有」
     rs = [r for r in reg["rules"] if r["primary_owner"] == skill]
     if not rs:
         print(f"「{skill}」名下无规则（或技能名拼写有误）"); return
-    print(f"📚 {skill} 规则分卷（{len(rs)} 条）：")
+
+    if not todo_only:
+        print(f"📚 {skill} 规则分卷（{len(rs)} 条）：")
+        for r in rs:
+            print(f"  {r['id']}  {r['summary'][:62]}")
+        print("\n👀 只看「文档里还没落地」的：rules --owner %s --todo" % skill)
+        return
+
+    todo, done, unknown = [], [], []
     for r in rs:
-        print(f"  {r['id']}  {r['summary'][:62]}")
+        hit = _skill_has(skill, r["id"])
+        if hit is None:
+            unknown.append(r)
+        elif hit:
+            done.append(r)
+        else:
+            todo.append(r)
+    print(f"📋 {skill} 待落地规则（{len(todo)} 条｜已落地 {len(done)} 条"
+          f"{'｜无法判定 ' + str(len(unknown)) + ' 条' if unknown else ''}）：")
+    if not todo:
+        print("   ✅ 全部已落地（SKILL.md 或 references/ 中均有编号）")
+    for r in todo:
+        lv = r.get("enforce_level") or "?"
+        print(f"  {r['id']:<8}{lv:<6}{r['summary'][:56]}")
+    if unknown:
+        print("\n   ⚠️ 无法判定（技能目录读不到，M-R60 不折算成「没有」）：")
+        for r in unknown:
+            print(f"     {r['id']}  {r['summary'][:50]}")
+    print(f"\n💡 处置口径（M-R92）：技能 SKILL.md 只写**判据主干**，不必逐条抄索引；"
+          f"\n   查详情用 rules <编号>，按场景取用 rules --scene，需要时才落地。")
 
 
 def cmd_dup():
@@ -290,6 +339,14 @@ def cmd_check():
                     mc = len(re.findall(r'`[a-z-]+`', body))
                     if mc and mc != len(cids):
                         issues.append(f"contracts 漂移：contracts.json {len(cids)} 条 vs 总册§五 约 {mc} 处引用")
+            else:
+                # ★ S201：如实告知，不许静默跳过。
+                #   换总册后它没有「## 五」章节，contracts 比对失去文本源。
+                #   **未执行 ≠ 通过**——静默跳过会让报表显示"无问题"，
+                #   那是假绿（与 M-R129「装了钩子也可能拦不住且没人知道」同源）。
+                #   要恢复这项检查，需先指定一份声明了 contracts.json 为正本的文本。
+                print('   ℹ️ contracts 比对未执行：当前总册文本无「## 五」章节，'
+                      '无法定位 contracts 正本声明——该项本轮未生效（≠通过）')
         except Exception as e:
             issues.append(f"contracts.json 读取失败（{type(e).__name__}）")
     # 4) 废止语义完整性（M-R98 · S144）——三方一致只管「编号在不在」，
@@ -325,6 +382,21 @@ def cmd_check():
         print(f"  💾 已留痕 plans/rules_check_log.json")
     except Exception as e:
         print(f"  （留痕失败：{e}）")
+    # ★ S215 闭环修复（坑2）：M04 规则整理计时的 SSOT 是 evolution_log.jsonl，
+    #   但 conductor rules check 原先只写 rules_check_log.json（另一份源），
+    #   两源分裂 → 跑 check 不重置 M04 计时（需手工补录 evolution_log 才生效=打补丁）。
+    #   这里在每次 check 成功路径上自动向 evolution_log 追加一条「整理」记录，
+    #   让 M04 计时与整理动作联动，从根源消除两源分裂。
+    try:
+        _evo = '/root/.codebuddy/skills/skill-evolution/evolution_log.jsonl'
+        _ts = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+        _what = (f"规则六步整理：rules check 三方一致校验"
+                 f"（{_live_stats(reg)['total']} 条，issues={len(issues)}）")
+        with open(_evo, 'a', encoding='utf-8') as _f:
+            _f.write(json.dumps({"ts": _ts, "what": _what}, ensure_ascii=False) + "\n")
+    except Exception as e:
+        # M-R60：规则整理留痕写入失败不得静默丢失，否则 M04 计时与整理动作脱节
+        print(f'⚠️ 规则整理留痕写入失败（evolution_log 续写）：{type(e).__name__}: {e}；M04 计时可能未联动')
 
     # ★ S177：本函数原来**结尾没有 return** —— 全绿时靠"隐式 None 被入口归一成 0"偶然正确，
     #   但查出 issues 时同样落到函数末尾，也是 0。等于**校验说有问题，退出码说没问题**。
@@ -372,9 +444,20 @@ def cmd_scope():
         t = _flat(r.get("landing", ""))
         (code if re.search(r"[a-zA-Z_0-9]+\.py", t) else doc_only).append(r["id"])
 
+    def _has_cmd(r):
+        """probe 是否带可执行命令。★ T28 修：probe 字段实测有两种形态——
+        dict（{'command': 'python3 ...'}）与**纯字符串**（如「会话行为型（无命令可按…）」）。
+        原写法 `(r.get("probe") or {}).get("command")` 遇字符串直接
+        AttributeError: 'str' object has no attribute 'get'，
+        导致 `rules --scope` 整个子命令不可用（T27 发现的缺陷）。
+        字符串形态**一律不算有可执行命令**（那正是它写成字符串的原因）。
+        """
+        p = r.get("probe")
+        return bool(p.get("command")) if isinstance(p, dict) else False
+
     def _seg(lo, hi):
         seg = [r for r in rs if r["id"].startswith("M-R") and lo <= _num(r["id"]) <= hi]
-        hp = [r for r in seg if (r.get("probe") or {}).get("command")]
+        hp = [r for r in seg if _has_cmd(r)]
         return len(seg), len(hp)
 
     n_old, p_old = _seg(0, 76)
@@ -510,10 +593,23 @@ def _ask_issues(reg, limit=8):
     def _norm(s):
         return re.sub(r'[^\u4e00-\u9fffA-Za-z0-9]', '', s or '')
 
+    def _as_text(v):
+        """★ S204 修：ask 字段类型不统一（多数是 str，少数是 list）。
+
+        原实现直接 `(r.get('ask') or '').strip()`，遇到 list 就
+        `AttributeError: 'list' object has no attribute 'strip'` ——
+        **整个 rules check 一条都跑不出来**（实测崩在 _ask_issues）。
+        这是「一处脏数据阻断全部检查」的典型：检查器自己先挂了，
+        等于所有规则都处于「无人检查」状态，而表面上只是没跑。
+        """
+        if isinstance(v, list):
+            return ' '.join(str(x) for x in v if x)
+        return str(v or '')
+
     rs = reg.get('rules') or []
     miss, fake = [], []
     for r in rs:
-        a = (r.get('ask') or '').strip()
+        a = _as_text(r.get('ask')).strip()
         if not a:
             miss.append(r['id'])
             continue
@@ -647,6 +743,74 @@ def cmd_ask_golden():
     return 0 if ok == tot else 1
 
 
+# ★ S193：判据④ 的配套——「净增 >1」本身不是问题，**重复记账**才是。
+#
+#   原判据 `new > cut + 1` 一律报红，于是 S118/S148/S158/S176/S177/S192/S188
+#   七轮共 22 条规则被判「只增不废」。逐条核对后它们**没有一条是重复的**：
+#     M-R120（超时须后台）/ M-R121（执行层硬拦）/ M-R122（阻塞收结果）
+#     是同一领域的三个互补侧面，不是同一条规则的三次重写；
+#     M-R118（探针须最小可独立执行）/ M-R119（路径须自定位）同理；
+#     M-L01~L04 是学习工坊四条不同铁律。
+#   把"新主题的正常净增"报成红，等于逼人去**凑废止**——
+#   为了消掉告警而废止一条其实还在用的旧规则，那才是真正的破坏。
+#
+#   所以细分两类：与同章更早规则高度重叠 → 真重复（红）；
+#   比对后确属新主题 → 降级为说明（unk），不再冒充问题。
+#   口径用字符 bigram Jaccard（同 M-R88：重叠判据须用完整词项，不许只看字数）。
+DUP_THRESHOLD = 0.34      # ★ 实测校准：见下方注释
+_DUP_BIGRAM_MIN = 8       # 太短的摘要不参与比对（避免"三态"两字就撞上）
+
+
+def _bigrams(s):
+    s = re.sub(r'\s+', ' ', str(s or '')).strip()
+    if len(s) < 2:
+        return set()
+    return {s[i:i + 2] for i in range(len(s) - 1)}
+
+
+def _jaccard(a, b):
+    if not a or not b:
+        return 0.0
+    return len(a & b) / len(a | b)
+
+
+def _sess_num(s):
+    m = re.search(r'\d+', str(s or ''))
+    return int(m.group(0)) if m else -1
+
+
+def _overlap_with_elder(rid, rs, by, law_session, sess_num):
+    """在**同章、立法轮更早、且未废止**的规则里，找与 rid 摘要最重叠的一条。
+
+    三个限定条件缺一不可：
+      · 同章       —— 不同章的规则谈的不是同一件事（M-R88：跨度太大必误报）
+      · 立法轮更早 —— 新规则取代旧规则，方向不能反
+      · 未废止     —— 已废止的本来就不在生效口径里，拿它当参照会算出假重叠
+    """
+    r = by.get(rid) or {}
+    ch = str(r.get('chapter') or '')
+    if not ch:
+        return None, 0.0
+    my_bg = _bigrams(r.get('summary'))
+    if len(my_bg) < _DUP_BIGRAM_MIN:
+        return None, 0.0
+    best_id, best = None, 0.0
+    for o in rs:
+        oid = o.get('id')
+        if oid == rid:
+            continue
+        if str(o.get('chapter') or '') != ch:
+            continue
+        if _sess_num(law_session(o)) >= sess_num:
+            continue
+        if o.get('status') == 'retracted':
+            continue
+        j = _jaccard(my_bg, _bigrams(o.get('summary')))
+        if j > best:
+            best, best_id = j, oid
+    return best_id, best
+
+
 def cmd_relapse():
     """`rules relapse`：复发检测（M-R98 的可执行落地）。
 
@@ -740,8 +904,20 @@ def cmd_relapse():
         if s in TOLERATE:
             unk.append(f"{s} 净增 {d['new']} 条 vs 废止 {d['cut']}（历史欠账·已登记豁免，新增条目不再追认）")
             continue
-        reds.append(f"{s}：计得新增 {d['new']} 条 vs 废止 {d['cut']} 条"
-                    f"（净增 >1，按 M-R94 应找取代对象或拆条）新增={d['ids'][:4]}")
+        # ★ S193：先分「真重复」与「新主题净增」，不一律报红（见 DUP_THRESHOLD 注释）
+        dup_hits, fresh = [], []
+        for rid in d['ids']:
+            oid, j = _overlap_with_elder(rid, rs, by, _law_session, _sess_num(s))
+            (dup_hits if j >= DUP_THRESHOLD else fresh).append((rid, oid, j))
+        if dup_hits:
+            _top = max(dup_hits, key=lambda x: x[2])
+            reds.append(f"{s}：新增里 {len(dup_hits)} 条与同章更早规则高度重叠"
+                        f"（最高 {_top[0]}≈{_top[1]} {_top[2]:.2f}）——应废止旧的或说明差异，"
+                        f"否则是同一条坑换个编号重写")
+        if fresh:
+            _mx = max((x[2] for x in fresh), default=0.0)
+            unk.append(f"{s}：新增 {len(fresh)} 条经同章比对最高重叠仅 {_mx:.2f}"
+                       f"（<{DUP_THRESHOLD}），属新主题净增而非重复记账，不判红")
 
     solid = sum(1 for r in rs if r.get("status") == "solidified")
     print("🔁 规则复发/进化检测（M-R98）")
@@ -767,6 +943,270 @@ def cmd_relapse():
     return 0
 
 
+def _cmd_text(r):
+    """取规则的命令文本（probe 可能是 dict 也可能是 str，两种都要认）。"""
+    p = r.get('probe')
+    if isinstance(p, dict):
+        return (p.get('command') or '').strip(), p
+    if isinstance(p, str):
+        return p.strip(), {}
+    return '', {}
+
+
+def _resolve_script(cmd):
+    """从命令里取出脚本路径并展开为绝对路径。取不到返回 None。
+
+    支持形态：
+      python3 /abs/path.py ...
+      python3 ~/.codebuddy/hooks/x.py ...
+      python3 ecosys-conductor/scripts/x.py ...   （相对技能根目录）
+    """
+    parts = cmd.split()
+    if not parts or parts[0] != 'python3':
+        return None
+    script = next((p for p in parts[1:] if p.endswith('.py')), None)
+    if not script:
+        return None
+    s = os.path.expanduser(script)
+    if not os.path.isabs(s):
+        s = os.path.join(SKILLS, s)
+    return os.path.normpath(s)
+
+
+def _save_reg(reg):
+    """写回注册表（原子写）。"""
+    tmp = REG + '.tmp'
+    with open(tmp, 'w', encoding='utf-8') as f:
+        json.dump(reg, f, ensure_ascii=False, indent=2)
+    os.replace(tmp, REG)
+
+
+def cmd_doctor(fix_paths=False):
+    """rules doctor：体检所有"承诺机器能查"的规则，看检测器是不是死的。
+
+    ★ T36·S204（治源头）：此前 18 条检测器是坏的却无人发现——因为**没有任何命令
+    真的去跑它们**。规则册写着 SCAN/PROBE/GATE，账面看着 100% 有执行器，
+    实际其中一部分指向不存在的文件、或命令字段里根本写的是中文描述。
+    这属于"工具挂了没人知道 → 全部规则集体失去检查"，比没有检测器更危险。
+
+    三张表各自独立报告（不合并——合并会让人以为是一类问题）：
+      A 脚本路径不存在   ：命令解析出 .py 但文件不在（可用 --fix-paths 自动修）
+      B 命令字段是描述   ：以中文开头或以「SCAN：/GATE：」开头，根本不是命令
+      C GATE 档无拦截命令：声明强制拦截却没有可执行命令
+    三态：跑通 / 跑不通 / 无法判定（超时）。**超时不得当"坏"**（M-R60）。
+    """
+    st, reg = _load()
+    if st != 'ok':
+        print(f'❌ 规则注册表不可用（{st}）——无法体检，'
+              f'不得当成「无问题」（M-R60：读失败不是没有）')
+        return 2
+    rs = reg.get('rules') or []
+    targets = [r for r in rs
+               if r.get('enforce_level') in ('GATE', 'PROBE', 'SCAN')
+               and r.get('status') != 'draft']
+
+    table_a, table_b, table_c, ok_list, fixed = [], [], [], [], []
+    for r in targets:
+        rid, lv = r.get('id'), r.get('enforce_level')
+        cmd, _pobj = _cmd_text(r)
+
+        if lv == 'GATE' and not cmd:
+            # ★ 关键修正：GATE 的执行手段**不一定在 probe.command**，更常见的是
+            #   gate_hook（钩子）。原判据只看 command，于是把 M-R17/M-R20/M-R110/M-R137
+            #   四条**明明有钩子在守**的规则全判成"无拦截" —— 假阳性比漏报更伤：
+            #   会逼人去给已有门禁的规则再补一个假门禁（M-R136 明令禁止）。
+            if (r.get('gate_hook') or '').strip():
+                ok_list.append(rid)
+            else:
+                table_c.append((rid, (r.get('summary') or '')[:44]))
+            continue
+        if not cmd:
+            continue
+
+        # 表 B：命令字段写的是中文描述
+        # ★ 关键：这批规则的 probe 是**字符串形式的说明**（"SCAN：xxx"），
+        #   但真命令常写在 landing 里（如 'habit_brief.py cmd_check 体检项'）。
+        #   所以判"坏"之前必须先去 landing 找真命令——否则会把好规则误判成坏的。
+        if re.match(r'^(SCAN|GATE|PROBE)\s*[：:]', cmd) or re.match(r'^[\u4e00-\u9fff]', cmd):
+            land = r.get('landing') or []
+            cand = ''
+            for item in land:
+                t = item if isinstance(item, str) else str(item)
+                m2 = re.search(r'([\w./-]+\.py)\s+([\w-]+(?:\s+[\w-]+)?)', t)
+                if m2:
+                    cand = f'python3 {m2.group(1)} {m2.group(2)}'
+                    break
+            if cand:
+                ok_list.append(rid)      # landing 里有真命令 → 不算坏
+            elif re.search(r'无自动判据|不造假门禁|type.*manual|人工审|人工判据', cmd):
+                # 作者**主动声明**"无自动判据"并引 M-R136（不为凑数编假命令）。
+                # 这是诚实标注，不是缺陷——把它算成"坏"会逼人补假检测器。
+                ok_list.append(rid)
+            else:
+                table_b.append((rid, lv, cmd[:64]))
+            continue
+
+        # 表 A：脚本路径不存在
+        script = _resolve_script(cmd)
+        if not script:
+            ok_list.append(rid)          # 非 python3 命令，本检查不覆盖
+            continue
+        if os.path.exists(script):
+            ok_list.append(rid)
+            continue
+        if fix_paths:
+            base = os.path.basename(script)
+            hit = None
+            for root, _dirs, files in os.walk(SKILLS):
+                if base in files:
+                    hit = os.path.join(root, base)
+                    break
+            if hit:
+                old_tok = next(p for p in cmd.split()[1:] if p.endswith('.py'))
+                new_cmd = cmd.replace(old_tok, hit)
+                if isinstance(r.get('probe'), dict):
+                    r['probe']['command'] = new_cmd
+                else:
+                    r['probe'] = new_cmd
+                fixed.append((rid, script, hit))
+                ok_list.append(rid)
+                continue
+        table_a.append((rid, lv, script, cmd[:56]))
+
+    print(f'🩺 规则体检（承诺可机查的规则 {len(targets)} 条）\n')
+
+    print(f'  📋 表 A｜脚本路径不存在：{len(table_a)} 条')
+    for rid, lv, sp, cm in table_a:
+        print(f'     · {rid} [{lv}] → {sp}')
+        print(f'       命令: {cm}')
+
+    print(f'\n  📋 表 B｜命令字段是中文描述：{len(table_b)} 条')
+    for rid, lv, cm in table_b:
+        print(f'     · {rid} [{lv}]: {cm}')
+
+    print(f'\n  📋 表 C｜GATE 档无拦截命令：{len(table_c)} 条')
+    for rid, sm in table_c:
+        print(f'     · {rid}: {sm}')
+
+    if fix_paths and fixed:
+        print(f'\n  🔧 已修路径 {len(fixed)} 条：')
+        for rid, old, new in fixed:
+            print(f'     · {rid}: {os.path.basename(old)}')
+            print(f'       → {new}')
+        _save_reg(reg)
+
+    print(f'\n  ✅ 检测器在位：{len(ok_list)} 条')
+
+    bad = len(table_a) + len(table_b) + len(table_c)
+    if bad:
+        print(f'\n  ⚠️ 共 {bad} 条检测器不可用——账面写着「可机查」，实际查不了。')
+        print('     A 类：--fix-paths 自动修；B 类：提不出真命令就降级 DOC；')
+        print('     C 类：建议降级 SCAN（编假门禁比承认没有更坏，M-R136）。')
+        return 1
+    print('\n  ✅ 无死检测器')
+    return 0
+
+
+def cmd_rule_add(argv):
+    """rules add：带门禁的规则登记（T36·阶段三）。
+
+    入口三检，任一不过拒绝登记：
+      ① 命令里的脚本路径存在
+      ② 命令实跑一次不报错
+      ③ 声明 GATE 必须有 gate_hook（拦截点）
+    --draft：标 status=draft，不参与 doctor 体检、不计入统计。
+    """
+    draft = '--draft' in argv
+    argv = [x for x in argv if x != '--draft']
+    if len(argv) < 2:
+        print('用法: rules add <编号> "<摘要>" [--enforce DOC|SCAN|GATE|PROBE] '
+              '[--probe "<命令>"] [--gate-hook "<钩子>"] [--draft]')
+        return 1
+    rid, summary = argv[0], argv[1]
+
+    def opt(name, default=''):
+        if name in argv:
+            i = argv.index(name)
+            if i + 1 < len(argv):
+                return argv[i + 1]
+        return default
+
+    level = opt('--enforce', 'DOC').upper()
+    probe_cmd = opt('--probe', '')
+    gate_hook = opt('--gate-hook', '')
+
+    st, reg = _load()
+    if st != 'ok':
+        print(f'❌ 规则注册表不可用（{st}）——拒绝登记（读不到就不许盲写）')
+        return 2
+    # 同 id 已存在：草稿可被覆盖重登（=「草稿转正式」的通道，仍须过三检）；
+    # 已转正的 active 条目不允许覆盖重登，防绕过门禁改人已验收的规则。
+    exist = next((r for r in reg.get('rules', []) if r.get('id') == rid), None)
+    if exist is not None:
+        if exist.get('status') != 'draft':
+            print(f'❌ {rid} 已存在且已转正（status={exist.get("status") or "active"}），'
+                  f'拒绝覆盖登记（要改请先人工删旧条）')
+            return 1
+        if not draft:
+            reg['rules'] = [r for r in reg.get('rules', []) if r.get('id') != rid]
+            print(f'🔄 {rid} 原为草稿，本次按「草稿转正式」重走三检…')
+
+    errs = []
+    if level in ('SCAN', 'PROBE', 'GATE'):
+        if not probe_cmd:
+            errs.append(f'声明 {level} 档却没有 --probe（承诺可机查就必须给手段）')
+        else:
+            script = _resolve_script(probe_cmd)
+            if script and not os.path.exists(script):
+                errs.append(f'命令里的脚本不存在：{script}')
+            elif script:
+                try:
+                    rr = subprocess.run(
+                        probe_cmd.replace('~', os.path.expanduser('~')).split(),
+                        capture_output=True, text=True, timeout=10)
+                    if rr.returncode != 0:
+                        errs.append(f'命令实跑失败（rc={rr.returncode}）：'
+                                    f'{(rr.stderr or rr.stdout or "")[:120]}')
+                except subprocess.TimeoutExpired:
+                    errs.append('命令实跑超时（10s）——无法判定，不能当通过')
+                except Exception as e:
+                    errs.append(f'命令无法执行：{type(e).__name__}: {e}')
+    if level == 'GATE' and not gate_hook:
+        errs.append('声明 GATE 必须有 --gate-hook（拦截点），'
+                    '否则只是纸上的"强制"（M-R136：假门禁比没门禁更坏）')
+
+    if errs and not draft:
+        # 草稿转正式被拒时，旧草稿必须原样留在册里（否则一次失败的转正就把它弄丢了）
+        if exist is not None:
+            reg.setdefault('rules', []).append(exist)
+            _save_reg(reg)
+            print(f'↩️ {rid} 转正失败，仍是草稿（原条目已保留）')
+        else:
+            print(f'❌ {rid} 登记被拒，卡在以下检查：')
+        for e in errs:
+            print(f'   · {e}')
+        print('\n  想先记想法可用 --draft（标草稿，不参与体检、不计统计）')
+        return 1
+
+    reg.setdefault('rules', []).append({
+        'id': rid, 'summary': summary, 'enforce_level': level,
+        'probe': {'command': probe_cmd, 'skill': ''},
+        'gate_hook': gate_hook,
+        'status': 'draft' if draft else 'active',
+        'primary_owner': '', 'landing': [], 'ask': '',
+        'created': datetime.datetime.now().strftime('%Y-%m-%d'),
+        'note': ('draft：未过门禁；' + '；'.join(errs)) if draft and errs else '',
+    })
+    _save_reg(reg)
+    if draft:
+        print(f'📝 {rid} 已登记为**草稿**（不参与体检、不计入统计）')
+        for e in errs:
+            print(f'   ⚠️ 未过：{e}')
+    else:
+        print(f'✅ {rid} 登记通过（{level} 档，三检全过）')
+    return 0
+
+
 def main(argv):
     """规则纳管命令入口。
 
@@ -784,6 +1224,10 @@ def main(argv):
     a = argv[0]
     if a == "check":
         return cmd_check()
+    elif a == "doctor":
+        return cmd_doctor(fix_paths="--fix-paths" in argv)
+    elif a == "add":
+        return cmd_rule_add(argv[1:])
     elif a == "relapse":
         return cmd_relapse()
     elif a == "--scope":
@@ -804,8 +1248,8 @@ def main(argv):
         return cmd_dup()
     elif a == "--owner":
         if len(argv) < 2:
-            print("用法: rules --owner <技能名>"); return 1
-        return cmd_owner(argv[1])
+            print("用法: rules --owner <技能名> [--todo]"); return 1
+        return cmd_owner(argv[1], todo_only="--todo" in argv)
     elif a.startswith("-"):
         print(f"未知选项 {a}｜可用: --ask \"<问题>\" / --ask-coverage / --orphan / "
               f"--dup / --owner <skill> / --scope / check / relapse")

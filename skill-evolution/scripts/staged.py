@@ -19,7 +19,6 @@
 """
 
 import argparse
-import json
 import os
 import py_compile
 import sys

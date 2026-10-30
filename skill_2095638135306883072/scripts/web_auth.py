@@ -33,7 +33,6 @@ WorkBuddy签到助手 · 网页会话授权通道（v3.1.7）
 """
 
 import base64
-import binascii
 import json
 import os
 import re

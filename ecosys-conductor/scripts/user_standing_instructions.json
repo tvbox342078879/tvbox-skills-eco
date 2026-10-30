@@ -1,9 +1,10 @@
 {
- "version": "1.0.0",
+ "version": "1.1.0",
  "created": "2026-10-18",
+ "updated": "2026-10-21",
  "owner": "ecosys-conductor（会话开工核对）/ skill-evolution（聚类捕获）",
  "source_rule": "M-R108（固化会话本地标识 S154，云端③台账实际编号 S095）",
- "note": "用户重复≥3次明确要求→持久指令档。会话开工首步核对并主动声明已生效。云端③台账已于联网后补登（S095）。",
+ "note": "用户重复≥3次明确要求→持久指令档。会话开工首步核对并主动声明已生效。S184 新增 pref_narrate_progress：不是把老规则再写一遍，而是补上「写了没人执行」的执行层钩子。",
  "instructions": [
   {
    "id": "pref_zh_chat",
@@ -31,9 +32,24 @@
     "咋回事啊 … 继续啊（截图：屏幕长时间刷同一批输出，用户以为卡死）",
     "到哪了 / 继续"
    ],
-   "solidified_via": "M-R120（后台化门禁）+ habit_brief.py 第 2 节 + conductor guard-bg",
+   "solidified_via": "M-R120（后台化门禁）+ habit_brief.py 第 2 节 + hooks/bg_guard.py（执行层硬拦截）",
    "status": "solidified",
    "check_at_session_start": true
+  },
+  {
+   "id": "pref_narrate_progress",
+   "instruction": "长任务/连续多步作业期间必须持续出声，不许沉默刷屏。要求：①每执行 3–4 条命令或每 60 秒，回报一次「刚做完什么（带实数）+ 接下来做什么 + 预计多久」；②报的是**进度**不是计划，不许把「我准备做」写成「已经做完」；③用户打断后立刻答当前状态，不许从头复述方案；④若某步失败，第一时间说失败在哪一环、退出码多少，不许继续闷头往下跑；⑤禁止把「我会注意」当交付——要有可查的机制改动（本条对应钩子 hooks/announce_guard.py）。",
+   "requested_count": 3,
+   "first_seen": "2026-10-20",
+   "instances": [
+    "啥情况，刚才没进度了，也切不进来（截图：停在「正在思考…」，用户以为卡死）",
+    "咋又在转圈了，开工必读失效了？",
+    "后面我按规矩来：长命令放到后台运行、启动后立刻说明在跑什么…这个没写进去还是咋说，老这样"
+   ],
+   "solidified_via": "M-R129（可对话门禁③）+ hooks/announce_guard.py（连跑≥4 条未发声即阻断回填）+ habit_brief.py 第 2 节补充说明",
+   "status": "solidified",
+   "check_at_session_start": true,
+   "root_cause_note": "本条的关键不在「再写一遍规则」——pref_bg_over_1min 早就写了、我这轮也读了，照样沉默连跑十几条。真正起作用的是执行层钩子在**发生的那一刻**拦下来。写文档治不了复发，钩子才行（M-R110 语言铁律复发 5 次同一病）。"
   },
   {
    "id": "pref_delivery_report_7sec",
@@ -47,6 +63,55 @@
    "solidified_via": "M-R128（交付报告七段闭环）+ habit_brief.py 第 0 节 + 模板文件 references/交付报告_七段模板.md + conductor deliver-check",
    "status": "solidified",
    "check_at_session_start": true
+  },
+  {
+   "id": "pref_canonical_entry",
+   "instruction": "做任何动作前先找**正本入口**（现成命令/函数），不自造通道。具体判据：①经验沉淀走 `tvbox close learn biz/plat`（转接 tvbox log / lib-log），禁自己 import link.py 拼参数、禁自写 batch_add；②后台任务收结果禁 block=true（M-R122），等系统 task-notification 自动推进，不主动守着等；③一次性 /tmp 试错脚本允许，但同一件事试错≥2 次即说明入口找错了，必须回头查正本入口而不是第 3 次改脚本。",
+   "requested_count": 2,
+   "first_seen": "2026-10-21",
+   "instances": [
+    "这两个问题是咋回事，看到很多次，做闭环（截图：/tmp 试错脚本三连改 + 后台收结果反复被拦）",
+    "这个过程中为何又是你在手动，分工呢？监督呢？（S196 早前：手动平账同病根）"
+   ],
+   "solidified_via": "M-R137（正本入口优先·SCAN）+ habit_brief 快照；②的执行层已有 block_wait_guard（GATE）",
+   "status": "solidified",
+   "check_at_session_start": true
+  },
+  {
+   "id": "pref_chinese_selfcheck",
+   "instruction": "每轮回复前先做一次中文自纠：默检思考块与正文是否全简体中文，凡出现英文整句一律改写后再发。替代方案（用户 2026-10-21 19:53 拍板「加」）：接受每轮一句样板自纠的成本，换取思考块死角（lang_guard 拦不到、lang_ledger 只能事后记账）被事前压住。",
+   "requested_count": 1,
+   "first_seen": "2026-10-21",
+   "instances": [
+    "怎么又是英文了（截图：深度思考面板英文，lang_ledger 记账确认死角复发）",
+    "加（拍板：每轮回复前固定中文自纠声明）"
+   ],
+   "solidified_via": "hooks/lang_prompt_guard.py（UserPromptSubmit 每轮消息进场前注入中文自纠——2026-10-21 升级为源头闸，GATE 认领 M-R110）+ lang_guard（工具层）+ lang_ledger（事后扫账）",
+   "status": "solidified",
+   "check_at_session_start": true
+  },
+  {
+   "id": "pref_thread_board",
+   "instruction": "一条会话里会并行/分叉出好几条任务线，用户问「完成了没/到哪了」时不知道问哪条（用户 2026-10-21 原话：走着走着走了好远，得靠我记忆或翻最开始的地方，很麻烦）。硬性四步：①用户开新需求线 → 当场 `threads.py open` 登记并报线号+复述原话；②走着走着分叉 → `threads.py fork <父线号>` 挂上，明示「切线」；③被问完成没/进度 → 先 `threads.py list` 对线作答，答完顺带报其他在途线；④完成 → `threads.py done <线号> <证据>` 收口。",
+   "requested_count": 1,
+   "first_seen": "2026-10-21",
+   "instances": [
+    "有一个问题特别严重，比如今天发道长那个东西出来看有啥值得借鉴的，然后走着走着就走了好远，要是这个时候我问你完成了没，你不知道我问的哪个……想一个好的方法"
+   ],
+   "solidified_via": "M-R140（任务线看板）+ scripts/threads.py（open/fork/done/list 四命令，实测 4/4）+ habit_brief 快照",
+   "status": "solidified",
+   "check_at_session_start": true
+  },
+  {
+   "id": "pref_deliver_zone",
+   "instruction": "最终产物一律发到产物区（工作区 /workspace/产出区_1016 目录）：①完工时把成品文件（json/报告/配置等）复制或写入产物区，会话临时路径不算交付；②凡产物里有 json 文件（配置/底包/成品源等），present_files 展示时该 json 必须排在文件列表第一位置顶发——用户要先拿 json 去上机实测，报告说明类排后面。用户 2026-10-21 23:44 原话：「全局规则，发产物区，以后有json文件，这个文件置顶发」。",
+   "requested_count": 1,
+   "first_seen": "2026-10-21",
+   "instances": [
+    "全局规则，发产物区，以后有json文件，这个文件置顶发"
+   ],
+   "solidified_via": "M-R108（本轮现场登记，与 pref_thread_board 同批落地法）",
+   "status": "active"
   }
  ]
 }

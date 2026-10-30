@@ -36,6 +36,11 @@ from concurrency import run_bounded as _run_bounded, TIER_API, TIER_WEB  # noqa:
 
 
 SKILL_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# ★ S184：`SKILL_ROOT` 在本文件里只在三个函数**内部**定义过（2788/3106/4609），
+#   模块级没有。判据三的 `_skill_named_in` 在模块级调用，若沿用同名会 NameError——
+#   而 NameError 会被 `check_monitor_binding` 外层的 try 吞成"无法判定"，
+#   症状是"判据三好像生效了但从来不报"，比崩掉更难查。这里用两个不同名字显式区分。
+SKILLS_ROOT = os.path.dirname(SKILL_DIR)
 MONITORS = os.path.join(SKILL_DIR, 'monitors.json')
 SNAP_HIST = os.path.join(SKILL_DIR, 'findings_history.json')  # 遗留指纹快照（report/scan 落盘，供 diff）
 
@@ -110,6 +115,12 @@ def _flows_of(names):
 
 
 FLOWS = _flows_of(ECO_SKILLS)
+
+# ★ S184：派单副本标记。见 `check_backlog_items` 里那段长注释——
+#   这是断掉「派单 → 报红字 → 采回 → 再派单」闭合回路的**唯一有效断点**。
+#   为什么是结构判据（看前缀）而不是引用判据（查 sid）：
+#   结构不随 id 算法变动，引用会。本轮实测就是"一改身份算法，回路突然通电"。
+ECHO_MARK = re.compile(r'\[\s*清账司派单[^\]]*\]')
 
 SEV_ORDER = {'阻断': 0, '耗时': 1, '轻微': 2}
 
@@ -204,6 +215,26 @@ def check_dead_review_due(m):
     return out
 
 
+def _ledger_open_sids():
+    """总账里**仍未结**的 sid 集合。三态返回：
+      set()      → 读到、确实零条未结
+      {sid,...}  → 读到、这些还开着
+      None       → **读不到**（文件缺失/坏 JSON）
+    为什么不返回 set() 代表读失败：那样"账本坏了"会被当成"全结清了"，
+    副本里的欠账会被一次性洗白——这是最坏的一种假绿。
+    """
+    try:
+        p = '/root/.codebuddy/skills/unfinished-audit/unfinished_ledger.json'
+        items = json.load(open(p, encoding='utf-8')).get('items') or []
+        return {str(i.get('sid')) for i in items
+                if str(i.get('status') or 'open') == 'open' and i.get('sid')}
+    except Exception:
+        return None
+
+
+_LEDGER_SIDS = _ledger_open_sids()
+
+
 def _backlog_counts(item):
     """★ S176b 单一事实源：backlog 条目「算不算未清」的唯一判定。
 
@@ -226,6 +257,18 @@ def _backlog_counts(item):
         return False
     if s.startswith(('[扩展点]', '[本期不处理')):
         return False
+    # ★ S184：**以总账为准**。flow.json 的 backlog 是总账的一份手抄副本——
+    #   同一笔账两处各记一次，卫生分按副本扣、M19（改前）按总账再罚一次，
+    #   一笔账被罚两遍（实测 conductor：3 条副本 = 总账里 3 条同一批）。
+    #   顺序：先问总账「这个 sid 结了没」——
+    #     · 总账说已结（不在 items）→ 副本已过期，**不算未清**
+    #     · 总账说还在 → 算未清（哪怕副本没写完成标记）
+    #     · 条目没带 sid，或总账读不到 → 退回原口径（不猜、不因读失败放宽）
+    #   为什么不干脆废掉副本：副本里有些条目总账根本没有（历史遗留），
+    #   一刀切会丢账；用总账"只降不升"地校正，才是安全的合并方向。
+    m = re.search(r'sid=([0-9a-f]{8,})', s)
+    if m and _LEDGER_SIDS is not None:
+        return m.group(1) in _LEDGER_SIDS
     return True
 
 
@@ -270,7 +313,10 @@ def _backlog_is_assigned(item, ledger_sigs=None):
 
 
 def _ledger_sigs():
-    """读欠账总账里 status=open 的全部签名；读失败返回 None（≠空集，M-R57 三态）。"""
+    """读欠账总账里 status=open 的全部签名；读失败返回 None（≠空集，M-R57 三态）。
+
+    ★ S184：除 sid 外**同时返回正文指纹**。原因见 `_backlog_is_assigned` 里那段。
+    """
     p = '/root/.codebuddy/skills/unfinished-audit/unfinished_ledger.json'
     if not os.path.exists(p):
         return None
@@ -281,14 +327,174 @@ def _ledger_sigs():
         return None
 
 
+def _ledger_bodies():
+    """欠账总账里 status=open 条目的**正文指纹**集合；读失败返回 None（三态）。
+
+    ★ S184（A5 第二圈实测：账本在增殖，根因是一条回路）：
+
+        清账司派单 → 写进 owner 的 flow.backlog（带 sid）
+        → 监察司 M03 扫 backlog 报成红字
+        → 清账司的 `inspect_findings` 源把红字采回来当**新欠账**
+        → 又派单 → 又写进 backlog → …
+
+      原来挡住这条回路的是 `_backlog_is_assigned` 里那句「sid 在总账里查得到 = 在办」。
+      但 S184 把欠账身份算法从「取 title 前 40 字」改成「剥噪后整段正文」，
+      **账上所有 sid 都重算了**，于是 flow.backlog 里那些旧 sid 全都成了"查无此账"，
+      M03 立刻把它们判成孤儿欠账、报成红字，回路重新通上了。
+
+      这个教训比 bug 本身重要：**任何"用 id 交叉引用两份数据"的判据，
+      在被引用方的 id 算法变动时都会静默失效**，而且失效方向正是"全变成孤儿"——
+      看起来像"突然冒出很多新欠账"，不像"引用断了"。
+      所以判"在办"不能只认 id，还要有**内容层面**的兜底：
+      正文一致 + 都在未结，就是同一件事，id 换代不影响它是同一件事。
+    """
+    p = '/root/.codebuddy/skills/unfinished-audit/unfinished_ledger.json'
+    if not os.path.exists(p):
+        return None
+    try:
+        d = json.load(open(p, encoding='utf-8'))
+        return {_body_key(i.get('title')) for i in d.get('items', [])
+                if i.get('status') == 'open' and i.get('title')}
+    except Exception:
+        return None
+
+def _body_key(t):
+    """正文指纹：只留"这件事是什么"，剥掉**所有**"谁在什么时候转述的"痕迹。
+
+    ★ S184（实测 24 条真孤儿里的 21 条是这个原因）：
+      派单副本的完整形态是
+
+        [清账司派单 2026-10-27] 需统一台账自增与 CHANGELOG 自报两套编号，涉全历史迁移 ｜ 原条目： 会话编号两套体系… ｜ sid=417759c8282d ｜ 下一步 xxx
+
+      而总账里那条是
+
+        会话编号两套体系需要统一：台账按序号自增…
+
+      **两者的主语完全不同**：副本说的是"为什么暂时不做"（处置意见），
+      总账那条说的是"问题是什么"。处置意见里嵌着原条目的一小段引用（`原条目：`之后）。
+      只剥方括号标签的话，这两段永远对不上——于是副本永远被当成孤儿。
+
+      口径：一条派单副本 = 「处置意见 ｜ 原条目：<正文> ｜ sid=… ｜ 下一步 …」。
+      **身份在 `原条目：` 之后那一段**，前面是意见、后面是建议，都不参与身份。
+      没有 `原条目：` 的时候才退回看整条。
+    """
+    s = str(t or '')
+    # ① 有 `原条目：` → 以它为界，取其后（那才是条目本体）
+    m = re.search(r'原条目\s*[：:]\s*(.+)$', s, re.S)
+    if m:
+        s = m.group(1)
+    # ② 剥"处置意见"尾注与 sid/下一步
+    s = re.split(r'[｜|]\s*sid\s*[=:]', s)[0]
+    s = re.sub(r'[｜|]\s*下一步\s*.*$', '', s)
+    # ③ 剥全部方括号标签（可能多层叠加）
+    s = re.sub(r'\[[^\]]*\]', '', s)
+    s = re.sub(r'sid\s*[=:]\s*[0-9a-f]+', '', s)
+    # ★ 标点**保留**到比较阶段（S184 第三修）：
+    #   上一版在这里就把 `、，。` 全删了，于是 `_body_match` 想用
+    #   「余量是否以接续词/逗号开头」判"是不是同一句话的续写"时，
+    #   那个逗号早就不在了，余量变成了 `CHANGELOG按会话…`（直接撞上一个英文词）。
+    #   判据要用的信息，不能在判据之前就被清理掉——这是同一件事第三次踩
+    #   （前两次：源参与了身份、title 先截断后剥噪）。
+    s = re.sub(r'[\s　]', '', s)               # 只去空白，标点留着
+    s = re.sub(r'[（(][^）)]*[）)]', '', s)     # 括号补充说明整段去掉（它本来就只是补充）
+    return s[:48]
+
+
+def _body_match(a, pool):
+    """a 是否与 pool 里任一指纹"说的是同一件事"。
+
+    判据只有两条，都不带比例阈值：
+
+      ① **一方是另一方的前缀**，且短的一方 ≥ 16 字。
+         （16 字：中文里一个完整短句的量级，防"三五个字碰巧撞上"。）
+
+      ② **去掉公共前缀后，较长那条的余量不是"另一个主语"**。
+         余量必须满足其一：
+           · 空（完全包含）；
+           · 以 `、/，/,` 或 `本轮/本期/另/其中` 等**接续词**开头
+             —— 说明是同一句话的续写（"…台账按序号自增（本轮 S113）、CHANGELOG …"）；
+           · 余量占较长一方 ≤ 45%（只是一段补充说明）。
+         若余量直接是"备份系统 12 个孤儿夹…"这种**新主语**，就不是同一件事。
+
+    ★ 为什么第一版（比例 55%）会误拒：
+      实测那条 `会话编号两套体系…（本轮 S113）` vs `…（本轮 S113）、CHANGELOG …（本轮 S163）`，
+      比例是 0.53 —— 差 0.02 就被判成"不是同一件事"。
+      这说明**比例门槛本身就是错的方向**：两个条目详略不同是常态，
+      详略差多少跟"是不是同一件事"没有因果关系。
+      真正有因果的是第二条：余量是不是在**接着说同一句话**。
+      改判据之后不再需要"猜一个百分比"，也就不再有"差 0.02"这种事。
+    """
+    for p in pool:
+        if not p:
+            continue
+        short, long_ = (a, p) if len(a) <= len(p) else (p, a)
+        if len(short) < 16:
+            continue
+        if not long_.startswith(short):
+            continue
+        rest = long_[len(short):]
+        if not rest:
+            return True
+        if rest[:1] in '、，,；;：:）)':
+            return True
+        if rest.startswith(('本轮', '本期', '另', '其中', '同时', '以及', '并且', '并', '及')):
+            return True
+        if len(rest) / len(long_) <= 0.45:
+            return True
+    return False
+
+
+def _backlog_is_assigned(item, ledger_sigs=None, ledger_bodies=None):
+    """backlog 条目是否「已在欠账总账登记在办」（S136·M-R79 配套口径）。
+
+    为什么要这条：M-R79 要求「未完成必登记」，清账司据此把每一项**真实欠账**
+    写进各技能 flow.json backlog（带 `sid=<签名>` + owner + due）。若 M03 仍按
+    「backlog 有未终标记项 = 遗留」判，就形成**死锁**：
+      · 登记欠账 → M03 报遗留 → 判据④ 永远红
+      · 不登记   → 判据⑧（欠账单）永远红
+    两者都是"按规则做事却验收不过"，最后一定演变成把表填绿、真账不记。
+    故口径拆开：
+      **遗留** = 没人认领的脏尾巴
+      **在办** = 已登记 + 有主 + 有期（清账司负责追，watchdog 不重复告警）
+    仍属遗留的两种：① 条目没有任何 sid（野生 backlog）② sid 在总账里查不到
+    （总账被回滚/手改 → 成了孤儿欠账，必须告警）。
+
+    ★ S184 补第二条通道（正文兜底）：光认 sid 会在**账本身份算法一改**时全体失效，
+      把"同一件事"全判成孤儿（详见 `_ledger_bodies` 的说明）。
+      现在：sid 命中 **或** 正文命中，都算在办。
+      为什么不直接放弃 sid 只认正文：正文比对要剥噪，剥噪口径两边略有差异，
+      纯靠它会有少量漏判；两条一起用，任一条认得出来就算在办——
+      **误判方向偏向"不报警"是刻意的**：M03 的告警对象是"没人管的脏尾巴"，
+      对于"可能有人管"的，宁可交给清账司去追，也不要让告警淹没真遗留。
+    """
+    s = str(item)
+    m = re.search(r'sid[=:]\s*([0-9a-f]{8,})', s)
+    # 正文兜底：先看这条 backlog 的正文是否就在未结总账里
+    if ledger_bodies is not None:
+        if _body_match(_body_key(s), ledger_bodies):
+            return True
+        # 派单副本带尾注（`｜ sid=… ｜ 下一步 …`），剥掉再比一次
+        head = re.split(r'[｜|]\s*sid\s*[=:]', s)[0]
+        if _body_match(_body_key(head), ledger_bodies):
+            return True
+    if not m:
+        return False                      # 无 sid → 野生，算遗留
+    if ledger_sigs is None:
+        return True                       # 账本读不到时不加剧告警（判据⑧会单独判红）
+    return m.group(1) in ledger_sigs      # 账本里有 → 在办；没有 → 孤儿，算遗留
+
+
 def check_backlog_items(m):
     """各技能 flow.json backlog 段未清零。
     口径（S106 校准）：含完成标记（已清零/已兑现/MVP已兑/已闭环…）= 历史结项跳过；
     `[扩展点]` 前缀 = 持续演进项非遗漏跳过；其余 = 真遗留。
     口径（S136 补）：已登记进欠账总账（带 sid 且在册 open）= **在办**，不重复报
-    （清账司负责追，watchdog 只盯没人认领的脏尾巴；理由见 _backlog_is_assigned）。"""
+    （清账司负责追，watchdog 只盯没人认领的脏尾巴；理由见 _backlog_is_assigned）。
+    口径（S184 补）：`[清账司派单 …]` 前缀 = **在办通知书**，一律不报
+    （它不是"没人认领的脏尾巴"，恰恰相反；理由见下面循环里的长注释）。"""
     out = []
     sigs = _ledger_sigs()
+    bodies = _ledger_bodies()
     for skill, p in FLOWS.items():
         if not os.path.exists(p):
             continue
@@ -298,12 +504,35 @@ def check_backlog_items(m):
             continue
         bl = d.get('backlog', [])
         for item in bl:
+            # ★★ S184（自转回路的总闸，必须在所有判据之前）：
+            #   **`[清账司派单 …]` 开头的条目不是遗留，是"在办通知书"。**
+            #   它的存在恰恰证明"这条已经被登记、已有主、已有期"，
+            #   与「遗留 = 没人认领的脏尾巴」正好相反。
+            #
+            #   不加这一条会发生什么（本轮实测三次，账本 26→29→31 一路涨）：
+            #     清账司派单 → 写副本进 flow.backlog
+            #     → M03 扫 backlog 把副本报成红字
+            #     → 清账司的 inspect_findings 源把红字采回来当**新欠账**
+            #     → 又派单 → 又写副本 → …
+            #   这是一个**闭合回路**，每转一圈账本长一条，而且长出来的都是同一件事。
+            #   下游任何"按 sid 去重""按正文去重"都只能减缓解不了：
+            #   新副本的 sid 每轮都是新的（它的正文里有上一轮的 sid）。
+            #   **唯一有效的断点在源头：派单副本不许被当成遗留上报。**
+            #
+            #   为什么之前没发现：`_backlog_is_assigned` 本来会拦掉"sid 在册"的副本，
+            #   它一直工作得很好——直到账本身份算法变更（S184）让所有 sid 重算，
+            #   那一瞬间所有副本都成了"sid 查无此账"的孤儿。于是这条回路
+            #   平时是**熄火状态**，只在"身份算法变动"这种事件后突然通电。
+            #   这类"平时不发作、一改判据就爆发"的回路，必须用**结构判据**（看前缀）
+            #   而不是**引用判据**（查 sid）来断，因为结构不随 id 变动。
+            if ECHO_MARK.search(str(item)):
+                continue
             # ★ S176b：统一走 _backlog_counts（完成标记 / [扩展点] / [本期不处理] 三类跳过，
             #   [真欠账] 继续报）。原先此处与 _hygiene_rows 各写一套，导致同一条目
             #   在「遗留清单」里已消失、在「评分器」里仍算欠账，两个数字打架。
             if not _backlog_counts(item):
                 continue
-            if _backlog_is_assigned(item, sigs):
+            if _backlog_is_assigned(item, sigs, bodies):
                 continue  # 已登记在办（有主有期），归清账司追办
             # ★ S177 步3 实测修：这里原来写的是 `s[:80]`，而 `s` **在本函数里从未定义**。
             #   后果：这条分支平时永远走不到（当前无真欠账），所以 M03 一直显示
@@ -521,10 +750,21 @@ def check_pkg_naming(m):
     豁免规则以「常驻节点白名单关键词」实现，登记在 monitors.json.waiver_keywords。"""
     import re
     root = None
+    _load_ok = True
+    _load_err = ''
     try:
         root = load_monitors().get('pkg_root')
-    except Exception:
-        pass
+    except Exception as e:
+        _load_ok = False
+        _load_err = f'{type(e).__name__}: {e}'
+    if not _load_ok:
+        # M-R60：配置读取失败不得折叠成"无命名问题"（云端不可达→假绿）
+        return [{
+            'monitor': m['id'], 'name': m['name'], 'sev': '耗时',
+            'item': '底包库 monitors 配置读取失败（无法判定命名合规）',
+            'detail': _load_err,
+            'action': '检查 monitors.json 可读性或 load_monitors；确认后重跑 scan',
+        }]
     if not root:
         return []
     kids = _cloud_children(root)
@@ -664,7 +904,6 @@ def check_revive_eval(m):
     复活者给出回流建议——把「过期提醒」升级为「可执行的复活决策」。
     成本控制：只测超期条目的前 N 条（登记册 threshold 控制），随机/顺序均可；
     代理型 host 跳过（其可达性由被代理目标决定，S026 口径）。"""
-    import random
     ok, rows = rows_of_t(DB_DEAD)   # S084·M-R60：三态读，区分「读失败」与「失效库真空」
     if not ok:
         print('  ⚠️ 失效库读取失败——复活评估不可用（勿误判为「无待复活源」）')
@@ -1581,7 +1820,10 @@ def selfcheck_checkers(mon, run_cache=None):
     for x in mon['monitors']:
         fn = CHECKERS.get(x['check'])
         if fn is None:
-            exe_fail.append(f"{x['id']} {x['check']} 检查器未实现（登记册先行登记）")
+            # 与 cmd_health 同一口径：manual_track 是"设计上无自动检查器"的知情占位，
+            # 不算缺陷。三处（health/selfcheck/scan）必须一致，否则就是假红/假绿同源。
+            if x['check'] != 'manual_track':
+                exe_fail.append(f"{x['id']} {x['check']} 检查器未实现（登记册先行登记）")
             continue
         try:
             res = fn(x)
@@ -1634,7 +1876,9 @@ def cmd_scan(a):
     for m in mon['monitors']:
         fn = CHECKERS.get(m['check'])
         if fn is None:
-            unknown.append(m['id'])
+            # 同上：manual_track 为知情占位，不列入"未实现"（与 cmd_health 同口径）
+            if m['check'] != 'manual_track':
+                unknown.append(m['id'])
             continue
         findings.extend(run_cache.get(m['id'], []))
     findings.sort(key=lambda x: SEV_ORDER.get(x['sev'], 3))
@@ -1800,18 +2044,39 @@ def register_monitor(risk_face, check_type, desc='', quiet=False):
         return False
 
 
-def _upload_report(path, title):
-    """云端直传（M12 新功能）：复用 library 技能 create_doc.py，禁自建云端通道。
-    返回 (ok, node_id_or_err)。create_doc 成功时 stdout 首行形如
-    `KS_DOC_CREATE\t<nodeBlockId>\t<kind>\t<url>\t0\t0`。"""
+SPACE_ID = '8w5cnqCqQJ0wNoF2Hb6efH'   # 资料库空间 id（覆盖时必须与目标同空间）
+
+
+def _upload_report(path, title, node_id=None):
+    """云端直传：复用 library 技能 create_doc.py，禁自建云端通道。
+
+    ★ S187 修（副本堆积根因）：原实现**无条件新建**，于是每跑一次 report 就多一份
+      同名文档。实测 2026-10-20：`生态1015_遗留问题监测报告` 堆到 19 份
+      （11KB→42KB 逐级变大）、`生态遗留趋势留档` 14 份、`生态1016` 8 份，共 41 份。
+      create_doc.py 本就支持覆盖（传 --node-block-id + --space-id 即整树替换，
+      保留节点 ID/链接/标题），只是这里从没传过。
+
+    行为：传了 node_id → 覆盖该节点；未传 → 新建并返回新 id。
+    返回 (ok, node_id_or_err)。成功时 stdout 首行形如
+    `KS_DOC_CREATE\t<nodeBlockId>\t<kind>\t<url>\t0\t0`。
+
+    ★ 覆盖失败**不降级为新建**（否则又是堆积）：目标不存在/跨空间/非 doc 时
+      如实报错，由调用方决定是否显式清锚点后重建。
+    """
     import subprocess
     script = '/root/.codebuddy/skills/library/doc/create_doc.py'
     if not os.path.exists(script):
         return False, f'create_doc.py 不存在: {script}'
+    cmd = ['python3', script, '--title', title, '--content-file', path]
+    if node_id:
+        # ★ create_doc.py 的护栏：全量覆盖必须显式 --confirm-overwrite，
+        #   否则直接拒绝（实测报 "全量覆盖文档前必须取得用户明确确认"）。
+        #   这里由调用方（监测报告/趋势留档自动同步）承担该授权——
+        #   用户已确认「报告改覆盖模式」，故自动路径视为已授权。
+        cmd += ['--node-block-id', str(node_id), '--space-id', SPACE_ID,
+                '--confirm-overwrite']
     try:
-        r = subprocess.run(
-            ['python3', script, '--title', title, '--content-file', path],
-            capture_output=True, text=True, timeout=180)
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
     except Exception as e:
         return False, f'调用异常: {e}'
     out = (r.stdout or '').strip()
@@ -1825,6 +2090,18 @@ def _upload_report(path, title):
     if out.startswith('{') and '"error"' in out:
         return False, out[:200]
     return False, (out or r.stderr or '未知错误')[:200]
+
+
+def _read_anchor(fname, key='latest'):
+    """读锚点文件里的 node_id；文件缺失/损坏返回 None（调用方按新建处理）。"""
+    p = os.path.join(SKILL_DIR, fname)
+    if not os.path.exists(p):
+        return None
+    try:
+        v = json.load(open(p, encoding='utf-8')).get(key)
+        return v if isinstance(v, str) and v.strip() else None
+    except Exception:
+        return None
 
 
 def _trend_md():
@@ -1864,14 +2141,19 @@ def _trend_md():
 
 
 def cmd_trend_upload(a):
-    """把趋势留档上云（跨设备可读）。复用 create_doc.py，node id 存 trend_node.json。"""
+    """把趋势留档上云（跨设备可读）。复用 create_doc.py，node id 存 trend_node.json。
+
+    ★ S187：已有 trend_node.json 锚点 → **覆盖同一份**；否则新建。
+    原先每次都新建，导致趋势留档堆到 14 份（2.5KB→32.7KB）。
+    """
     md, n = _trend_md()
     if md is None:
         print('📈 暂无趋势数据（先跑几次 report/scan）')
         return
     tmp = os.path.join('/tmp', 'watchdog_trend.md')
     open(tmp, 'w', encoding='utf-8').write(md)
-    ok, node = _upload_report(tmp, '生态遗留趋势留档（跨设备）')
+    prev = _read_anchor('trend_node.json', 'node_id')
+    ok, node = _upload_report(tmp, '生态遗留趋势留档（跨设备）', node_id=prev)
     if ok:
         anchor = os.path.join(SKILL_DIR, 'trend_node.json')
         try:
@@ -2417,7 +2699,19 @@ def cmd_report(a):
         print('      已**保留原文件不覆盖**（防销毁上期基准）；请人工修复后重跑 report。')
     if getattr(a, 'upload', False):
         title = f"生态{stamp}_遗留问题监测报告"
-        ok, node = _upload_report(out, title)
+        # ★ S187：同一份「今日报告」重复跑时覆盖同一节点，不再每天新建副本。
+        #   锚点以日期为键：同日重跑 → 覆盖当天那份；跨日 → 新建当天那份。
+        prev_id = _read_anchor('last_report_node.json', 'latest')
+        prev_title = None
+        try:
+            ap_ = os.path.join(SKILL_DIR, 'last_report_node.json')
+            if os.path.exists(ap_):
+                prev_title = json.load(open(ap_, encoding='utf-8')).get('title')
+        except Exception:
+            prev_title = None
+        if prev_title != title:
+            prev_id = None   # 标题（日期）变了 → 这是新一天的报告，另起一份
+        ok, node = _upload_report(out, title, node_id=prev_id)
         if ok:
             print(f'☁️  已云端直传: {title}')
             print(f'   node_id: {node}')
@@ -2443,7 +2737,9 @@ def cmd_report(a):
             if md:
                 tp = os.path.join('/tmp', 'watchdog_trend.md')
                 open(tp, 'w', encoding='utf-8').write(md)
-                tok, tnode = _upload_report(tp, '生态遗留趋势留档（跨设备）')
+                # ★ S187：趋势留档永远只有一份 —— 有锚点就覆盖
+                tok, tnode = _upload_report(tp, '生态遗留趋势留档（跨设备）',
+                                            node_id=_read_anchor('trend_node.json', 'node_id'))
                 if tok:
                     json.dump({'node_id': tnode, 'periods': n,
                                'ts': now.strftime('%Y-%m-%d %H:%M')},
@@ -2482,6 +2778,7 @@ def cmd_health(a):
     # 历史命中统计
     hist_hits = Counter()
     periods = 0
+    _hist_err = None
     if os.path.exists(SNAP_HIST):
         try:
             hist = json.load(open(SNAP_HIST, encoding='utf-8')).get('history', [])
@@ -2489,8 +2786,8 @@ def cmd_health(a):
             for h in hist:
                 for v in (h.get('keys') or {}).values():
                     hist_hits[v.get('monitor', '')] += 1
-        except Exception:
-            pass
+        except Exception as e:
+            _hist_err = e
     print(f'\n【检查器健康】历史 {periods} 期；命中=该监测项历史累计报警次数；源规模=该检查器主数据源行数')
     print(f'  {"ID":4} {"检查器":20} {"执行":6} {"命中":4} {"源规模":8} 判定')
     print('  ' + '-' * 62)
@@ -2501,9 +2798,17 @@ def cmd_health(a):
         'status_archive': '源总库', 'data_quality': '源总库',
     }
     risks = []
+    if _hist_err is not None:
+        risks.append(f'健康预检历史快照读取失败（{type(_hist_err).__name__}: {_hist_err}）——恒零可疑基线无法建立，勿当无异常')
     for x in mon['monitors']:
         fn = CHECKERS.get(x['check'])
         if fn is None:
+            # manual_track 是"设计上无自动检查器"的**知情占位**（本文件 3871 行明载：
+            # 恒空、明确声明，不参与判据）。把它报成"未实现/高危"= 假红，
+            # 会把 21 条人工项灌进高危清单、淹没真缺陷（正是"假绿/假红同源"）。
+            if x['check'] == 'manual_track':
+                print(f'  {x["id"]:4} {x["check"]:20} ⚪人工跟踪（设计上无自动检查器，知情非缺陷）')
+                continue
             print(f'  {x["id"]:4} {x["check"]:20} ❌未实现')
             risks.append(f'{x["id"]} 检查器未实现')
             continue
@@ -2781,9 +3086,31 @@ def _hygiene_rows():
         backlog = d.get('backlog', []) or []
         # ★ S176b：改调 _backlog_counts（唯一口径），不再裸用 _backlog_is_open
         uncleared = [b for b in backlog if _backlog_counts(b)]
+        # ★★ S184：**反向校验——副本有、总账无**。
+        #   本文件的 `_backlog_counts` 会拿总账校正副本（总账已结 → 不算未清），
+        #   这是对的；但它有个**方向性风险**：如果副本里的账总账根本没登记，
+        #   就会被"顺理成章"当成已结——问题隐身，分数反而变好看。
+        #   所以必须反过来数一遍：既不是完成态、也没豁免前缀、又不在总账里的，
+        #   全部计入 `orphan`，在输出里显式报出。**不许静默。**
+        #   orphan 不扣分（可能是历史遗留的表述差异，硬扣会重演 M19 自激），
+        #   但必须出现在报告里，否则"全部 100 分"就是洗出来的。
+        orphan = []
+        for b in backlog:
+            s = str(b)
+            if not _backlog_is_open(b):
+                continue
+            if s.startswith(('[扩展点]', '[本期不处理')):
+                continue
+            m = re.search(r'sid=([0-9a-f]{8,})', s)
+            if m and _LEDGER_SIDS is not None and m.group(1) not in _LEDGER_SIDS:
+                continue                      # 总账已结，正常收敛
+            if not m:
+                orphan.append(s[:80])         # 没带 sid，无从对账
+            elif _LEDGER_SIDS is None:
+                orphan.append(s[:80])         # 总账读不到，无从对账
         sc = d.get('self_check', []) or []
         skills[name] = {'exist': True, 'uncleared': len(uncleared),
-                        'self_check': len(sc), 'flow': d}
+                        'self_check': len(sc), 'flow': d, 'orphan': orphan}
     # 三件套完整度
     SKILL_ROOT = '/root/.codebuddy/skills'
     for name in skills:
@@ -2802,8 +3129,38 @@ def _hygiene_rows():
         miss += 0 if os.path.exists(os.path.join(sd, 'CHANGELOG.md')) else 1
         if sk:
             txt = open(sk, encoding='utf-8').read()
-            miss += 0 if re.search(r'version:\s*"', txt) else 1
-            miss += 0 if re.search(r'触发|Trigger|当用户提到', txt) else 1
+            # ★ S184：认 YAML 三种合法写法，且值必须是版本号形态。
+            #   改之前只认带双引号的，`version: 1.77.4` 被判缺失——
+            #   "缺 1 项"却查不到缺哪项，比不报更耗人。
+            miss += 0 if re.search(r"^version:\s*[\"']?\d+\.\d+", txt, re.M) else 1
+            # ★ S185：判据从「有没有'触发'二字」改成「能不能被叫醒」。
+            #   旧判据 `触发|Trigger|当用户提到` 只认字面词，后果实测：
+            #   `automation-task-manager` 的 description 里写了 40+ 个关键词
+            #   （"自动化任务/定时任务/每天几点/cron/…"），还用 `## When to Use` 分段，
+            #   **却因为没有出现"触发"两个字被判缺项**——这是逼人往文档里塞字眼，
+            #   与「技能能否被唤醒」这个真实意图无关（M-R38 再次：形式的实现顶替了实质的判据）。
+            #
+            #   新判据取**以下任一**，都是运行时真正用于匹配的载体：
+            #     ① frontmatter 的 description/summary 有实质内容（≥20 字，平台靠它做语义匹配）
+            #     ② 有「关键词/触发词/When to Use」段或字面 Trigger/触发
+            #   为什么设 20 字下限：`description: 随便写写` 这种空壳不该算"可唤醒"，
+            #   但也不设太高——本生态实测最短的有效描述是 42 字（微信读书助手），
+            #   下限取 20 是给合理压缩留余量，同时挡住明显敷衍。
+            #   为什么用"任一"而不要求全有：两者是同一意图的不同表达，
+            #   要求全有会重新变成形式主义——**判据要测本质，不测格式**。
+            #
+            #   ★★ S185 第二刀：**必须按 YAML 解析，不能用正则取单行**。
+            #   第一版我用 `^description:\s*(.+)$` 取单行，结果 6 个技能被误判"过短"：
+            #     `description: |` 和 `description: >-` 是 YAML 多行块写法，
+            #     正则只吃到 `|` 这个字符本身，长度算成 1~2 字。
+            #   实测正确解析后 64 个技能**无一缺 description**（最短 42 字）。
+            #   教训与前面同型：**用"看起来像"代替"确定的结构"**，多行块必须走解析器。
+            _fm = _parse_frontmatter(txt)
+            _desc = max((len(_fm.get(k) or '') for k in
+                         ('description', 'description_zh', 'description_en', 'summary')), default=0)
+            _has_desc = _desc >= 20
+            _has_kw = bool(re.search(r'关键词|触发词|##\s*When to Use|当用户提到|Trigger|触发', txt, re.M))
+            miss += 0 if (_has_desc or _has_kw) else 1
         else:
             miss += 2
         skills[name]['contract'] = miss
@@ -2821,8 +3178,51 @@ def _hygiene_rows():
             bad.append(f'三件套缺 {s["contract"]}')
         if s['self_check'] < 5:
             bad.append('自检偏薄')
+        # ★ S184：孤儿副本显式报出。**不扣分**（可能是历史表述差异，
+        #   硬扣会重演 M19「老实记账反被罚」的自激），但必须让人看见——
+        #   否则"卫生分 100"可能只是把账藏起来了。
+        _orp = s.get('orphan') or []
+        if _orp:
+            bad.append(f'⚠️ 副本无对应总账 {len(_orp)} 条（待核）')
         ranked.append((score, name, s, '、'.join(bad) or '✅ 无'))
     return ranked
+
+
+def _parse_frontmatter(txt):
+    """解析 SKILL.md 的 YAML frontmatter，返回 dict。
+
+    ★ S185：为什么手写而不用 `yaml.safe_load`——
+      ① 生态里 SKILL.md 的 frontmatter 存在非标准写法（未加引号的中文冒号、
+         `display_name: 腾讯ima` 之类），PyYAML 会直接抛异常整段解析失败，
+         比"解析出大部分"更糟；
+      ② 本函数只服务「三件套完整度」这一个判据，需要的是**稳健取字段**，
+         不是完整 YAML 合规——崩掉一个不规范的技能不该让整轮体检失明。
+
+    必须支持 `|` / `|-` / `>` / `>-` 多行块：实测 `material-organizer`、
+    `wechat-article-publisher` 等 6 个技能都用块写法，单行正则会把它算成 1 个字。
+    """
+    m = re.match(r'^---\s*\n(.*?)\n---\s*\n', txt, re.S)
+    if not m:
+        return {}
+    body = m.group(1)
+    out, lines, i = {}, body.split('\n'), 0
+    while i < len(lines):
+        mm = re.match(r'^([A-Za-z_][\w\-]*):\s*(.*)$', lines[i])
+        if not mm:
+            i += 1
+            continue
+        k, v = mm.group(1), mm.group(2).strip()
+        if v in ('|', '|-', '|+', '>', '>-', '>+'):
+            buf, i = [], i + 1
+            while i < len(lines) and (lines[i][:1] in (' ', '\t') or not lines[i].strip()):
+                if lines[i].strip():
+                    buf.append(lines[i].strip())
+                i += 1
+            out[k] = '\n'.join(buf)
+            continue
+        out[k] = v.strip('"\'')
+        i += 1
+    return out
 
 
 def cmd_hygiene(a):
@@ -2844,6 +3244,18 @@ def cmd_hygiene(a):
             tag = '🟢' if score >= 85 else ('🟡' if score >= 70 else '🔴')
             print(f'  {name:24} {s["uncleared"]:5} {s["self_check"]:5} {4-s["contract"]}/4{"":3} {tag}{score:5.1f} {bad}')
     print('\n> 卫生分 = 100 − 未清项×10 − 三件套缺项×15 + min(自检项,40)×0.5（封顶 100）')
+    # ★ S184：孤儿副本清单——副本有、总账无。分数不受影响，但必须列出来，
+    #   否则「全部 100」可能只是把账藏了。没有则明说"无"，不留空白让人猜。
+    _all_orp = [(n, x) for _sc, n, s, _b in ranked for x in (s.get('orphan') or [])]
+    if _all_orp:
+        print(f'\n⚠️ 副本无对应总账的条目（{len(_all_orp)} 条，未扣分，仅供核对）：')
+        for n, x in _all_orp[:12]:
+            print(f'  · [{n}] {x}')
+        if len(_all_orp) > 12:
+            print(f'  ...共 {len(_all_orp)} 条')
+        print('  → 处置建议：确认是否该进总账（`tvbox close status` 看不到的账，等于没人跟）')
+    else:
+        print('\n✅ 副本与总账一致：无孤儿条目')
     return ranked
 
 
@@ -2858,12 +3270,26 @@ RISK_FACES = {
                'desc': '技能间契约（backlog 清零、三件套完整）', 'expect': 2},
     '命名面': {'codes': ['naming_compliance', 'pkg_naming', 'subtree_naming'],
                'desc': '交付物/云端节点命名规范', 'expect': 3},
-    '流程面': {'codes': ['ledger_pending', 'doc_todo', 'flow_ref_integrity'],
-               'desc': '未闭环流程（台账状态、正文待办、命令引用完整性）', 'expect': 3},
+    '流程面': {'codes': ['ledger_pending', 'doc_todo', 'flow_ref_integrity', 'ledger_aging'],
+               'desc': '未闭环流程（台账状态、正文待办、命令引用完整性、暂记账龄）', 'expect': 4},
     '校准面': {'codes': ['route_calib', 'pkg_index_sync'],
                'desc': '校准集漂移（SOP 路由校准、云端索引对账）', 'expect': 2},
     '平衡面': {'codes': ['balance_weakness'],
                'desc': '生态平衡性（各技能进化速度/薄弱环节，谁拖后腿）', 'expect': 1},
+    '规则面': {'codes': ['rule_liveness'],
+               'desc': '规则面健康（死规则/执行面断档）', 'expect': 1},
+    '进化面': {'codes': ['move_borrow_stale'],
+               'desc': '技能进化与招式借鉴停滞', 'expect': 1},
+    # ⚠️ expect 必须等于"该面实际存在的监测项数"。曾误把 docsync（体检项名，无对应监测项）
+    #    写进 codes 并设 expect=2 → 文档面永远 1/2 → 永远报"空白"（假空白，与假绿同源）。
+    '文档面': {'codes': ['link_break', 'code_stale_ref'],
+               'desc': '文档与代码一致性（外置索引断链 + 活代码/配置引用陈旧路径或断链，M-R153）', 'expect': 2},
+    '生态面': {'codes': ['eco_gap', 'upstream_gone'],
+               'desc': '大生态无主区（L0−L1 缝）+ 上游跑路/弃更（僵尸源）', 'expect': 2},
+    '治理面': {'codes': ['monitor_binding', 'manual_track'],
+               'desc': '治理项（监测项名实相符 + 人工跟踪占位：如实承认无自动检查器）', 'expect': 2},
+    '代码面': {'codes': ['compile_all'],
+               'desc': '技能脚本可编译性（防 link.py 类整文件语法错致整链路降级，M-R210）', 'expect': 1},
 }
 
 
@@ -3100,6 +3526,34 @@ def _balance_scan():
     except Exception:
         pass
 
+    # ── 数据源③b：欠账总账（实绩质量新判据用）──
+    # 读 unfinished_ledger.json 的 items，只留 status=open，按 owner 分组。
+    # 三态：文件不存在/读失败 → None「无法判定」；读到但零条 → {}（真空，100 分）。
+    # 为什么区分这两者：读失败折叠成 {}，会判成「零超期=满分」——
+    #   账本坏了反而拿满分的假象（M-R57 三态在这里必须守住）。
+    _ledger_open = None
+    _today = datetime.date.today()
+
+    def _due_date(s):
+        """'2026-10-27' → date；解析不了返回 None（**不返回今天**，
+        否则脏数据会被当成刚好不超期，把坏数据洗成好数据）。"""
+        try:
+            y, m, dd = str(s).split('-')
+            return datetime.date(int(y), int(m), int(dd))
+        except Exception:
+            return None
+    try:
+        _lp = '/root/.codebuddy/skills/unfinished-audit/unfinished_ledger.json'
+        _items = json.load(open(_lp, encoding='utf-8')).get('items') or []
+        _ledger_open = {}
+        for _it in _items:
+            if str(_it.get('status') or 'open') != 'open':
+                continue
+            _ledger_open.setdefault(str(_it.get('owner') or '').strip(), []).append(_it)
+    except Exception as e:
+        _ledger_open = None
+        ev_load_err = str(e)[:60]
+
     # ── 数据源④：监控覆盖（该技能是否被检查器覆盖）──
     mon = load_monitors()
     mon_text = json.dumps(mon, ensure_ascii=False)
@@ -3124,11 +3578,18 @@ def _balance_scan():
         sd = os.path.join(SKILL_ROOT, nm, 'scripts')
         if not os.path.isdir(sd):
             return hits
-        for fn in os.listdir(sd):
-            if not fn.endswith('.py'):
-                continue
+        # 扫描范围 = scripts/*.py + 技能根目录 *.py（如 library/_common.py——
+        # S198 发现：library 把门面 import 写在根目录 _common.py，判据只扫
+        # scripts/ 会把「已接」判成「未接」，联动断点维度反向误报）。
+        scan_files = [os.path.join(sd, fn) for fn in os.listdir(sd)
+                      if fn.endswith('.py')]
+        for fn in os.listdir(os.path.join(SKILL_ROOT, nm)):
+            p = os.path.join(SKILL_ROOT, nm, fn)
+            if fn.endswith('.py') and os.path.isfile(p):
+                scan_files.append(p)
+        for fp in scan_files:
             try:
-                t = open(os.path.join(sd, fn), encoding='utf-8').read()
+                t = open(fp, encoding='utf-8').read()
             except Exception:
                 continue
             # 门面调用（清道夫/监察司联动）
@@ -3136,6 +3597,14 @@ def _balance_scan():
                 hits.append('清道夫')
             if 'register_monitor' in t or 'inspect_engine' in t:
                 hits.append('监察司')
+            # ★ S184：补第三类门面——统一调用总线 call_bus（自转面的入口）。
+            #   为什么必须补：S184 之前"接生态"只有两条通道，conductor 把
+            #   `ledger call <动词>` 做成唯一入口后，它自己**一次都不调**——
+            #   于是"造了门的人自己不进门"。这不是计分问题：门面判据漏了一类门，
+            #   所有新接线的技能都会被判「未接任何生态门面」，判据会反向
+            #   逼人别用新门（比不报更坏）。
+            if 'call_bus' in t or 'ledger call' in t:
+                hits.append('调用总线')
         return sorted(set(hits))
 
     now = time.time()
@@ -3274,10 +3743,35 @@ def _balance_scan():
         lk = _linked(nm)
         d4 = 100 if lk else 45
         ev['联动断点'] = (d4, ('已接：' + '、'.join(lk)) if lk else '未接任何生态门面（清道夫/监察司）')
-        # 维度5 实绩质量：占位——用「三件套完整 + backlog 未清」近似实绩（后续可接检查器命中率）
-        unc = (hyg.get(nm) or (0, ''))[1]
-        d5 = 100 if '未清' not in str(unc) else 65
-        ev['实绩质量'] = (d5, '无未清项' if d5 == 100 else '有未清 backlog')
+        # 维度5 实绩质量：**超期未结占比**（S184 改判据，用户 2026-10-20 18:56 选定方案 A）
+        #
+        # ★ 为什么废掉旧判据「有未清 backlog → 65」：
+        #   它把「条数」当「质量」，于是**老实记账反被罚**——欠 9 条机制账的技能，
+        #   说明它在干活、在留痕；欠 0 条的，可能只是没监测到自己有问题。
+        #   更坏的是自激：M19 的红字本身会被写回 backlog ⇒ backlog 更长 ⇒ 分更低 ⇒ 更红。
+        #   把镜子里的影像当成需要收拾的东西收进屋里（S184 实测：76.5 被自己拉到红）。
+        #
+        # 新判据只看**超期**：due 已过仍未结，才是真的拖。在办多但都在期限内 → 100。
+        # 三态：总账读失败 → None「无法判定」给 60，不折叠成 100（否则读失败会被当成满分）。
+        if _ledger_open is None:
+            d5 = 60
+            ev['实绩质量'] = (d5, '总账读取失败（无法判定）')
+        else:
+            _lst = _ledger_open.get(nm) or []
+            _n = len(_lst)
+            _od = [x for x in _lst
+                   if (_due_date(x.get('due')) is not None and _due_date(x.get('due')) < _today)]
+            _k = len(_od)
+            _r = (_k / _n) if _n else 0.0
+            if _n == 0 or _k == 0:
+                d5 = 100
+            elif _r <= 0.20:
+                d5 = 85
+            elif _r <= 0.50:
+                d5 = 70
+            else:
+                d5 = 55
+            ev['实绩质量'] = (d5, '在办 %d｜超期 %d（%.0f%%）' % (_n, _k, _r * 100))
         # 维度6 招式隔离（方法极·规则57·S107）：该技能已用多少跨技能通用招式
         # 判据：已用数 ≥3 → 100（方法联动充分）；1~2 → 70（部分借鉴）；0 → 40（方法孤立）
         # 三态：招式库读失败 → 60「无法判定」（不折叠成 0，否则误判全生态"招式隔离"）
@@ -3355,7 +3849,8 @@ def check_balance_weakness(m):
     口径：仅对「加权总分 < 70」或「任一层维度 < 50」的技能产遗留——
     避免把正常波动全报成遗留（防噪声淹没，M-R53）。
     """
-    bal = _balance_scan()
+    # ★ S184：走进程内记忆——M19/M46/M47 共用本检查器，A0 实测它被真跑 3 遍。
+    bal = _memo_scan(_balance_scan)
     out = []
     for r in bal['skills']:
         if r['total'] >= 70 and r['weakest_score'] >= 50:
@@ -3419,6 +3914,31 @@ def check_monitor_binding(m):
       这样就不必靠"名字像不像"猜，而是拿真实返回值比对——证据说话。
 
       `manual_track` 是公认的"无自动检查器"占位，恒空、明确声明，不参与判据二。
+
+    ★★★ S184 补判据三（A0 实测暴露，判据二漏网）：
+      判据二只抓「**返回内容完全相同**」，可它漏掉了一个更要命的情形——
+      **内容相同、但只说了一个技能的事**。
+      实测证据（S184 17:35）：
+        M19「生态平衡性薄弱环节」→ ecosys-conductor 平衡性 85.5
+        M46「automation-task-manager 招式借鉴停滞」→ **同一句话**
+        M47「learn-hub 招式借鉴停滞」               → **同一句话**
+      M46/M47 的 check 是 `balance_weakness`（六维平衡扫描），名字说的却是
+      「某某技能招式借鉴停滞」——**monitor 名里的技能，检查器根本不看**。
+      这不是"共用"，是**挂错**：它们声称盯 automation / learn-hub 的招式借鉴，
+      实际报的是 conductor 的平衡分。判据二为什么放过它：
+      它比较的是 M46 与 M47 的返回——两者确实逐字相同，本应报错，
+      但 `check_monitor_binding` 对 M46/M47 自身的**调用点只发生在
+      `cmd_add_monitor`（新登记时）**，而 M46/M47 是 S179 直接写进
+      monitors.json 的，**从未经过登记闸门**——检测器在位，入口绕过去了。
+
+      新判据三不靠名字相似度，靠**名字里的实体是否出现在检查器返回里**：
+        · monitor 名/描述里出现了某个技能名（结构可枚举，M-R25）
+        · 但该检查器对其返回的 item 文本中**一次都没出现这个技能名**
+        · 且该 check 属「全生态扫描型」（balance_weakness / hygiene 这类
+          按全库产出、不看 m['id'] 的）
+      → 报「挂错检查器：名字说 A，返回说的是 B」。
+      为什么限定"全生态扫描型"：`move_borrow_stale` 这类按 id 切片的，
+      名里技能本就该出现在返回里，不满足会由别的判据抓，不在此重复。
     """
     out = []
     name = str(m.get('name') or '')
@@ -3448,16 +3968,38 @@ def check_monitor_binding(m):
                 if mine_items and _items_of(p) == mine_items:
                     siblings_same += 1
             if siblings_same:
-                return [{
+                _sh = {
                     'monitor': m.get('id'), 'name': name, 'sev': '耗时',
                     'item': f'{m.get("id")} 检查器 {chk} 返回内容与另 {siblings_same} 项完全相同',
                     'detail': f'共 {len(peers)} 个监测项挂 {chk}，实测返回的 item 文本逐字相同 —— '
                               f'说明该检查器不看 m["id"]，各 monitor 各报一遍同样的话。'
                               f'共用本身不算错（口径可相同），错在**返回没按调用者切片**',
                     'action': '让检查器按 m 过滤后返回（各报各的）；若确无自动检查器，改挂 manual_track',
-                }]
+                }
+                # ★ S184：判据二要**追加**而不是 return——它先说"和谁撞了"，
+                #   判据三接着说"撞的那个人根本不归你管"。两条信息互补，
+                #   只给前者会让人以为"改改切片就行"，实际问题是挂错了检查器。
+                out.append(_sh)
 
     if chk not in NAMING_ONLY:
+        # ── 判据三（S184）：名字里的实体，检查器返回里根本没有 ──
+        # 只对「全生态扫描型」检查器执行：它们的返回与 m['id'] 无关，
+        # 一旦 monitor 名里点了某个技能，那个技能名必须真的出现在返回文本里。
+        if chk in _WHOLE_SCAN_CHECKS:
+            _named = _skill_named_in(blob)
+            if _named:
+                _its = _items_of(m)
+                if _its and not any(_named in _t for _t in _its):
+                    out.append({
+                        'monitor': m.get('id'), 'name': name, 'sev': '耗时',
+                        'item': f'{m.get("id")} 挂错检查器：名字说的是「{_named}」，返回里没有它',
+                        'detail': f'本项声称盯「{_named}」，实际挂 {chk}（全生态扫描型，不看 m["id"]）。'
+                                  f'实测其返回为：{_its[0][:80]} —— 与该技能无关。'
+                                  f'这不是"共用"，是**挂错**：本项每轮都在看别人的数据，'
+                                  f'而它声称要盯的东西一次都没被看过（S184 A0 实测发现）',
+                        'action': f'改挂语义匹配的检查器（招式借鉴类应挂 move_borrow_stale，'
+                                  f'它会按 m 定位技能并切片返回）；确无自动检查器则挂 manual_track',
+                    })
         return out
     signal = None
     if re.search(r'回退|退化|降级|regress', blob):
@@ -3497,6 +4039,52 @@ def _monitors_all():
 
 _ITEM_CACHE = {}
 _ITEM_BUSY = set()
+# ★ S184（A0 实测发现）：`_items_of` 的防环只覆盖「自己调自己」（_ITEM_BUSY），
+#   但 M19 与 M46/M47/M48 之间是**平级互查**：M46 判「我是不是和别人返回一样」时
+#   要求真调 M19 的检查器，M19 自己判的时候又要真调 M46/M47 —— 同一个 check
+#   在一次 scan 里被算两遍。`_balance_scan()` 会遍历全生态技能（每个读 flow.json +
+#   跑自检），于是 M19 这一项的代价被 ×3，而报告上看不出任何异常。
+#   缓存按 (check,id) 分键，不同 id 之间**天然无法复用**——故按 check 再加一层记忆，
+#   让 N 个共用 monitor 只真扫 1 次（前提：该检查器对同 id 结果稳定）。
+_SCAN_MEMO = {}
+
+
+def _memo_scan(fn):
+    """给「全生态扫描型」检查器加记忆（一次进程内只扫 1 遍）。
+
+    只对**无副作用、结果只依赖磁盘状态**的扫描函数使用（balance_scan / hygiene）。
+    不用于按 m 切片的检查器（如 move_borrow_stale，它每个 id 真返不同内容，本就不重复）。
+    """
+    key = getattr(fn, '__name__', str(fn))
+    if key not in _SCAN_MEMO:
+        _SCAN_MEMO[key] = fn()
+    return _SCAN_MEMO[key]
+
+
+# ★ S184：全生态扫描型检查器清单——它们按全库产出，**不看 m['id']**。
+#   为什么必须显式列出而不是自动判定：判据三要问的是「这个检查器有没有能力
+#   只报某个技能的事」。自动判定要靠"同 check 多 id 返回是否相同"反推，
+#   而 M19/M46/M47 三项返回恰好相同，反推得出"它不看 id"是对的——
+#   但那是一次昂贵且易错的推断。这里直接登记事实：以下检查器的实现就是遍历全库。
+#   新增全生态扫描型检查器时必须补进本清单，否则判据三对它不生效
+#   （这是本文件里少数必须手工同步的地方，M-R38 已在此处标注为已知例外）。
+_WHOLE_SCAN_CHECKS = {'balance_weakness'}
+
+
+def _skill_named_in(blob):
+    """从 monitor 的 name/desc 里认出它声称盯哪个**已存在**的技能（结构证据，不猜）。
+
+    只认磁盘上真实存在的技能目录——不做"看起来像技能名"的模糊匹配：
+    `M46 automation-task-manager 招式借鉴停滞` 里能认出 automation-task-manager，
+    而 `M19 生态平衡性薄弱环节` 里一个技能名都没有 → 不参与判据三。
+    """
+    try:
+        for s in sorted(os.listdir(SKILLS_ROOT), key=len, reverse=True):
+            if s in blob and os.path.isdir(os.path.join(SKILLS_ROOT, s)):
+                return s
+    except Exception:
+        pass
+    return ''
 
 
 def _items_of(m):
@@ -3629,7 +4217,34 @@ def check_manual_track(m):
     return []
 
 
-CHECKERS['manual_track'] = check_manual_track
+def check_rule_liveness(m):
+    """规则面健康（M52 · P040 升级为原生检查器，T20轮落地）。
+
+    跑 ecosys-conductor/scripts/rule_liveness_scan.py --report，
+    退出码非 0 或死规则>0 → 逐条产遗留。判据分档见扫描器：
+    GATE/PROBE 须 py 执行落点、SCAN 须 py 或注入摘要、DOC 须文档落点。
+    来源：T16 规则面彻查 2.0。
+    """
+    import subprocess, os
+    CON = '/root/.codebuddy/skills/ecosys-conductor/scripts/rule_liveness_scan.py'
+    if not os.path.exists(CON):
+        return [{'id': m.get('id'), 'issue': 'rule_liveness_scan.py 不存在，规则面检查器失明',
+                 'detail': f'路径缺失: {CON}'}]
+    try:
+        r = subprocess.run(['python3', CON, '--report'], capture_output=True,
+                           text=True, timeout=60)
+    except Exception as e:
+        return [{'id': m.get('id'), 'issue': '规则面扫描器执行失败',
+                 'detail': f'{type(e).__name__}: {e}'}]
+    out = (r.stdout or '') + (r.stderr or '')
+    if r.returncode != 0:
+        return [{'id': m.get('id'), 'issue': '规则面健康报表判红（死规则/执行面断档）',
+                 'detail': out.strip()[-400:] or f'退出码 {r.returncode}'}]
+    return []
+
+
+CHECKERS['rule_liveness'] = check_rule_liveness
+
 
 
 def check_eco_gap(m):
@@ -3812,6 +4427,113 @@ def check_link_break(m):
 
 
 CHECKERS['link_break'] = check_link_break
+
+
+def check_code_stale_ref(m):
+    """M-R153：活代码/配置引用陈旧路径或断链。
+    扫全生态自建技能的 .py/.json/.md（排除备份/__pycache__/非活动副本），
+    提取绝对路径引用（/root/.codebuddy/...）与同技能相对引用，检查：
+      ① 引用的文件是否真实存在（断链，比 M42 文档断链更底层——M42 只查 SKILL.md 链接）；
+      ② 是否指向 .bak*/已归档/旧路径（陈旧引用，正是用户质问的「指向旧文件旧路径」）。
+    排除：平台内置 skill_NNN、通配/示例写法（*、…、xxx_raw.bin 占位）、#noqa 行、星号导入。
+    唯一实现，供 health/hygiene/coverage 复用（M-R38 单一事实源）。"""
+    import re as _re
+    root = os.path.dirname(SKILL_DIR)
+    STALE_SUFFIX = _re.compile(r'\.bak\d*\b|__archive__|/archive/|\.old\b|\.bak_')
+    skip_dirs = ('__pycache__', 'backup_repo', 'share_pack_build', '.bak_1025', 'node_modules')
+    absref = _re.compile(r'["\'](/root/\.codebuddy/[A-Za-z0-9_./\-]+)["\']')
+    broken, stale = [], []
+    try:
+        names = sorted(os.listdir(root))
+    except Exception:
+        return []
+    for sk in names:
+        skd = os.path.join(root, sk)
+        if not os.path.isdir(skd) or sk.startswith('skill_'):
+            continue
+        for dp, dn, fns in os.walk(skd):
+            dn[:] = [d for d in dn if d not in skip_dirs]
+            for fn in fns:
+                if '.bak' in fn:          # M-R153：跳过孤儿 .bak 备份文件本身（防其旧内容路径被误报为断链）
+                    continue
+                if os.path.splitext(fn)[1] not in ('.py', '.json', '.md'):
+                    continue
+                fp = os.path.join(dp, fn)
+                try:
+                    lines = open(fp, encoding='utf-8', errors='ignore').read().splitlines()
+                except Exception:
+                    continue
+                for ln, line in enumerate(lines, 1):
+                    if 'noqa' in line.lower() or line.strip().startswith('*') or line.strip().startswith('#'):
+                        continue
+                    if 'compile' in line or 're.' in line:   # 排除正则定义自身（防自报）
+                        continue
+                    for m2 in absref.findall(line):
+                        if '*' in m2 or '…' in m2:
+                            continue
+                        if os.path.basename(m2).startswith('.'):   # 隐藏配置文件（.token/.env 等运行时可选）→ 非陈旧引用
+                            continue
+                        if STALE_SUFFIX.search(m2):
+                            stale.append((sk, fp, ln, m2))
+                        elif not os.path.exists(m2):
+                            broken.append((sk, fp, ln, m2))
+    out = []
+    for sk, fp, ln, p in broken:
+        out.append({
+            'monitor': m['id'], 'name': m['name'], 'sev': m.get('severity', '耗时'),
+            'item': f'{sk}: {os.path.relpath(fp, root)}:{ln} → {p}',
+            'detail': '活代码/配置引用了不存在的文件（断链）——重构后未同步引用，读者/工具按图索骥扑空',
+            'action': m.get('action', ''),
+        })
+    for sk, fp, ln, p in stale:
+        out.append({
+            'monitor': m['id'], 'name': m['name'], 'sev': m.get('severity', '耗时'),
+            'item': f'{sk}: {os.path.relpath(fp, root)}:{ln} → {p}',
+            'detail': '活代码/配置引用了 .bak/已归档/旧路径（陈旧引用）——违反 M-R153 禁陈旧路径',
+            'action': m.get('action', ''),
+        })
+    return out
+
+
+CHECKERS['code_stale_ref'] = check_code_stale_ref
+
+
+def check_compile_all(m):
+    """M-R210：全生态技能脚本可编译性扫描（防 link.py 类整文件语法错）。
+    遍历 /root/.codebuddy/skills 下所有 .py（排除备份/.pyc/历史快照目录），用 py_compile
+    编译，收集失败项。与 code_stale_ref 互补：code_stale_ref 查「引用陈旧路径」，
+    本项查「脚本自身能否加载」。这是唯一能抓 link.py 类问题的手段——
+    liveness/coverage 只查「有无落点/有无检查器」不查「能否 import」。
+    唯一实现，供 health/hygiene/coverage 复用（M-R38 单一事实源）。"""
+    import py_compile as _pc
+    root = os.path.dirname(SKILL_DIR)
+    skip_dirs = ('__pycache__', 'backup_repo', 'share_pack_build', '.bak_1025',
+                 'node_modules', 'file-history', 'traces')
+    fails = []
+    for dp, dn, fns in os.walk(root):
+        dn[:] = [d for d in dn if d not in skip_dirs and not d.startswith('.')]
+        for fn in fns:
+            if not fn.endswith('.py') or fn.endswith('.pyc'):
+                continue
+            fp = os.path.join(dp, fn)
+            try:
+                _pc.compile(fp, doraise=True)
+            except _pc.PyCompileError:
+                fails.append(os.path.relpath(fp, root))
+            except Exception:
+                continue
+    out = []
+    for rel in fails:
+        out.append({
+            'monitor': m['id'], 'name': m['name'], 'sev': m.get('severity', '阻断'),
+            'item': f'编译失败：{rel}',
+            'detail': '技能脚本存在语法错误无法 import，将导致依赖它的整条命令链路降级失效（M-R210）',
+            'action': m.get('action', ''),
+        })
+    return out
+
+
+CHECKERS['compile_all'] = check_compile_all
 
 
 def cmd_balance(a):
@@ -4918,24 +5640,51 @@ def dispatch(argv):
         #   判据仍只有一条：有遗留 → 非 0。阻断/耗时/轻微都算（调用方要自己分级再看 sev）。
         _f = cmd_scan(a)
         return 1 if _f else 0
-    return {'status': cmd_status, 'monitors': cmd_monitors,
-            'add-monitor': cmd_add_monitor, 'report': cmd_report,
-            'diff': cmd_diff, 'trend': cmd_trend, 'aging': cmd_aging,
-            'health': cmd_health, 'rootcause': cmd_rootcause,
-            'gain': cmd_gain,
-            'tune': cmd_tune, 'hygiene': cmd_hygiene,
-            'coverage': cmd_coverage, 'dispatch-work': cmd_dispatch_work,
-            'balance': cmd_balance,
-            'facts': cmd_facts,
-            'noise': cmd_noise, 'docsync': cmd_docsync,
-            'attribution': cmd_attribution,
-            'regress': cmd_regress,
-            'latency': cmd_latency,
-            'expand': cmd_expand,
-            'replay': cmd_replay,
-            'drill': cmd_drill,
-            'track': cmd_track, 'add-decision': cmd_add_decision,
-            'trend-upload': cmd_trend_upload}[a.cmd](a)
+    if a.cmd == 'health':
+        # S219：cmd_health 返回的是 risks 列表（打印数据），不是退出码。
+        # 经 inspect.py `raise SystemExit(risks)` 一律 exit 1（Python 对 list 参数打印并退 1），
+        # 导致"打印全健康却退出码 1"——依赖退出码的自动化永久误判。
+        # 映射：有风险→1，无→0，与 scan 一致。
+        _r = cmd_health(a)
+        return 1 if _r else 0
+    if a.cmd == 'gain':
+        # S219：cmd_gain 是纯量化报告（返回 rows 统计表或 None），无"失败"语义，
+        # 内部崩溃由 Python 自然非 0。当作打印命令永远 exit 0（非空 rows 不再误判 1）。
+        cmd_gain(a)
+        return 0
+    # S219 推广：字典分发的命令，返回值一律是「数据」，不是退出码。
+    # 原 `sys.exit(_ret if isinstance(_ret,int) else (1 if _ret else 0))`
+    # 会把非空 list/str/dict 当成真值→exit 1；经 inspect.py 的
+    # `raise SystemExit(dispatch())` 还会把 list 打印到 stderr 再退 1（泄露内部数据）。
+    # 统一出口：正常执行完即 0；命令自身 raise SystemExit(n) 透传（保留失败语义）；
+    # 崩溃→1。不动任何 cmd_* 内部返回值（与 S167/219 同范式）。
+    # 注：health/gain 已在上面特判提前 return，此处字典不再含这两个死键。
+    handler = {
+        'status': cmd_status, 'monitors': cmd_monitors,
+        'add-monitor': cmd_add_monitor, 'report': cmd_report,
+        'diff': cmd_diff, 'trend': cmd_trend, 'aging': cmd_aging,
+        'rootcause': cmd_rootcause,
+        'tune': cmd_tune, 'hygiene': cmd_hygiene,
+        'coverage': cmd_coverage, 'dispatch-work': cmd_dispatch_work,
+        'balance': cmd_balance,
+        'facts': cmd_facts,
+        'noise': cmd_noise, 'docsync': cmd_docsync,
+        'attribution': cmd_attribution,
+        'regress': cmd_regress,
+        'latency': cmd_latency,
+        'expand': cmd_expand,
+        'replay': cmd_replay,
+        'drill': cmd_drill,
+        'track': cmd_track, 'add-decision': cmd_add_decision,
+        'trend-upload': cmd_trend_upload,
+    }[a.cmd]
+    try:
+        handler(a)
+    except SystemExit:
+        raise
+    except Exception:
+        return 1
+    return 0
 
 
 if __name__ == '__main__':

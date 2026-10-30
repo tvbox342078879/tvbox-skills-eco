@@ -5,8 +5,6 @@ import argparse
 import json
 import os
 import re
-import sys
-from urllib.parse import urlparse
 
 from coze_workload_identity import requests
 

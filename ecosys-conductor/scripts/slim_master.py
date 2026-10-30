@@ -26,7 +26,8 @@
 import os, re, sys, json, datetime, shutil
 
 SKILL_ROOT = '/root/.codebuddy/skills'
-MASTER = '/workspace/生态1015_TVBox生态全局规则.md'
+# S201 同口径：/workspace 下的旧总册已归档，人读总册现由铁律坐标明细承担
+MASTER = '/root/.codebuddy/skills/ecosys-conductor/references/rules_铁律坐标明细.md'
 REG = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'scripts', 'rules_registry.json')
 
 # 可外置的节特征（论证型 / 历史实证型 / 一次性读）：只看**标题**，不看正文。

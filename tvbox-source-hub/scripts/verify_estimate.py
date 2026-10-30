@@ -6,7 +6,6 @@
 本脚本只做一件事：用 3 条样本得到真实 per_item，再比较预估 vs 实际。
 跑 5 轮，看偏差分布。
 """
-import statistics
 import sys
 import time
 
@@ -25,14 +24,9 @@ URLS = [
 
 
 def probe(url):
-    import urllib.request
-    try:
-        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req, timeout=10) as r:
-            r.read(2048)
-        return True
-    except Exception:
-        return False
+    import core                                   # ECO 对齐：走共享核心 http_get
+    st, _, _ = core.http_get(url, timeout=10, max_bytes=2048)
+    return st == 'ok'
 
 
 def one_round(n, workers=6):

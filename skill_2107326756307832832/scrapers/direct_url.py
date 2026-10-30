@@ -1,6 +1,5 @@
 """Direct URL scraper: process user-provided WeChat article URLs."""
 
-import re
 from typing import Any, Dict, List, Optional
 
 import sys, os

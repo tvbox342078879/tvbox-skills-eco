@@ -1,0 +1,54 @@
+{
+  "_note": "探源司·发布源型监测目标（结构字段本地真源；健康字段经 monitor_targets.json 同步云端）。对象存储直连包（无 git 历史）的监测锚点——填补传统 monitor 只认 GitHub 仓库的黑洞。2026-10-23 双锚点实核：信号源 mark.json（含 version 自报）+ 实体更新包 zip（4.56MB，前 64KB 指纹）。",
+  "pubs": {
+    "pub-xiaohuban": {
+      "kind": "pub-package",
+      "名称": "小虎斑·发布信号锚点（mark.json）",
+      "发布源URL": "https://xiaohuban.cn-nb1.rains3.com/mark.json",
+      "包类型": "json(含 version 自报)",
+      "关联底包": "底包·小虎斑系",
+      "监测周期": "每周",
+      "生命周期声明_基线": {
+        "自报版本": "26.10.18-仅供测试",
+        "自报态": "测试",
+        "自报来源": "mark.json → list[0].version（数组嵌套结构，探针递归解析）",
+        "说明": "人工基线；实测以 scan_lifecycle_decl 实时抓 mark.json 为准。2026-10-23 探针命中：自报态=测试 ∩ 实测活跃 → 交叉=提示（仅供测试源稳定性低）"
+      }
+    },
+    "pub-xiaohuban-zip": {
+      "kind": "pub-package",
+      "名称": "小虎斑·更新包直连（zip 实体）",
+      "发布源URL": "http://38.76.197.172:25252/%E4%BB%85%E4%BE%9B%E6%B5%8B%E8%AF%95/%E5%B0%8F%E8%99%8E%E6%96%91.zip/%E5%B0%8F%E8%99%8E%E6%96%91.zip",
+      "包类型": "zip(301 重定向→38.76.197.42)",
+      "关联底包": "底包·小虎斑系",
+      "监测周期": "每周",
+      "说明": "原地址 38.76.197.172:25252 返回 301 → 同 C 段 38.76.197.42:25252；探针 -L 自动跟随。指纹取前 64KB（4.56MB 包轻量 trade-off，尾部追加式变更需结合 ETag/Last-Modified 判定）。2026-10-23 实测：存活 / 4563571B / sha12=f56ce351541a / ETag=6ad4731a-45a273。"
+    },
+    "pub-vox-lanzou": {
+      "kind": "pub-package",
+      "名称": "集多vox·蓝奏云发布页（S194）",
+      "发布源URL": "https://wwamk.lanzouu.com/b02sgdm1nc",
+      "包类型": "html发布页(只探活，无稳定指纹)",
+      "关联底包": "底包·集多vox系",
+      "监测周期": "每周",
+      "发布密码": "1tmw",
+      "说明": "vox 本地包（node 工程包，pro/ + jar/vox.jar + js/drpy2.min.js）只经蓝奏云分发、无 GitHub 仓库（drpy-node 404 实证），属传统 monitor 黑洞。发布页实测：GET 200 / 6551B，但页面含动态 token（连抓两次 sha 不同）→ 只探活不采指纹，防变更误报。蓝奏云对 okhttp UA 吐空（实测 0B），探针回退走浏览器 UA。列表接口 filemoreajax.php 需动态 t/k 签名，发包计数暂不可自动化（S194 ①环曾通）。zip 实体 vox本地包1004.zip（2026-10-04 版）已由用户上传至 /root/uploads，69 文件 / 8.5MB。2026-10-23 探针实测：存活。"
+    },
+    "pub-moliys-666": {
+      "kind": "pub-package",
+      "名称": "沫离·666 聚合分发站（离线种子基线）",
+      "发布源URL": "",
+      "包类型": "聚合分发站清单（tvboxapilinks.txt + api/live.json）",
+      "关联底包": "底包·666系（待建）",
+      "监测周期": "每周",
+      "seed_baseline": true,
+      "source_file": "666.zip",
+      "extracted_sha12": {
+        "tvboxapilinks.txt": "894460c7ded1",
+        "api/live.json": "f54bd0ce8512"
+      },
+      "在线状态": "离线种子（待补公开URL）",
+      "说明": "作者「沫离」自建镜像站 tvbox.moliys.icu 聚合分发全行业接口/直播/漫画书源/应用市场。盯 tvboxapilinks.txt + api/live.json 两文件 sha12 变更即感知全行业接口增删（S199① 聚合分发站监测模式）。公开发布 URL 未知（CDN 412 取不到），待补后填 发布源URL 即自动转在线 sha12 轮询。2026-10-26 从 666.zip 本地副本解出。"
+    }
+  }
+}

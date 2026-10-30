@@ -1,0 +1,70 @@
+{
+ "items": [
+  {
+   "skill": "ecosys-conductor",
+   "dim": "质量短板",
+   "score": 0,
+   "why": "backlog 未清 12",
+   "cmd": "看 tvbox inspect dispatch-work 里 ecosys-conductor 的待办（清 backlog / 补三件套 / 扩自检）",
+   "first_seen": "2026-10-20",
+   "status": "done",
+   "closed": "2026-10-20",
+   "evidence": "backlog 12→4：9 条长期工程型合并为 1 条索引（正文移欠账总账，不复制副本）；三件套缺项同步修正——判据只认 `version: \"x.y\"` 带引号写法，而 SKILL.md 是 `version: 1.77.4`，扣的那 1 项根本不存在。实测 tvbox inspect hygiene：ecosys-conductor 三件套 4/4"
+  },
+  {
+   "skill": "automation-task-manager",
+   "dim": "进化停滞",
+   "score": 50,
+   "why": "台账无末次升级记录（无法判定）",
+   "cmd": "tvbox evolve note --what \"automation-task-manager 本轮进化：<做了什么>\"  或  tvbox evolve upgrade automation-task-manager",
+   "first_seen": "2026-10-20",
+   "status": "pending"
+  },
+  {
+   "skill": "ecosys-conductor",
+   "dim": "实绩质量",
+   "score": 65,
+   "why": "有未清 backlog",
+   "cmd": "tvbox inspect gain（看 ecosys-conductor 相关检查器命中率）/ 清 ecosys-conductor backlog",
+   "first_seen": "2026-10-20",
+   "status": "pending"
+  },
+  {
+   "skill": "legacy-watchdog",
+   "dim": "实绩质量",
+   "score": 65,
+   "why": "有未清 backlog",
+   "cmd": "tvbox inspect gain（看 legacy-watchdog 相关检查器命中率）/ 清 legacy-watchdog backlog",
+   "first_seen": "2026-10-20",
+   "status": "pending"
+  },
+  {
+   "skill": "probe-hub",
+   "dim": "实绩质量",
+   "score": 65,
+   "why": "有未清 backlog",
+   "cmd": "tvbox inspect gain（看 probe-hub 相关检查器命中率）/ 清 probe-hub backlog",
+   "first_seen": "2026-10-20",
+   "status": "pending"
+  },
+  {
+   "skill": "tvbox-interface",
+   "dim": "实绩质量",
+   "score": 65,
+   "why": "有未清 backlog",
+   "cmd": "tvbox inspect gain（看 tvbox-interface 相关检查器命中率）/ 清 tvbox-interface backlog",
+   "first_seen": "2026-10-20",
+   "status": "pending"
+  },
+  {
+   "skill": "tvbox-janitor",
+   "dim": "实绩质量",
+   "score": 65,
+   "why": "有未清 backlog",
+   "cmd": "tvbox inspect gain（看 tvbox-janitor 相关检查器命中率）/ 清 tvbox-janitor backlog",
+   "first_seen": "2026-10-20",
+   "status": "pending"
+  }
+ ],
+ "updated": "2026-10-20"
+}

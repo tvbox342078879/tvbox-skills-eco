@@ -1,0 +1,21 @@
+{
+ "built": "2026-10-22 02:02:03",
+ "sub": "dedup",
+ "apply": false,
+ "dedup": [
+  {
+   "keep": "/root/.codebuddy/skills/learn-hub/materials/20261022_file_1792601291308133653_TGPG/1792601291581974413-影视app磁力使用说明.txt",
+   "dup": "/root/.codebuddy/skills/learn-hub/materials/20261022_scan_jc4/1792604644234927273-影视app磁力使用说明.txt"
+  },
+  {
+   "keep": "/root/.codebuddy/skills/learn-hub/materials/20261022_scan_教程解压/vivo文件管理组件功能介绍.docx",
+   "dup": "/root/.codebuddy/skills/learn-hub/materials/20261022_scan_jc3/vivo文件管理组件功能介绍.docx"
+  },
+  {
+   "keep": "/root/.codebuddy/skills/learn-hub/materials/20261022_scan_教程解压/vivo文件管理如何查看微信或QQ接收的文件.pdf",
+   "dup": "/root/.codebuddy/skills/learn-hub/materials/20261022_scan_jc3/vivo文件管理如何查看微信或QQ接收的文件.pdf"
+  }
+ ],
+ "watermark": [],
+ "images": []
+}

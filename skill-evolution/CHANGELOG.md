@@ -1,3 +1,83 @@
+## 2026-10-25 v1.5.8
+- 由 skill-evolution upgrade 自动提升（1.5.7 → 1.5.8）
+- 依据 M-R111 提案：跨技能学习：借鉴 [T-J] 高危schema变更先在测试库演练（跨技能学习：字段级 schema 变更（枚举增删/改类型/重建字段）前 场景可借鉴）
+- 依据 M-R111 提案：跨技能学习：借鉴 [T-K] 批量写入大payload必分块（25条为界）（跨技能学习：批量写库 >25 条时 场景可借鉴）
+- 依据 M-R111 提案：跨技能学习：借鉴 [T-L] 「等外部恢复」欠账必配判愈探针（跨技能学习：欠账属于「等待外部环境恢复」类时 场景可借鉴）
+
+---
+
+## v1.5.7 — 2026-10-25（S210：library 纳入招式扫描，去硬编码排除）
+- `_eco_registry_names()` 去掉 `!= 'library'` 硬编码排除——S199 已把 library 纳入正本清单
+  （M-R201 建库五闸 owner），旧排除致 mine/招式库/平衡性永远看不见 library，
+  balance 招式隔离恒报「未被招式库扫描到（无法判定）」60 分假象。
+- 实证：`evolve mine --dry` 输出 T-A 出处含 library（CHANGELOG 0.6.3 借鉴留痕）。
+
+## v1.5.6 — 版本前进（skill-evolution upgrade 自动提升）
+- 由 skill-evolution upgrade 推进（条目已置顶部，符合倒序惯例）
+
+## 2026-10-22 v1.5.5
+- 由 skill-evolution upgrade 自动提升（1.5.4 → 1.5.5）
+- **P061 收口：recur 判据归一（`_move_landed` 不再对复发提案甩 unknown）**
+
+  **问题**：`_move_landed` 只认 `T-A`…`T-I` 招式代号，而 recur 提案的 `ref` 存的是
+  **问题类型中文名**（"记录读写"/"生态治理"…），于是任何按招式查落地的调用遇到 recur
+  一律返回 `unknown`。实测 8 条 done 的 recur 提案全被误报。
+  `unknown` 的语义是"没查成"（M-R60 不许折叠成"没做"），
+  但这里**根本不是没查成，是根本没去查**——recur 判据一直存在，只是活在 `_gate_moves` 内联分支里。
+
+  **修法（单一事实源 M-R38）**：
+  1. recur 判据从 `_gate_moves` 抽出成 `_recur_landed(skill, note)`，逻辑一字未改；
+  2. `_move_landed(skill, tid, note=None)` 加 `note` 参数，遇 recur 类型名转给 `_recur_landed`；
+  3. `_looks_like_recur(tid)` 用**含中日韩文字**判定（不是"非 T-X 即 recur"——
+     第一版这么写，`T-Z` 这种打错的招式号也被当 recur，返回 none 而非 unknown，
+     把"打错字"说成"没固化的复发问题"）。
+
+  **本轮两次自伤，都记在这里**：`_gate_moves` 对 recur 的放行语义（doc 放不放行）
+  我猜了两次、改错两次。最后靠**交叉证据**定案：
+  `selftest_fake_done.py` 第 2 条用例断言"判 doc 且落在 bad 里"，
+  而 T33 复盘（同日实测）记录该自测 3/3 通过 → 原语义是 **doc 也退回，只有 landed 放行**。
+  这也符合事实：recur 的 doc = "说了要固化但指不出落点"，那就是没固化。
+
+  **验收**：`selftest_recur_landed.py` 9/9（新增常驻）、`selftest_fake_done.py` 3/3、
+  `selftest_names_move.py` 8/8；全量 55 条 done 回读 `landed 37 / na 18`，
+  **unknown / none / doc 三态同时归零**（P058 时的 `unknown 8` 至此清干净）。
+
+---
+
+## 2026-10-22 v1.5.4
+- 由 skill-evolution upgrade 自动提升（1.5.3 → 1.5.4）
+- **P058 收口：`_move_landed` 三处判据修正（M-R134 第四次同型）**
+
+  **起因**：P058 账目称「缺落正文的机械判据」。取证后发现闸门是有的，真问题是
+  **判据拿特征词当主语**——只要文档某行含招式关键词，就当"在讲这招"。
+
+  **三处错、三个真实案例**：
+
+  | # | 症状 | 真实命中行 | 错在哪 |
+  |---|---|---|---|
+  | ① | 假阳（判 doc） | `## v1.2.7 — 版本对齐补记（T18 探针发现 CHANGELOG 漏记）` | 含"探针"就当成 T-E，实为 T18 的旧事 |
+  | ② | 假阳（判 doc） | `materials/…/复盘1022_T23….md`：`拿到「不闭环」的量化画像` | 复盘正文被当证据源，含"量化"就当成 T-F |
+  | ③ | 假阴（判 none） | `references/eco_layers.md:51`：`云端无删除 API，这是硬边界` | 修 ①② 时把 `references/` 一起挡掉，T-D 掉成空转 |
+
+  **三处修法**：
+  1. **证据源设门槛**：只认 `SKILL.md` / `CHANGELOG.md` / `README.md` / `references/*`
+     （= 技能对自己的正式声明）；排除 `materials/`、`archive/` 这类存档/学习资料。
+  2. **命中行必须指认招式**：行内出现 `T-X` 代号，或招式全名，或「结论词 + 本招特征词」同现。
+     只有特征词、指不出是谁的句子，既不算落地也不算欠账。
+  3. **假阴性要单独防**：判断"修过头了没有"不能只看 doc 是否归零，
+     必须同时看 **none 有没有增加**——doc 归零、none 冒出来 = 把真证据打掉了。
+
+  **验收**：`selftest_names_move.py` 8/8（3 条真反例 + 1 条真证据 + 4 条正向），
+  `selftest_fake_done.py` 3/3 不回归；全量 55 条 done 回读
+  `landed 29 / na 18 / unknown 8`，**doc 与 none 双归零**。
+
+  **未修（如实登记，转 P060）**：`unknown` 8 条全是 recur 类型，
+  `ref` 是中文类型名（如"记录读写"），`_move_landed` 只接受 `T-X`，**这条通道对 recur 结构性失效**。
+  当前靠 `_gate_moves` 里 recur 的独立分支（核 `resolved_note` 里的文件/规则号）兜住，未被漏判，
+  但 `_move_landed` 直接调用会误报 unknown —— 口径不统一，属真欠账。
+
+---
+
 ## v1.5.3 — apply_guard：靠求值顺序活着的变量（S182 续三）
 
 ### 起象：终验判据⑬ 代码健康

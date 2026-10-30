@@ -1,15 +1,16 @@
 {
-  "ecosys-conductor": "## 2026-10-17 v1.60.5 收尾：evo-check 口径修复 + M-",
+  "ecosys-conductor": "## 2026-10-22 v1.50.1",
   "legacy-watchdog": "## v1.32.0 · M15 口径修正：排除非「体系」容器（S103）",
-  "probe-hub": "## v1.7.3 · S115 内容层测活（2026-10-18）",
+  "probe-hub": "## 2026-10-26 v1.20.8",
   "skill-evolution": "## 2026-10-16 v1.3.1 经验对照缺口守护 + 招式库读取三态化（S10",
   "tvbox-inspect": "## v1.3.4 — 接入入口：从「写了用法」到「真能调用」（S148·M-R105）",
-  "tvbox-interface": "## 2026-10-15 建档：补齐可升级契约（v1.0.0）",
-  "tvbox-janitor": "## v1.1.4 — 接入入口：从「写了用法」到「真能调用」（S148·M-R105）",
+  "tvbox-interface": "## 2026-10-21 v1.3.5",
+  "tvbox-janitor": "## 2026-10-22 v1.2.8",
   "tvbox-source-blacklist": "## 2026-10-15 v1.1.1",
-  "tvbox-source-hub": "## 2026-10-16 v1.0.24 入口内联命令补登记 + manifest 版",
+  "tvbox-source-hub": "## 2026-10-21 v1.0.63",
   "eco-ledger": "## v1.1.0 — 技能进化：吸收 M-R111 提案 2 条（T-E/T-H），驳",
-  "learn-hub": "## v1.0.0 — 学习工坊立项（S172）",
+  "learn-hub": "## 2026-10-21 v1.0.6",
   "automation-task-manager": "## 1.4.0 — 2026-10-19（S165 第二轮：用真实定时任务压测暴露的一",
-  "unfinished-audit": "## 1.4.10（S179·任务界接线）"
+  "unfinished-audit": "## 1.4.10（S179·任务界接线）",
+  "library": "## 0.6.2 — 2026-10-22（S199 生态纳管补齐，非本技能功能改动）"
 }

@@ -33,7 +33,7 @@ sys.path.insert(0, '/root/.codebuddy/skills/probe-hub/scripts')
 sys.path.insert(0, '/root/.codebuddy/skills/tvbox-source-hub/scripts')
 
 import quality  # noqa: E402
-from core import SRC_DBS  # noqa: E402
+from core import SRC_DBS, http_get  # noqa: E402
 sys.path.insert(0, '/root/.codebuddy/skills/tvbox-source-hub/scripts')
 from concurrency import run_bounded, TIER_WEB, TIERS  # noqa: E402  M-R114 统一入口
 
@@ -51,13 +51,14 @@ QF = {
 
 
 def _curl_json(url, timeout=15):
-    cmd = ['curl', '-s', '-L', '--compressed', '--connect-timeout', '6',
-           '--max-time', str(timeout), '-A', UA, url]
-    try:
-        p = subprocess.run(cmd, capture_output=True, timeout=timeout + 5)
-        return json.loads(p.stdout.decode('utf-8', errors='ignore'))
-    except Exception:
-        return None
+    """CMS 取数 → JSON 或 None。底层统一走 core.http_get（C1：收敛取数入口）。"""
+    st, payload, _ = http_get(url, timeout=timeout, ua=UA, as_text=True)
+    if st == 'ok' and payload:
+        try:
+            return json.loads(payload)
+        except Exception:
+            return None
+    return None
 
 
 def _clean_play_url(raw):
@@ -179,14 +180,16 @@ def props_of(r):
         p[QF['kb']] = {'text': f"{r['kbps']}KB/s"}
     if r.get('ad') and r['ad'] != '未知':
         p[QF['ad']] = {'text': r['ad']}
-    if r.get('score'):
+    # ★ S196：score=None 表示"画质不可测·不评分"，**不写库**（旧值若存在则保留，
+    #   因为已有分数可能来自更早一次能测出画质的评测）。写空串会污染数值列。
+    if r.get('score') is not None:
         p[QF['score']] = {'text': str(r['score'])}
     if r.get('evidence'):
         p[QF['ev']] = {'text': r['evidence'][:400]}
     return p
 
 
-def main():
+def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument('--db', choices=['成品源库', '线路源库', 'both'], default='成品源库')
     ap.add_argument('--limit', type=int, default=0, help='只测前 N 条（0=全量）')
@@ -195,7 +198,8 @@ def main():
     ap.add_argument('--timeout', type=int, default=12)
     ap.add_argument('--workers', type=int, default=6, help='并发数（M-R114 B档上限 6）')
     ap.add_argument('--dry', action='store_true', help='只打印不写库')
-    a = ap.parse_args()
+    # C8（T6）：argv=None 时兼容旧直跑；probe.py 总调度显式传 argv
+    a = ap.parse_args(argv)
 
     targets = [('成品源库', DB['成品源库']), ('线路源库', DB['线路源库'])] \
         if a.db == 'both' else [(a.db, DB[a.db])]
@@ -225,7 +229,8 @@ def main():
             with lock:
                 stat[res['verdict']] = stat.get(res['verdict'], 0) + 1
                 done[0] += 1
-                print(f'  [{done[0]}/{len(rows)}] {res["verdict"]:4s} {res["score"]:3d}  '
+                _sc = '  —' if res['score'] is None else f'{res["score"]:3d}'
+                print(f'  [{done[0]}/{len(rows)}] {res["verdict"]:4s} {_sc}  '
                       f'{r.get("名称", "")[:16]:18s} {res["evidence"][:64]}', flush=True)
             return (r['record_id'], props_of(res))
 

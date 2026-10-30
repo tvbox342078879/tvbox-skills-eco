@@ -187,7 +187,10 @@ ECO_SKILLS = _load_eco_skills()
 # 否则信号源28 会把它们当外来技能放行（=永久盲区）。
 # 原实现在 _sig_skill_registry_gap 里写死局部变量，注释却称 ECO_NAME_HINTS——名实不符，已收敛为常量。
 ECO_NAME_HINTS = ('probe-hub', 'skill-evolution', 'ecosys-conductor', 'legacy-watchdog',
-                   'tvbox-janitor', 'unfinished-audit', 'eco-ledger', 'learn-hub')
+                   'tvbox-janitor', 'unfinished-audit', 'eco-ledger', 'learn-hub',
+                   # ★ S199：library 一直不在此表 → 信号源28 把它当外来技能放行（永久盲区），
+                   #   连带 M-R201（owner=library）成了孤儿规则、五方对照表重建后仍丢它。
+                   'library')
 
 # 新增技能必须同步的四个面（onboard 命令据此施工，缺一即留下盲区）
 #  ① eco_skills.json  —— 所有检查器的遍历源
@@ -200,7 +203,7 @@ ECO_NAME_HINTS = ('probe-hub', 'skill-evolution', 'ecosys-conductor', 'legacy-wa
 #      新技能扫不到 → 卫生分被判「flow.json 缺失」、平衡性给「未接任何生态门面」
 # 这两处漏了**都不报错**，只是新技能在评估里莫名低分或被判遗留——典型的「加技能靠记忆」残留。
 ONBOARD_FACES = ('eco_skills.json', '_SKILL_INTENTS', 'ROUTE_GOLDEN', 'ECO_NAME_HINTS',
-                 'manifest.json', '派生消费方', '三件套', '收尾绑定')
+                 'manifest.json', '派生消费方', '三件套', '收尾绑定', '职责一句话')
 
 # 信号源注册表（S062）：单一事实源——direction 组装 / signal-check 探针 / _sig_health 自检
 # 三处都从此派生，杜绝"清单散落三处、口径不一"（M-R34 覆盖缺口的结构性根因）
@@ -656,7 +659,9 @@ _SKILL_INTENTS = [
                   '某个线路转圈 还有哪些站能用 这个接口还能用吗 这批源帮我验一遍 '
                   '作者仓库还在吗 他又更新了什么 有没有新的源 我的库不够用了 '
                   '这个站能不能做成源 帮我写个源 这个源好没好 复现一下之前的采集 '
-                  '探源司 剔除失效'),
+                  '探源司 剔除失效 '
+                  # ★ S197 补投影：S196 加壳系模块（shellcrack）时改了真源没同步这里（M-R76 真阳性）
+                  '播放页壳 壳源 抠链 抠直链 壳库 从别的站找壳'),
     ('tvbox-interface', '接口地址 底包 本地包 直播源 拆分 入库 去重 测活 可用版 '
                         '做成json json包 接口入库 处理接口 解析 发来一个接口URL 在线接口 配置地址 '
                         'lives py线 采集 '
@@ -664,11 +669,16 @@ _SKILL_INTENTS = [
                         #   本技能只留**加工动作**形态——"把这个直链做成 json/入库/拆分"。
                         '直链做成json 直链入库 直链拆分 轻量json怎么做 要轻量版 '
                         '这个接口做个json 接口发你了 把这个包做成能用的 处理一下这个接口 这个地址能用吗 '
-                        '帮我做个能用的包 这个配置能用吗 把接口整理一下'),
+                        '帮我做个能用的包 这个配置能用吗 把接口整理一下 '
+                        # ★ S198 补投影：全局盲区体检（真实话术 623 条扫描）发现「做json」等
+                        #   高频动作零命中——「做成json」匹配不上「做json」。词全部来自零命中清单
+                        '做json json能用 json用不了 发json 整包做json 体系划分 体系识别 '
+                        'jar系 直链系 内置系 直链线路 相对路径 绝对路径'),
     ('tvbox-source-hub', '源总库 数据源归库 扫描底包 线路去重 某条源能在哪用 录线路 '
                          '提源 线路入库 批量录线路 扫描底包提取线路 某条源能在哪些体系用 可用体系 '
                          '线路存哪个库 这些线路能进哪个包 哪条线能用 把线路记下来 这条源能在哪些包用 '
-                         '录一下这些线路 线路归谁 存进源库 扫一遍底包 包里有什么线 这线哪些体系能用'),
+                         '录一下这些线路 线路归谁 存进源库 扫一遍底包 包里有什么线 这线哪些体系能用 '
+                         '数据源总库 数据源状况'),
     ('tvbox-source-blacklist', '拉黑 拦截 屏蔽 host host屏蔽 拉黑源 失效库 '
                                '这条源要不要拉黑 别再用这个了 老是失败 又挂了 封掉它 '
                                '这个域名还能用吗 别再采这个了 失效的标一下 死了吗 还能信吗 '
@@ -725,7 +735,10 @@ _SKILL_INTENTS = [
                       #   "生态"，留在词表里等于给本技能一个万能命中词（实测「有没有什么异常」
                       #   靠它拿了 3 分）。改由 `生态指挥`/`生态评估`/`生态库` 这类**带动作的
                       #   限定词**表达职责，名词归各业务技能。业务短语 `对一下账` 同此处理。
-                      '生态指挥层 谁负责什么 怎么分派'),
+                      '生态指挥层 谁负责什么 怎么分派 '
+                      # ★ S198 补投影（全局盲区体检真实话术）：任务线看板/经验池/规则立法类话术
+                      '任务状态 任务进程 到哪里了 未完成 经验池 '
+                      '增加规则 全局规则 硬性规则 规则固化'),
     # ★ S156：账房司技能在册（eco_skills.json / ECO_NAME_HINTS 已登记）但**路由表从未登记**
     #   —— 信号源5「路由盲区」正是抓这个，它是**真阳性**，不是检测器恒报。
     #   后果：用户说「记一笔账 / 账上余额多少 / 试算平衡吗」全部路由不到账房，
@@ -805,7 +818,9 @@ _SKILL_INTENTS = [
                   #   动作+名词（整理/拆解/分析），缺「乱/散/杂」这类痛点词。
                   #   补这一类：用户抱怨现状，而不是下单要做什么。
                   '太乱了 乱成一团 乱七八糟 一堆没整理 散在各处 找不到哪份 '
-                  '这堆文件 文件夹很乱 资料太杂 理一理'),
+                  '这堆文件 文件夹很乱 资料太杂 理一理 '
+                  # ★ S198 补投影（全局盲区体检真实话术）：用户发教程类资料时的口语词
+                  '教程 教程整理 资料包'),
     # ★ S177 步9：**此前完全没有登记**，故 _sig_route_blind 报「双重盲区」。
     #   它在 ECO_SKILLS 里（13 个成员之一），却被漏在两张路由表外——
     #   与源28「漏纳管」是同一个病的两个面：纳了管，但没接话术。
@@ -821,6 +836,21 @@ _SKILL_INTENTS = [
      #   没把 YAML 收尾引号剥掉（已修在 strip 里）。我当时先怀疑文档、后查代码，
      #   方向搞反了一次，记在这里防重犯。
      '自动化任务 创建任务 编辑任务 删除任务 任务列表'),
+    # ★ S199：library 此前**完全不在本表**——它是 WorkBuddy 原生技能，description 全英文，
+    #   `_desc_trigger_words` 一个中文词都抽不到，于是 `onboard library` 一直报
+    #   「②抽不到触发词」。后果实测：用户说「建个知识库把文档放进去」，ask 回
+    #   「没听出你在说哪类事」——而这正是 library SKILL.md §Defaults 明写的标准用法。
+    #   词不抄技能名（用户不会说"library"），只抄 SKILL.md 里已经写下的用户口语。
+    ('library',
+     '资料库 知识库 网盘 空间 个人空间 团队空间 工作台 看板 收集表 汇报页 '
+     '存到资料库 放进资料库 传到资料库 归档 归到一起 理一理 整理归档 '
+     '建个知识库 建知识库 知识库问答 能问答的知识库 问知识库 '
+     '文档 周报 笔记 表格 CSV 剪藏 网页剪藏 回读 附件 录音 转写 '
+     '导出 下载 分享 发个链接 生成链接 在线文档 在线表格 在线页面 美化一下 排版好看点 '
+     '建文件夹 挂到下面 目录树 建个空间 建个团队空间 找人协作 加协作者 '
+     # 与 learn-hub 的分界（防串门，M-R76）：learn-hub 管"教材/考点/学习计划"的内容加工，
+     # library 只管"存哪儿/怎么取/发给谁"。故此处只收**存储与交付**动词，不收学习加工动词。
+     '上传 存一下 找一下那份 之前那个文档 谁改的 版本 更新一下这份 覆盖旧的'),
 ]
 
 # 真实用户话术用例（S135 M-R77）：**独立标尺**，不随技能 description / _SKILL_INTENTS 变化。
@@ -829,6 +859,13 @@ _SKILL_INTENTS = [
 # 即故障注入抓不到。此处用例由人写下「用户真会这么说」，技能改坏时用例不变，故能测出。
 # 维护约定：**只增不删**；新增技能须同时加一条用例；每条须指向唯一正确技能。
 ROUTE_GOLDEN = {
+    # ★ S199：library 此前无任何黄金用例。用例全部是**业务语言**——
+    #   不出现「资料库/spaceId/nodeId」等术语，考的是"用户这么说，接不接得住"。
+    #   实测基线（补这条之前）：「建个知识库把文档放进去」→ ask 回「没听出你在说哪类事」。
+    'library': [('建个知识库把文档放进去', 'library'),
+                ('把这个存到资料库', 'library'),
+                ('上周那个周报发我个链接', 'library'),
+                ('这些文件太散了帮我归到一起', 'library')],
     # ★ S148 总纲：本表凡是**术语型**用例（如「体检」「数据源归库」），都是维护者
     #   自己编的，写成什么样都能过——那是**自测自绿**。凡是**业务语言**用例
     #   （如「整体状态怎么样」「这活归谁」），才是真正在考「用户这么说，技能接不接得住」。
@@ -1256,18 +1293,28 @@ def _route_top1(q):
 # ── 技能职责一句话（S157 ask 输出「依据」用）──────────────────────────────────
 # 为什么需要：ask 不该只给一个名字，要给出**"为什么是它"**，让模型能自行纠正。
 # 维护约定：新增技能必须在此登记，否则 ask 里该项显示"（未登记职责）"。
+# ★ S196 结构修复（M-R38）：本表曾是「两处各写一份」——ask 用它、lanes rows 另写一份，
+#   新技能要手动改两处，漏一处就报「未登记职责」（automation-task-manager/learn-hub 拖了多期）。
+#   现在值统一为 (管什么, 不管什么) 二元组，**ask 消费 [0]、lanes rows 全量派生**，
+#   新技能只登记这一处；onboard 第五面（S196）自动补行，漏登检测仍在（三重防线）。
 ROUTE_ONELINE = {
-    'probe-hub':              '去上游找源/采线路（手上没源，要去外面挖）',
-    'tvbox-interface':        '手上已有接口URL/包，要加工成可用json并入库',
-    'tvbox-source-hub':       '源库数据面：线路归库/去重/批量录入',
-    'tvbox-source-blacklist': '失效源治理：要不要拉黑、封哪个域名',
-    'tvbox-inspect':          '盯：体检/监测/盘点异常，发现问题（不修）',
-    'legacy-watchdog':        '修：拿到监测结果做遗留清单、分级派活、账龄趋势',
-    'unfinished-audit':       '清账：六源采集欠账、派单、硬闭环（不修具体缺陷）',
-    'eco-ledger':             '账房：复式记账/对账/平账/财务终验五卡口',
-    'skill-evolution':        '治病根：同类问题反复出现→沉淀招式/生成技能/规则整理',
-    'tvbox-janitor':          '清云端删不掉的节点（收件箱，用户一处按单删）',
-    'ecosys-conductor':       '总指挥：这事归谁/怎么拆/先做哪个/生态评估',
+    'probe-hub':              ('去上游找源/采线路（手上没源，要去外面挖）', '不管入库成json；不管存量治理'),
+    'tvbox-interface':        ('手上已有接口URL/包，要加工成可用json并入库', '不管存量治理；不管上游找源'),
+    'tvbox-source-hub':       ('源库数据面：线路归库/去重/批量录入', '不管技能治理'),
+    'tvbox-source-blacklist': ('失效源治理：要不要拉黑、封哪个域名', '不管源入库'),
+    'tvbox-inspect':          ('盯：体检/监测/盘点异常，发现问题（不修）', '不管新源接入；不管修复动作'),
+    'legacy-watchdog':        ('修：拿到监测结果做遗留清单、分级派活、账龄趋势', '不管任务调度'),
+    'unfinished-audit':       ('清账：六源采集欠账、派单、硬闭环（不修具体缺陷）', '不做具体业务修复'),
+    'eco-ledger':             ('账房：复式记账/对账/平账/财务终验五卡口', '不代业务技能做账；不判定业务该不该做'),
+    'skill-evolution':        ('治病根：同类问题反复出现→沉淀招式/生成技能/规则整理', '不管全局规划'),
+    'tvbox-janitor':          ('清云端删不掉的节点（收件箱，用户一处按单删）', '不做判定谁该删；不直接删除'),
+    'ecosys-conductor':       ('总指挥：这事归谁/怎么拆/先做哪个/生态评估', '不做具体业务'),
+    # ★ S196 补：这两个此前长期报「未登记职责」（同 S158 eco-ledger 病）
+    'automation-task-manager': ('定时任务通道：每天定时巡检/推稿等免值守作业（M18 上游定时核查挂这）', '不做临时性一次性任务；不做判定'),
+    'learn-hub':              ('学习资料线：教材切分/知识框架/学习计划/资料整理', '不管 TVBox 业务；不做治理'),
+    # ★ S199：library 此前是 ROUTE_ONELINE 里唯一缺行的技能（lanes 报「未登记职责」）。
+    #   分界线写在"不管"里，就是为了防止它与 learn-hub / 产物区 互相串门。
+    'library':                ('存与取：文档/表格/网页/附件的落地、归档、检索、分享链接', '不管内容加工（学习资料/教材考点归 learn-hub）；不管 TVBox 业务'),
 }
 
 
@@ -1380,20 +1427,58 @@ def _load_events(force=False):
             'status': str(r.get('交付状态') or ''),
             'out': str(r.get('产出物') or ''),
             'rel': str(r.get('关联规则') or ''),
+            'src': '事件库',
         })
+    # ★S198 根源治理第二步：并读③会话台账（close learn biz 的写入库），
+    # 映射成与事件同构的条目合并——否则「每个会话做了什么」只有事件库那 62 条，
+    # 台账 168 条对 history/ask 不可见，新会话照样失忆。读失败不折叠（只警告）。
+    ok2, sess, info2 = CORE.query_all('TO4LwsjVVdR8JRAUlkejk3', page_size=100)
+    if not ok2:
+        print(f'   ⚠️ 会话台账读取失败（{info2[:70]}）——history 本次只含事件库')
+    else:
+        seen = {e['id'] for e in events if e['id']}
+        for r in sess:
+            sid = str(r.get('会话编号') or '')
+            if not sid or sid in seen:
+                continue
+            seen.add(sid)
+            events.append({
+                'id': sid,
+                'date': str(r.get('时间') or '')[:10],
+                'topic': str(r.get('触发类型') or '会话台账'),
+                'raw': str(r.get('任务摘要') or ''),
+                'status': '台账',
+                'out': str(r.get('成果产出') or ''),
+                'rel': str(r.get('踩坑') or '') + str(r.get('解法') or '') + str(r.get('可复用点') or ''),
+                'src': '台账',
+            })
     _EVENT_CACHE = events
     return events
 
 
 def _match_events(intent, events, limit=5):
-    """按关键词/主题匹配历史事件（用于"我以前做过X吗"这类问法）。"""
-    ib = _bigrams(intent)
+    """按关键词/主题匹配历史事件（用于"我以前做过X吗"这类问法）。
+    ★S168坑根修：大小写归一——用户搜 t6/T6/T6-xyz 语义相同，不归一就漏。"""
+    intent_l = intent.lower()
+    ib = _bigrams(intent_l)
     scored = []
     for e in events:
-        blob = e['raw'] + ' ' + e['topic'] + ' ' + e['out'] + ' ' + e['rel']
+        blob = (e['raw'] + ' ' + e['topic'] + ' ' + e['out'] + ' ' + e['rel']
+                + ' ' + e['id']).lower()
         ov = len(ib & _bigrams(blob))
         if ov >= 2:
             scored.append((e, ov))
+    scored.sort(key=lambda x: -x[1])
+    if scored:
+        return scored[:limit]
+    # 兜底：短代号（t6/s198 这类）bigram 只能命中 1 次，达不到 ≥2 阈值；
+    # 从意图里抽出字母数字代号再子串匹配（中文整句没空格，直接整句找必失败）。
+    toks = [t.lower() for t in re.findall(r'[A-Za-z0-9][A-Za-z0-9\-]{1,}', intent)]
+    for e in events:
+        blob = (e['raw'] + ' ' + e['topic'] + ' ' + e['out'] + ' ' + e['rel']
+                + ' ' + e['id']).lower()
+        if any(t in blob for t in toks):
+            scored.append((e, 1))
     scored.sort(key=lambda x: -x[1])
     return scored[:limit]
 
@@ -1425,23 +1510,96 @@ def cmd_history(args):
         from collections import defaultdict
         groups = defaultdict(list)
         for e in events:
-            groups[e['topic']].append(e)
+            groups[e['topic'] or '未分类'].append(e)
+        seen_topics = set()
         for topic in ['做JSON产线', '命名与体系', '仓库与数据', '生态与联动', '生态成员', '标准与文档']:
             if topic not in groups:
                 continue
+            seen_topics.add(topic)
             print(f'\n【{topic}】')
             for e in sorted(groups[topic], key=lambda x: x['date']):
                 flag = {'已交付': '✅', '部分交付': '⚠️', '待确认': '❓'}.get(e['status'], '·')
                 print(f'   {flag} [{e["date"]}] {e["raw"][:42]}')
                 if e['out']:
                     print(f'        → {e["out"]}')
+        # ★S198收尾：台账并入后出现新主题（触发类型如"生态治理/规则维护"），
+        # 固定分组表装不下会静默漏显——动态补打其余全部分组，不许折叠。
+        for topic in sorted(t for t in groups if t not in seen_topics):
+            print(f'\n【{topic}】')
+            for e in sorted(groups[topic], key=lambda x: x['date']):
+                flag = {'已交付': '✅', '部分交付': '⚠️', '待确认': '❓', '台账': '📗'}.get(e['status'], '·')
+                print(f'   {flag} [{e["date"]}] {e["raw"][:42]}')
+                if e['out']:
+                    print(f'        → {e["out"]}')
         matched = []
     for e, ov in matched:
-        flag = {'已交付': '✅', '部分交付': '⚠️', '待确认': '❓'}.get(e['status'], '·')
+        flag = {'已交付': '✅', '部分交付': '⚠️', '待确认': '❓', '台账': '📗'}.get(e['status'], '·')
         print(f'   {flag} [{e["date"]}·{e["topic"]}] {e["raw"][:48]}')
         if e['out']:
             print(f'        → {e["out"]}' + (f'   ({e["rel"]})' if e['rel'] else ''))
     print('─' * 56)
+
+
+def _copilot_idle():
+    """常驻副驾·空状态主动递：无参数调起 ask 时主动递「最近在办」+ 用法提示。
+    借鉴系统级全局搜索「空框仍有价值 / 最近在搜」的设计哲学——不要求用户先说需求。"""
+    print('🧭 需求管家｜常驻副驾（空状态主动递）')
+    print('─' * 56)
+    events = _load_events()
+    if events is None:
+        print('⚠️ 事件库读取失败，无法判定最近在办（不是"没有"）')
+    else:
+        def _sort_key(e):
+            d = e.get('date', '')
+            return (1, '') if not d else (0, d)
+        recent = sorted(events, key=_sort_key, reverse=True)[:3]
+        if recent:
+            print('🕘 最近在办（带时间，点开可续）：')
+            for e in recent:
+                flag = {'已交付': '✅', '部分交付': '⚠️', '待确认': '❓'}.get(e['status'], '·')
+                eid = e.get('id', '')
+                print(f'   {flag} [{e["date"]}] {e["raw"][:40]}')
+                if e['out']:
+                    print(f'        → {e["out"][:60]}')
+                if eid:
+                    print(f'        续办: tvbox conductor ask --resume {eid}')
+            print()
+        else:
+            print('🕘 最近在办：事件库为空，还没有登记过需求事件')
+            print()
+    print('用法: tvbox conductor ask "<你的需求，随便怎么问>"')
+    print('  例: tvbox conductor ask "帮我找几个能用的点播源"')
+    print('      tvbox conductor ask "d包要换路线"')
+    print('      tvbox conductor ask --resume <事件ID>  （续办上次的事）')
+
+
+def _resume_event(eid):
+    """常驻副驾·历史一键续：输入事件ID，回显当时上下文与产出，便于直接续办。
+    借鉴系统搜索「最近在搜是一键重新发起」而非只读回忆。"""
+    print(f'🧭 需求管家｜续办事件 {eid}')
+    print('─' * 56)
+    events = _load_events()
+    if events is None:
+        print('⚠️ 事件库读取失败，无法定位事件（不是"没有"）')
+        return
+    hit = None
+    for e in events:
+        if e.get('id', '') == eid or e.get('topic', '') == eid or e.get('raw', '') == eid:
+            hit = e
+            break
+    if not hit:
+        print(f'❌ 没找到 ID={eid} 的事件（事件库共 {len(events)} 条）')
+        print('   先跑 `tvbox conductor history` 看全部事件ID')
+        return
+    print(f'📅 日期：{hit["date"]}（来源：{hit.get("src", "")}）')
+    print(f'💬 当时的需求：{hit["raw"]}')
+    print(f'📦 产出物：{hit["out"] or "（无）"}')
+    print(f'🚦 状态：{hit["status"]}')
+    if hit.get('rel'):
+        print(f'🔗 关联：{hit["rel"][:120]}')
+    print()
+    print('→ 接着上次干：把上面的上下文带进新一句需求即可，例如：')
+    print(f"  tvbox conductor ask \"继续：{hit['raw'][:30]}……（补充新进展）\"")
 
 
 def cmd_ask(args):
@@ -1449,11 +1607,14 @@ def cmd_ask(args):
 
     S096：解决"用户必须知道找哪个技能"+"黑话无处安放"两大痛点。
     """
+    # ① 续办分支：--resume <事件ID/代号> → 一键续上当时上下文（常驻副驾·历史一键续）
+    if len(args) >= 2 and args[0] == '--resume':
+        return _resume_event(args[1])
+
     intent = ' '.join(args) if args else ''
     if not intent:
-        print('用法: tvbox conductor ask "<你的需求，随便怎么问>"')
-        print('  例: tvbox conductor ask "帮我找几个能用的点播源"')
-        print('      tvbox conductor ask "d包要换路线"')
+        # ★ 常驻副驾（借鉴系统级全局搜索「空框仍有价值」）：空状态也主动递「最近在办」
+        _copilot_idle()
         return
     print(f'🧭 需求管家｜你说：{intent}')
     print('─' * 56)
@@ -1535,7 +1696,8 @@ def cmd_ask(args):
         for i, (sk, desc, r) in enumerate(skill_scored[:3]):
             mark = '①' if i == 0 else ('②' if i == 1 else '③')
             ev = _route_evidence(expanded, sk, desc, r)
-            one = ROUTE_ONELINE.get(sk, '（未登记职责）')
+            _ent = ROUTE_ONELINE.get(sk)
+            one = (_ent[0] if isinstance(_ent, tuple) else _ent) or '（未登记职责）'
             # S157：弱信号（无实词支撑、纯字符重叠）显式打标——让用户一眼看出这条能信多少。
             wk = '｜⚠️弱信号' if (len(r) > 4 and r[4]) else ''
             if all_weak:
@@ -1618,22 +1780,10 @@ def _fallback_route(intent, terms):
 def cmd_lanes(args):
     print('🛤️  生态分工地图（谁管什么/不管什么）')
     print()
-    rows = [
-        ('tvbox-source-hub', '源库/底包库/台账数据面', '不管技能治理'),
-        ('tvbox-source-blacklist', '失效源拉黑与守门', '不管源入库'),
-        ('tvbox-interface', '新接口接入流水线（手上有接口URL→做成可用json）', '不管存量治理；不管上游找源'),
-        ('probe-hub', '上游侦察：找仓库/找源/采线路/真实测活（手上没源→去上游找）', '不管入库成json；不管存量治理'),
-        ('tvbox-inspect', '存量体检：30 项监测检查器（盯"已经有的东西有没有坏"）', '不管新源接入；不管修复动作'),
-        ('unfinished-audit', '欠账总账：收口/派单/闭环（盯"说了要做的有没有做完"）', '不做具体业务修复'),
-        ('tvbox-janitor', '待删收件箱：AI 删不掉的冗余节点移入统一文件夹+生成待删清单', '不做判定谁该删；不直接删除'),
-        ('legacy-watchdog', '业务遗留监测+元能力链', '不管任务调度'),
-        ('skill-evolution', '单技能触发式进化(≥3次)', '不管全局规划'),
-        ('ecosys-conductor', '任务提速+技能协调+全局进化', '不做具体业务'),
-        # ★ S158 补：这行缺失导致 lanes 长期报「未登记职责 eco-ledger」——
-        #   覆盖核对能发现缺口，但缺口要人补；本轮补上，不留"检测器知道但没人修"的账。
-        ('eco-ledger', '大生态总账监管：复式记账(总账+账户)、账实/账账两线对账、终验五卡口',
-                       '不代业务技能做账；不判定业务该不该做'),
-    ]
+    # ★ S196 结构修复（M-R38）：rows 不再手抄一份——全量派生自 ROUTE_ONELINE 单一真源
+    #   （S157 立表时与 lanes 各写一份，新技能要手动改两处，漏一处就报「未登记职责」，
+    #    automation-task-manager/learn-hub 拖了多期就是这么来的）。派生后只维护一处。
+    rows = [(s, v[0], v[1]) for s, v in ROUTE_ONELINE.items()]
     _listed = {s for s, _, _ in rows}
     for s, do, dont in rows:
         print(f'   {s:24s} 管: {do} ｜ 不管: {dont}')
@@ -2518,7 +2668,7 @@ def _sig_health():
     S062 补强：① 依赖清单按 SIGNAL_SOURCES 注册表补全 7/8；
                ② 新增"清单一致性审计"——探针/自检覆盖数必须 == 注册表条目数（M-R34 结构性根因）。
     返回 [(type, desc)]，健康则空。"""
-    doc_fp = '/workspace/生态1016_生态指挥家技能设计.md'
+    doc_fp = '/workspace/1022/生态1016_生态指挥家技能设计.md'
     checks = [
         ('1', 'backlog兑现', [os.path.join(SKILL_ROOT, s, 'scripts', 'flow.json') for s in ECO_SKILLS[:3]]),
         ('2', '生态空白', None),   # 依赖 tvbox watchdog，运行时判定
@@ -2661,15 +2811,15 @@ def _sig_health():
                 out.append(('技能清单漂移', f'{s} 在 evolve 权威发现中但 ECO_SKILLS 未收录（副本过期）'))
             for s in sorted(eco - disk):
                 out.append(('技能清单漂移', f'{s} 在 ECO_SKILLS 中但 evolve 未发现（可能已移除）'))
-    except Exception:
-        pass
+    except Exception as e:
+        out.append(('技能清单漂移', f'evolve scan 执行失败（{type(e).__name__}: {e}）——无法判定，勿当无漂移'))
     return out
 
 def _sig_doc_gap():
     """信号源6：文档-实现漂移——设计文档命令表 vs conductor 实际 DISPATCH。
     文档是活契约：实现走远而文档没跟上 = 后来者按文档操作必踩空（M-R30 沉淀）。
     返回 [(type, desc)]。"""
-    doc_fp = '/workspace/生态1016_生态指挥家技能设计.md'
+    doc_fp = '/workspace/1022/生态1016_生态指挥家技能设计.md'
     out = []
     try:
         doc = open(doc_fp, encoding='utf-8').read()
@@ -2718,8 +2868,10 @@ def _sig_backlog():
                         continue   # 过期扩展点（实际已兑现）≠ 新建议
                     kind = 'backlog方向性' if any(k in b for k in _DIRECTIONAL) else 'backlog兑现'
                     out.append({'skill': s, 'type': kind, 'evidence': b[:80]})
-        except Exception:
-            pass
+        except Exception as e:
+            # M-R60：单技能 flow.json 读失败不得静默跳过，须显式"无法判定"
+            out.append({'skill': s, 'type': 'backlog读取失败-无法判定',
+                        'evidence': f'{fp}: {type(e).__name__}: {e}'})
     return out
 
 def _sig_eco_blank():
@@ -5085,12 +5237,19 @@ def _check_index_links(_txt_override=None, _skills_override=None):
         if _txt_override is not None:
             break   # 注入模式只看合成文本，不重复扫全生态
     # S137 补漏：规则总册自己也外置了两条，须验文件 + **锚点真存在**
-    mp2 = '/workspace/生态1015_TVBox生态全局规则.md'
+    # S201 同口径：原 /workspace/总册已归档，人读总册现由铁律坐标明细承担；
+    # 其引用形如 references/*.md（无 docs/ 锚点时本探针自然空过，不再指向失效路径）
+    mp2 = '/root/.codebuddy/skills/ecosys-conductor/references/rules_铁律坐标明细.md'
+    _mbase = '/root/.codebuddy/skills/ecosys-conductor'
     if _txt_override is None and os.path.exists(mp2):
         mtxt = open(mp2, encoding='utf-8').read()
-        for m in re.finditer(r'`(docs/[^`#]+)#([^`]+)`', mtxt):
+        # 只校验「正本已外置：`path#anchor`」声明式写法；表格/叙事行提及时不算声明（防误报）
+        for m in re.finditer(r'`((?:docs|references)/[^`#]+)#([^`]+)`', mtxt):
+            _ln = mtxt[:m.start()].count('\n') + 1
+            if '正本已外置' not in mtxt.splitlines()[_ln - 1]:
+                continue
             rel, anchor = m.group(1), m.group(2).strip()
-            fp = os.path.join('/workspace', rel)
+            fp = os.path.join(_mbase, rel)
             if not os.path.exists(fp):
                 bad.append(f'总册→{rel}（文件不存在）')
                 continue
@@ -5256,14 +5415,14 @@ def cmd_verify(args):
                 vbad.append(f'{s}缺{f}')
     v_ok = not vbad
     # ⑥ 留痕洁净（evolution_plan 无未撤回的探针污染）
-    c_ok = True
+    c_ok, c_msg = True, '无污染'
     try:
         for h in json.load(open(PLAN_FILE, encoding='utf-8')):
             for x in h.get('suggestions', []):
                 if 'zzprobe' in x.get('evidence', '') and not x.get('retracted'):
                     c_ok = False
-    except Exception:
-        pass
+    except Exception as e:
+        c_ok, c_msg = False, f'无法判定（evolution_plan 读取失败：{type(e).__name__}: {e}）'
     # ⑦ 体积（S135 M-R77）：技能正本 + 规则总册不得超缓冲线。
     # 这是 M-R77④ 的**强制力所在**——audit-growth 平时没人主动跑，verify 是每次收尾必跑的，
     # 把体积放进 verify，超标者才真的「过不了验收」。
@@ -5277,7 +5436,7 @@ def cmd_verify(args):
                 if b > buf:
                     s_bad.append(f'{s} {b/1024:.1f}KB' + ('(超硬上限)' if b > hard else ''))
                     s_ok = False
-        mp = '/workspace/生态1015_TVBox生态全局规则.md'
+        mp = '/root/.codebuddy/skills/ecosys-conductor/references/rules_铁律坐标明细.md'
         if os.path.exists(mp):
             b = os.path.getsize(mp)
             if b > buf:
@@ -5387,7 +5546,7 @@ def cmd_verify(args):
         ('③ evolve scan', e_ok, (f'{ev[0]}/{ev[1]}' if ev else '?')),
         ('④ watchdog', w_ok, ('无遗留' if w_ok else '有遗留' if w_st is False else '⚠️无法判定(命令未产出)')),
         ('⑤ 三件套齐备', v_ok, ('全齐备' if v_ok else ' '.join(vbad))),
-        ('⑥ 留痕洁净', c_ok, ('无污染' if c_ok else '有探针污染')),
+        ('⑥ 留痕洁净', c_ok, c_msg),
         ('⑦ 体积(M-R77)', s_ok and i_ok,
          ('、'.join(s_bad) if s_bad else '') + ('｜索引断链 ' + '、'.join(i_bad) if i_bad else '')
          or '全部 ≤缓冲线 且 索引完整'),
@@ -6255,17 +6414,27 @@ def cmd_signal_check(args):
 
     # --- 信号源6 文档-实现漂移 ---
     if only in (None, '6'):
-        doc = '/workspace/生态1016_生态指挥家技能设计.md'; bak = doc + '.probe'
-        shutil.copy(doc, bak)
-        try:
-            open(doc, 'a', encoding='utf-8').write('\n| `zzprobeghost` | 探针幽灵命令 |\n')
-            gaps = _sig_doc_gap()
-            hit = any('zzprobeghost' in d for _, d in gaps)
-        finally:
-            shutil.move(bak, doc)
-        # 清零判定：注入项消失即可（不因无关的真实漂移而误判探针失败）
-        clean = not any('zzprobeghost' in d for _, d in _sig_doc_gap())
-        results.append(('信号源6 文档-实现漂移', hit, clean))
+        doc = '/workspace/1022/生态1016_生态指挥家技能设计.md'
+        if not os.path.exists(doc):
+            # ★ S216 修：源文档被改名/删除后，shutil.copy 直接抛 FileNotFoundError，
+            #   **连带使整个 signal-check 崩溃**，把信号源22（双池落痕守护）一起拖死 →
+            #   留痕守护彻底失效，只能靠人工手动跑才发现（用户 2026-10-25 质问「不要总是手动」）。
+            #   单点源失效不该拖垮整轮探针：缺失则跳过该信号源并显式告警，
+            #   其余信号源（含信号源22）照常跑完。
+            print(f'  ⚠️ 信号源6 源文档缺失（{doc}），跳过探针——不计入捕获/清零')
+            print(f'      处置：更新该路径或换用现存设计文档；其余信号源照常运行')
+        else:
+            bak = doc + '.probe'
+            shutil.copy(doc, bak)
+            try:
+                open(doc, 'a', encoding='utf-8').write('\n| `zzprobeghost` | 探针幽灵命令 |\n')
+                gaps = _sig_doc_gap()
+                hit = any('zzprobeghost' in d for _, d in gaps)
+            finally:
+                shutil.move(bak, doc)
+            # 清零判定：注入项消失即可（不因无关的真实漂移而误判探针失败）
+            clean = not any('zzprobeghost' in d for _, d in _sig_doc_gap())
+            results.append(('信号源6 文档-实现漂移', hit, clean))
 
     # --- 信号源5 路由盲区 ---
     if only in (None, '5'):
@@ -6329,23 +6498,28 @@ def cmd_signal_check(args):
 
     # --- 信号源7 信号源自检 ---
     if only in (None, '7'):
-        doc = '/workspace/生态1016_生态指挥家技能设计.md'; bak = doc + '.probe'
-        shutil.move(doc, bak)
-        try:
-            hit = any('信号源6' in d for _, d in _sig_health())
-        finally:
-            shutil.move(bak, doc)
-        # ★ S162 修：这里的 clean 判据原写作 `not _sig_health()`——但它**误读了自己**。
-        #   `_sig_health()` 的清单一致性审计会遍历**整个注册表**（含 43），任何一条
-        #   自检项缺失都会让它返回非空。于是「探针7 清理后清零」变成一条**随生态状态漂移**的
-        #   判据：只要注册表比 `checks` 清单多一个源，它就永远为「否」——与探针7 本身
-        #   （注入文档缺失、看能否报出信号源6）毫无关系。
-        #   这正是本生态反复栽过的那个坑：**清零判据不许拿生态状态冒充检测器逻辑**。
-        #   改成只看「我注入的那处脏有没有被清掉」：文档回来了、且不再报信号源6 缺失。
-        _h7 = _sig_health()
-        clean = ((not any('信号源6' in d for _, d in _h7)) if _h7 is not None
-                 else False)
-        results.append(('信号源7 信号源自检', hit, clean))
+        doc = '/workspace/1022/生态1016_生态指挥家技能设计.md'
+        if not os.path.exists(doc):
+            # ★ S216 同信号源6：源文档缺失则跳过，不拖垮整轮探针。
+            print(f'  ⚠️ 信号源7 源文档缺失（{doc}），跳过探针——不计入捕获/清零')
+        else:
+            bak = doc + '.probe'
+            shutil.move(doc, bak)
+            try:
+                hit = any('信号源6' in d for _, d in _sig_health())
+            finally:
+                shutil.move(bak, doc)
+            # ★ S162 修：这里的 clean 判据原写作 `not _sig_health()`——但它**误读了自己**。
+            #   `_sig_health()` 的清单一致性审计会遍历**整个注册表**（含 43），任何一条
+            #   自检项缺失都会让它返回非空。于是「探针7 清理后清零」变成一条**随生态状态漂移**的
+            #   判据：只要注册表比 `checks` 清单多一个源，它就永远为「否」——与探针7 本身
+            #   （注入文档缺失、看能否报出信号源6）毫无关系。
+            #   这正是本生态反复栽过的那个坑：**清零判据不许拿生态状态冒充检测器逻辑**。
+            #   改成只看「我注入的那处脏有没有被清掉」：文档回来了、且不再报信号源6 缺失。
+            _h7 = _sig_health()
+            clean = ((not any('信号源6' in d for _, d in _h7)) if _h7 is not None
+                     else False)
+            results.append(('信号源7 信号源自检', hit, clean))
 
     # --- 信号源8 verify 判据解析器（S061）---
     if only in (None, '8'):
@@ -7615,7 +7789,7 @@ def cmd_audit_growth(rest):
         orph = [r['id'] for r in rs if r.get('status') == 'orphan']
         print(f'\n【① 规则面】总数 {len(rs)} ｜ 孤岛 {len(orph)} ｜ 去重候选 {len(dups)}')
         print('   章节分布：' + ' ｜ '.join(f'{k.replace("§","")}:{v}' for k, v in ch.most_common()))
-        mp = '/workspace/生态1015_TVBox生态全局规则.md'
+        mp = '/root/.codebuddy/skills/ecosys-conductor/references/rules_铁律坐标明细.md'
         if os.path.exists(mp):
             sz = os.path.getsize(mp)
             tag = ' ⚠️ 超硬上限' if sz > hard else (' ⚠️ 超缓冲线' if sz > buf else ' ✅')
@@ -8684,6 +8858,18 @@ def cmd_onboard(rest):
     elif not any('manifest' in t for t in todo):
         todo.append(f'⑤ manifest 缺命令意图——信号源5 会报「路由半盲」（话术可路由但命令不可达）')
 
+    # ⑤b 职责一句话（S196 新增面·M-R38 单一真源）：ROUTE_ONELINE 缺行 → ask 显「未登记职责」、
+    #    lanes 分工地图缺行。过去 automation-task-manager/learn-hub 拖多期就是这么漏的。
+    #    缺行时**自动补占位行**（管什么/不管什么写「待补」），占位可在 lanes 里一眼认出，比漏行好。
+    if skill not in ROUTE_ONELINE:
+        if dry:
+            todo.append('⑤b ROUTE_ONELINE 缺职责行——将自动补占位（管/不管各待补），请随后润色')
+        else:
+            ROUTE_ONELINE[skill] = ('（onboard 占位·待补职责一句话）', '（待补）')
+            todo.append('⑤b ROUTE_ONELINE 已自动补占位行——请编辑 conductor.py ROUTE_ONELINE 润色措辞')
+    else:
+        done.append('⑤b 职责一句话（ROUTE_ONELINE 已登记）')
+
     # ⑥ 派生消费方（S136 新增面）：技能集是否都从 eco_skills.json 派生
     #    只检查「有没有第二个硬编码清单」这一件事，不试图自动改代码。
     hard = []
@@ -8784,6 +8970,33 @@ def _append_intents(skill, words):
 
 
 # ---------- S127：sync-version 工具化 M-R71（四面一键同步，漂移归零） ----------
+def _cmp_ver(a, b):
+    """比版本号 a<b 返回 -1，相等 0，a>b 返回 1。只比前三段数字，预发布后缀忽略。
+
+    单独抽成函数是为了能被探针直接测（M-R38 单一事实源 + M-R126 不改真库就能验）。
+    """
+    def _n(v):
+        out = []
+        for seg in str(v).split('-')[0].split('.'):
+            try:
+                out.append(int(seg))
+            except ValueError:
+                out.append(0)
+        while len(out) < 3:
+            out.append(0)
+        return tuple(out[:3])
+    x, y = _n(a), _n(b)
+    return (x > y) - (x < y)
+
+
+# P033：生态台账里 ecosys-conductor 这一行的 record_id。
+# 提到模块级、可被环境变量覆盖——换库/重建只改此处，不再散落函数体内。
+# ⚠️ 已知残余风险：台账读取接口只返回 CSV（无 record_id 列），无法在运行时校验
+#    「这个 id 是不是真指向本技能那一行」。故写前加「技能名恰好命中 1 行」的实名核验兜底，
+#    但 id 本身仍靠此常量维护。详见 P033 结案。
+ECO_RECORD_ID = 'x46zdZ0I8vynJjJ9YIFOIE'
+
+
 def cmd_sync_version(rest):
     """sync-version <新版本>：一键同步版本四面（SKILL.md frontmatter + flow.json + CHANGELOG 校验 + DB_ECO 台账）。
     M-R71 工具化：改一处=同步所有契约面，用工具代替记忆。CHANGELOG 缺该版本条目则拒升（防升版不留痕）。"""
@@ -8806,6 +9019,23 @@ def cmd_sync_version(rest):
     # ① SKILL.md
     p = os.path.join(root, 'SKILL.md')
     s = open(p, encoding='utf-8').read()
+    # ★ P059（T32 事故）：**降版必须显式授权**。
+    # 事故现场：本条命令用真实技能做验证，误跑 `sync-version 1.50.0`，
+    # 把 ecosys-conductor 从 1.79.9 直接写成 1.50.0，全程**零阻拦**——
+    # 格式校验（上面那条 S148 修的）只管"像不像版本号"，不管"该不该往低走"。
+    # 判据：目标是合法版本号 ≠ 目标是当前版本的升级。
+    # 代价权衡：正常升级路径不会被这条挡住；误敲/复制错参数会被当场拦下。
+    if '--allow-downgrade' not in (rest if isinstance(rest, list) else (rest or '').split()):
+        _cur = None
+        _m0 = re.search(r'^version:\s*["\']?([\d.]+)', s, re.M)
+        if _m0:
+            _cur = _m0.group(1)
+        if _cur and _cmp_ver(ver, _cur) < 0:
+            print(f'❌ 拒绝降版：当前 {_cur} → 目标 {ver}（比现值低）')
+            print('   版本号只升不降。确需回退，先想清楚为什么——'
+                  '回归基线要动 CHANGELOG 与台账三处，不是改个数字。')
+            print('   真要做请显式加：sync-version <版本> --allow-downgrade')
+            return
     s2 = _re.sub(r'version: "[^"]+"', f'version: "{ver}"', s, count=1)
     if s2 == s:
         # **S148 修：frontmatter 有两种写法** —— `version: "1.62.0"` 与 `version: 1.62.0`。
@@ -8847,7 +9077,37 @@ def cmd_sync_version(rest):
     #   results[].success=false。于是这条通路长期显示 "DB_ECO ✓"，实际一条没写进去：
     #   实测 `ecosys-conductor` 这行的「末次升级」字段至今为空。
     #   这就是 M-R77 那句「success 不等于落库」在台账上的现场——**报告成功 ≠ 真的改了**。
-    rid = 'x46zdZ0I8vynJjJ9YIFOIE'
+    # ---------- P033 修复：record_id 硬编码 → 改为「可配置 + 写前实名核验」----------
+    # 缺陷：原 `rid = 'x46zdZ0I8vynJjJ9YIFOIE'` 写死，而回读按「技能名==ecosys-conductor」找行。
+    # 两锚点不同源：行一旦被删重建/换库，写入会落到**别的记录**上，而回读仍去查本技能那行、
+    # 发现没变 → 报「写入未确认」——实际已把别人的版本号改掉。比失败更坏。
+    #
+    # ★ 实测得知的硬约束（T32 取证）：`get_database_content.py` 只返回 CSV 文本，
+    #   列里**没有 record_id**。所以「运行时按名解析 record_id」这条路**不存在**，
+    #   不能假装能做到。改为两条都做：
+    #   ① record_id 提到模块级常量 ECO_RECORD_ID（可被环境变量 TVBOX_ECO_RECORD_ID 覆盖），
+    #      不再散落在函数体内——换库时只改一处；
+    #   ② **写前实名核验**：先确认台账里「技能名==ecosys-conductor」那一行确实存在且唯一，
+    #      否则拒写。这挡不住「id 指向别人」这一种错，但挡住了「行不存在还硬写」和
+    #      「同名多行不知写谁」两类。剩余风险如实登记（见 P033 结案说明），不谎报已根除。
+    _SK_NAME = 'ecosys-conductor'
+    _DB = 'T4kODtANe7rSrtZTu4sIND'
+    rid = os.environ.get('TVBOX_ECO_RECORD_ID') or ECO_RECORD_ID
+    try:
+        import json as _j3
+        _qq = _sp.run([sys.executable, '/root/.codebuddy/skills/library/database/get_database_content.py',
+                       '--database-id', _DB], capture_output=True, text=True)
+        _rows0 = list(csv.DictReader(io.StringIO(_j3.loads(_qq.stdout)['content'])))
+        _hits = [x for x in _rows0 if (x.get('技能名') or '').strip() == _SK_NAME]
+        if len(_hits) != 1:
+            print(f'❌ 生态台账里「{_SK_NAME}」命中 {len(_hits)} 行（应恰好 1 行）——拒绝写入')
+            return
+    except Exception as _e:
+        print(f'❌ 写前实名核验失败（{type(_e).__name__}: {str(_e)[:60]}）——无法判定，拒绝写入')
+        return
+    if not rid:
+        print('❌ 目标 record_id 为空——拒绝写入')
+        return
     _now = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
     rec = json.dumps([{'record_id': rid, 'properties': {
         'version': {'text': ver},
@@ -8861,9 +9121,11 @@ def cmd_sync_version(rest):
         _q = _sp.run([sys.executable, '/root/.codebuddy/skills/library/database/get_database_content.py',
                       '--database-id', 'T4kODtANe7rSrtZTu4sIND'], capture_output=True, text=True)
         _rows = list(csv.DictReader(io.StringIO(_j2.loads(_q.stdout)['content'])))
-        _me = next((x for x in _rows if (x.get('技能名') or '') == 'ecosys-conductor'), None)
+        # 回读锚点：仍按技能名（台账读取接口不返回 record_id，无 id 可核）。
+        # 写前已核验「恰好 1 行」，故此处按名找是唯一的，不会命中别人。
+        _me = next((x for x in _rows if (x.get('技能名') or '').strip() == _SK_NAME), None)
         if _me is None:
-            _back_why = '回读：表里找不到 ecosys-conductor 这一行'
+            _back_why = f'回读：按技能名 {_SK_NAME} 找不到该行'
         else:
             _back_v, _back_t = (_me.get('version') or ''), (_me.get('末次升级') or '')
             _back_ok = (_back_v == ver and bool(_back_t))
@@ -9146,6 +9408,10 @@ DISPATCH = {'plan': cmd_plan, 'sprint': cmd_sprint, 'speed': cmd_speed,
             'rules-probe': cmd_rules_probe,   # ★ S176：真正执行 probe.command（此前从不执行）
             'next': cmd_next, 'recap': cmd_recap, 'audit-growth': cmd_audit_growth, 'audit-compliance': cmd_audit_compliance, 'waste': cmd_waste, 'backup': cmd_backup, 'restore': cmd_restore, 'linkmap': cmd_linkmap, 'issues': cmd_issues, 'sync-version': cmd_sync_version, 'eco-sync': cmd_eco_sync, 'drift-fix': cmd_drift_fix, 'onboard': cmd_onboard, 'size': cmd_size, 'gate': cmd_gate,
             'field': cmd_field,   # S157：第三方口语集度量（只读，不进任何判据）
+            'threads': lambda rest: __import__('subprocess').run(   # ★ M-R140 任务线看板（S196）：薄转发 threads.py，不复制实现（M-R38）
+                [__import__('sys').executable,
+                 os.path.join(os.path.dirname(os.path.abspath(__file__)), 'threads.py')]
+                + list(rest)).returncode,
             'registry': cmd_registry}   # S177 步6：五方对照表（技能↔规则↔信号源↔监测项↔命令）
 
 

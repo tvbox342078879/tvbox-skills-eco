@@ -12,7 +12,7 @@
       "流程雏形": "scripts/flow.json（入库11步）",
       "技能规则": "SKILL.md §8.10 端到端十步 / §8.14 对比分析套路 / 规则45-53"
     },
-    "render_target": "/workspace/标准1015_做JSON标准流程SOP.md",
+    "render_target": "/root/.codebuddy/skills/tvbox-source-hub/docs/外置_做JSON标准流程SOP.md",
     "growth_protocol": {
       "trigger": "每次做JSON任务复盘闭环时（规则52四动作之'记'）必须执行一次同步",
       "command": "python3 scripts/sync_sop.py add-case --file case.json（或交互录入）",

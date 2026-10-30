@@ -17,16 +17,19 @@ v2 策略：
   5. 混淆识别：有 charMap/分支加密且无 URL 字面量 → 无法判定（需端测）。
 """
 import json
+import os
 import re
 import subprocess
 import sys
-from urllib.parse import urlparse
 
 BASE = 'https://clun.top'
 UA = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
       '(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36')
-ORIG = '/workspace/原仓库库/cluntop_box原文_1018.json'
-OUT = '/root/.codebuddy/artifact/2f8a7d30-9c21-4f0b-1d49-6b5af3d3c000/sweep_v2.json'
+sys.path.insert(0, '/root/.codebuddy/skills/tvbox-source-hub/scripts')
+from core import ORIG_DIR, http_get  # noqa: E402  # 共享核心(B3)：原仓库目录，env TVBOX_ORIG_DIR 可覆写
+ORIG = '%s/cluntop_box原文_1018.json' % ORIG_DIR
+HERE_CP = os.path.dirname(os.path.abspath(__file__))
+OUT = os.path.join(HERE_CP, 'sweep_v2.json')  # 不再绑定会话 artifact 路径
 
 sys.path.insert(0, '/root/.codebuddy/skills/probe-hub/scripts')
 import livecheck  # noqa: E402
@@ -70,13 +73,8 @@ _cache = {}
 def fetch(url, timeout=15):
     if url in _cache:
         return _cache[url]
-    cmd = ['curl', '-s', '-L', '--compressed', '--max-time', str(timeout),
-           '-A', UA, url]
-    try:
-        p = subprocess.run(cmd, capture_output=True, timeout=timeout + 3)
-        body = p.stdout.decode('utf-8', 'replace')
-    except Exception:
-        body = ''
+    st, payload, _ = http_get(url, timeout=timeout, ua=UA, as_text=True)
+    body = payload if (st == 'ok' and payload) else ''
     _cache[url] = body
     return body
 
@@ -278,6 +276,9 @@ def probe_site(s):
 
 
 def main():
+    if not os.path.exists(ORIG):
+        print('⚠️ 原仓库文件缺失：%s（设置环境变量 TVBOX_ORIG_DIR 指向真实原仓库目录后重试）' % ORIG)
+        return
     d = json.load(open(ORIG, encoding='utf-8'))
     sites = d.get('sites', [])
     rows = []

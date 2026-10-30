@@ -78,7 +78,13 @@ def cmd_close(rest):
     r = dispatch_mod.sync(items)
     today = datetime.date.today().isoformat()
     print(f"\n  ── 落账 ── 新增 {len(r['added'])}｜存续 {len(r['kept'])}"
-          f"｜消失未收口 {len(r['vanished'])}")
+          f"｜消失未收口 {len(r['vanished'])}"
+          + (f"｜复发重开 {len(r['reopened'])}" if r.get('reopened') else ''))
+    if r.get('reopened'):
+        # 复发的要单独说清楚：它是"已收口过、这一期又红了"，
+        # 不是新人新账——否则读者会以为账目在涨，实际是同一件事又犯了。
+        print(f"  🔁 复发重开 {len(r['reopened'])} 条（上期已收口、本期又观测到同一项）：")
+        print(f"     {'、'.join(r['reopened'][:6])}")
     if r.get('dispatched'):
         print(f"  📮 已派单送达 {len(r['dispatched'])} 条（写入各 owner 的 flow.backlog，"
               f"它们下次跑自己的命令可见）")
@@ -157,6 +163,34 @@ def cmd_status(rest):
     its = db.get('items', [])
     closed = db.get('closed', [])
     today = datetime.date.today().isoformat()
+
+    # ★ S184（A4 实测撞上）：**同一件事在账上出现了两条**。
+    #   实测 `close status` 里 `ab850bd526ec` 连出两行，title 只差一个 `[清账司派单…]` 前缀。
+    #   根因（不是显示问题）：
+    #     · signature 里带了**期次 ts**（S184 为修"close 过就永不再报"而有意加的）；
+    #     · sid 取 signature 的前 12 位；
+    #     · 于是**同一件事、不同期** → signature 不同（该保留，是不同的报告期）
+    #       → 但 sid **前缀相同**（条目文本前半段一模一样）。
+    #   两条都对，账上确实该有两期记录；但**按人看的总览**里它必须是一件事，
+    #   否则用户会以为欠了两笔，去 close 一次只清掉一条，另一条第二天又冒出来。
+    #
+    #   口径：**总览按 sid 折叠，取最新一期**（last_seen 最大者）；条目数按折叠后算。
+    #   为什么不干脆让 signature 不带 ts：那会让"close 过就永不再报"复活，
+    #   而"这件事本期还红着"正是红字派单要表达的东西（S184 已踩过一次）。
+    #   所以分歧点不在 signature，在**展示层的聚合**——两件事分开：账要细，看要合。
+    fold = {}
+    for it in its:
+        if it.get('status') in ('done', 'wontfix') and not show_all:
+            continue
+        k = it.get('sid') or it.get('signature') or id(it)
+        prev = fold.get(k)
+        if prev is None or str(it.get('last_seen') or '') >= str(prev.get('last_seen') or ''):
+            if prev is not None:
+                it = dict(it)
+                it['_dup'] = int(prev.get('_dup', 1)) + 1
+            fold[k] = it
+    its = list(fold.values())
+
     print(f"📋 未完成事项总账：{len(its)} 条未结｜{len(closed)} 条已结"
           f"（更新 {db.get('updated', '?')}）")
     if not its:
@@ -171,6 +205,10 @@ def cmd_status(rest):
         print(f'\n  ▸ {ow}（{len(lst)} 项）—— 反查：tvbox close mine {ow}')
         for it in lst:
             print(_fmt(it, today))
+            if it.get('_dup'):
+                # 同 sid 多期并存时明说，不藏起来：读者要知道"这是同一件事报了几期"，
+                # 而不是以为我在悄悄替他合并。
+                print(f"      （同一件事本期报 {it['_dup']} 期，此处只显示最新一期）")
             print(f"      下一步：{it.get('next', '?')}")
     if show_all and closed:
         print(f'\n  ── 已结 {len(closed)} 条 ──')
@@ -222,8 +260,14 @@ def _book_task_boundary(hit, status, ev):
             f"{hit.get('sid')} → {status}：{hit.get('title', '')[:50]}", '',
             0.0, ['close', status, str(hit.get('sid')), ev[:60]],
             note=f'清账司收口｜{ev[:80]}')
-        CB._bump('total')
-        CB._bump('ok' if status == 'done' else 'fail')
+        # ★ S185（M-R38 第十次·收尾）：原来这里还有两行
+        #     CB._bump('total')
+        #     CB._bump('ok' if status == 'done' else 'fail')
+        #   方案 B 之后 `_book` 内部已**一次写入三条腿**（跨界 + total + 四态），
+        #   再调 `_bump` 就是同一笔调用记两遍——而 `_bump` 已改为直接抛错，
+        #   于是 `close done` 每次都在这里异常：账没记错，但**任务界那条腿实际没写成**，
+        #   还打一行"入账未完成"。实测 2026-10-20 19:58 关 7777319b667e 时撞上。
+        #   这就是 M-R38 的老毛病：改了主体忘了调用方。
         print(f'   📒 已入任务界账 {vno}' if booked else f'   ⚠️ 入账失败：{msg}')
     except Exception as e:
         # 旁路失败必须说出来，不能静默——否则又变成"收了口却没人记账"
@@ -384,8 +428,10 @@ def cmd_mine(rest):
 def cmd_verify(rest):
     probs, warns = dispatch_mod.verify_ledger()
     db = dispatch_mod._load_ledger()
-    n = len(db.get('items', []))
-    print(f'🧪 欠账单自检：{n} 条未结')
+    _its = db.get('items', [])
+    # S215 口径修正：标题应报「未结」条数而非总条数（旧写法 len(items) 把已结也算进「未结」）
+    n = sum(1 for x in _its if x.get('status') == 'open')
+    print(f'🧪 欠账单自检：{n} 条未结（总 {_its.__len__()}）')
     for p in probs:
         print(f'  ❌ {p}')
     _dup = [w for w in warns if w.startswith('疑似重复')]
@@ -403,6 +449,82 @@ def cmd_verify(rest):
         if _dup:
             _parts.append(f'{len(_dup)} 项疑似重复')
         print(f'  ✅ 无硬问题（{"、".join(_parts)}仅告警）')
+
+    # ★ C008（S185 落地）：判据同源互比回归自测。
+    #   为什么挂在 verify 里而不是单独一条命令：这条缺陷的复发方式是
+    #   "改判据时顺手写回恒真版本"，只有**每次收尾都跑**才发现得了；
+    #   单独立一条命令，人不会记得敲（与 janitor 的 DEFAULT_DEDUP 同一个道理）。
+    #   失败只告警不判红：它是"判据写法"问题，不是"账本数据"问题，
+    #   混进 probs 会让"账本有硬伤"和"某个工具写坏了"分不开。
+    # ★ 注意：import 必须在 if 之外——原来写在 if 里面，导致下面 C007 那段
+    #   在文件缺失时抛 NameError 被 except 吞掉，静默不报（S185 实测踩到）。
+    import os as _os, subprocess as _sp, sys as _sys
+    _sc = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), 'judge_selfcheck.py')
+    if _os.path.exists(_sc):
+        try:
+            _r = _sp.run([_sys.executable, _sc], capture_output=True, text=True, timeout=30)
+            _last = [l for l in (_r.stdout or '').strip().split('\n') if l.strip()]
+            _msg = _last[-1] if _last else '(无输出)'
+            if _r.returncode == 0:
+                print(f'  ✅ 判据自测：{_msg}')
+            else:
+                print(f'  ⚠️ 判据自测未过：{_msg}')
+                print('     → 见 scripts/judge_selfcheck.py（判据两侧不得同源互比）')
+        except Exception as _e:
+            print(f'  ⚠️ 判据自测未跑起来（{type(_e).__name__}）——不当作通过')
+
+    # ★ C007（S185 落地）：会话编号双体系体检。
+    #   为什么要挂这里：编号是**欠账台账自己的**主键，双体系是台账内部的
+    #   可追溯性缺陷，跟"账本有没有硬伤"同属数据层，应该跟 verify 一起看。
+    #   同样只告警不判红：CHANGELOG 里的历史别名（14 个号无台帐实体）
+    #   是既成事实，不回溯改号，不能因此让 verify 变红。
+    _sm = _os.path.join(_os.path.dirname(_os.path.dirname(_os.path.dirname(
+        _os.path.abspath(__file__)))), 'ecosys-conductor', 'scripts', 'session_map.py')
+    if _os.path.exists(_sm):
+        try:
+            _r2 = _sp.run([_sys.executable, _sm, 'check'], capture_output=True, text=True, timeout=30)
+            _o2 = _r2.stdout or ''
+            # ★ 判据不能用 returncode（S185 反证①实测：注入 SystemExit(3) 后
+            #   verify 仍报绿）。原因：子进程挂在模块级，退出码在多层包装下
+            #   不可靠。改用**结构判据**——输出里必须能解析出权威条数，
+            #   否则说明 check 根本没跑到体检逻辑，一律按"没跑成"处理。
+            _m_auth = re.search(r'权威（台账字段）:\s*S\d+[–-]S(\d+)，共\s*(\d+)\s*条', _o2)
+            _m_orph = re.search(r'仅存在于 CHANGELOG:\s*(\d+)\s*个', _o2)
+            if not _m_auth:
+                print('  ⚠️ 会话编号体检没跑成（check 输出里找不到权威条数）——不当作通过')
+            else:
+                _n_auth, _n_orphan = int(_m_auth.group(2)), int(_m_orph.group(1)) if _m_orph else 0
+                if _r2.returncode != 0:
+                    print(f'  ⚠️ 会话编号体检报异常（exit {_r2.returncode}），已解析权威 {_n_auth} 条 → 仍需人工看')
+                else:
+                    print(f'  ✅ 会话编号：权威=台账字段（{_n_auth} 条），别名映射就绪（{_n_orphan} 个 CHANGELOG 号无台账实体，按别名保留）')
+        except Exception as _e:
+            print(f'  ⚠️ 会话编号体检没跑起来（{type(_e).__name__}: {_e}）——不当作通过')
+    else:
+        # ★ 静默跳过是这类"接线"改动的头号死法（S185 连踩两次），
+        #   找不到文件必须显式说出来，否则人会以为它跑了。
+        print(f'  ⚠️ 会话编号体检未接线：找不到 session_map.py（{_sm}）')
+
+    # ★ e5b57fad599f（S185 落地）：分诊回归台。
+    #   为什么不叫"误派率统计"：实测 54 条已结欠账里 51 条的证据正文不写文件路径，
+    #   抽不出"实际由谁处理"，按那个口径算出来的分母是假的——见 triage_regress.py 抬头。
+    #   改成把真实派错事故（S181/S182/S184）固化成用例，每次收尾验它们有没有回潮。
+    _tr = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), 'triage_regress.py')
+    if _os.path.exists(_tr):
+        try:
+            _r3 = _sp.run([_sys.executable, _tr], capture_output=True, text=True, timeout=30)
+            _l3 = [l for l in (_r3.stdout or '').strip().split('\n') if l.strip()]
+            _last3 = _l3[-1] if _l3 else '(无输出)'
+            if _r3.returncode == 0:
+                print(f'  ✅ {_last3}')
+            else:
+                print(f'  ⚠️ {_last3}')
+                for _l in _l3[:-1]:
+                    print(f'     {_l.strip()}')
+        except Exception as _e:
+            print(f'  ⚠️ 分诊回归没跑起来（{type(_e).__name__}: {_e}）——不当作通过')
+    else:
+        print(f'  ⚠️ 分诊回归未接线：找不到 triage_regress.py（{_tr}）')
     return 0 if not probs else 1
 
 
@@ -446,6 +568,35 @@ def cmd_report(rest):
     return 0
 
 
+def _link_promise_to_ledger(pid, evidence):
+    """承诺收口时，连带收口**由它派生**的欠账条目。返回被收口的 sid 列表。
+
+    关联依据（不是猜的，是 as_items() 写进去的）：
+      promises.as_items() 把 pid 拼进 evidence——
+      「/…/session_promises.json C006 承诺于 2026-10-19」。
+    所以按 pid 反查 evidence 就能定位。这里额外要求 evidence 含
+    'session_promises'，避免误伤"正文里恰好出现 C006 字样"的无关条目。
+
+    为什么逐个调 close_item 而不是批量改 db：
+      close_item 内含「已结区幂等」「回调 owner backlog 副本」等副作用（S156/S136），
+      自己改 db 会把这些全绕过去——收口了总账，别处还挂着副本。
+    """
+    import re as _re
+    pat = _re.compile(r'\b' + _re.escape(pid) + r'\b')
+    db = dispatch_mod._load_ledger()
+    targets = [it.get('sid') for it in db.get('items', [])
+               if 'session_promises' in (it.get('evidence') or '')
+               and pat.search(it.get('evidence') or '')]
+    done = []
+    for sid in targets:
+        try:
+            dispatch_mod.close_item(sid, f'{evidence}（随承诺 {pid} 收口联动）')
+            done.append(sid)
+        except RuntimeError as e:
+            print(f'   ⚠️ 联动收口 {sid} 失败：{e}')
+    return done
+
+
 def cmd_promise(rest):
     """登记会话承诺：tvbox close promise "<承诺>" [--due YYYY-MM-DD]"""
     import promises as pm
@@ -460,11 +611,24 @@ def cmd_promise(rest):
     if rest[0] == 'done':
         if len(rest) < 3:
             print('用法: tvbox close promise done <Cxxx> <证据>'); return 1
+        _pid, _ev = rest[1], ' '.join(rest[2:])
         try:
-            h = pm.close(rest[1], ' '.join(rest[2:]))
+            h = pm.close(_pid, _ev)
         except RuntimeError as e:
             print(f'❌ {e}'); return 1
         print(f"✅ 承诺 {h['id']} 已收口：{h['text'][:60]}")
+        # ★ S193（承诺↔欠账联动）：**收了承诺不等于收了欠账**。
+        #   实测：收 S163 token 欠账时，`promise done C006` 打印已收口、
+        #   `promise list` 从 4 条降到 3 条，但 `close mine probe-hub` 仍挂着 1 条——
+        #   因为 promises.close() 只改 session_promises.json，从不碰总账。
+        #   两本账各收各的，于是"答应过并已做完的事"要手工收两次，
+        #   漏一次就永远红着，而它明明做完了——这正是"账要能清"的反面（M-R82）。
+        #   证据仍然是真实的那一份（承诺收口证据），不违反"不许空口收口"。
+        _linked = _link_promise_to_ledger(_pid, _ev)
+        if _linked:
+            print(f'   ↳ 联动收口关联欠账 {len(_linked)} 条：{"、".join(_linked)}')
+        else:
+            print('   ↳ 无关联欠账条目需联动（该承诺未派生欠账，或那条已收口）')
         return 0
     text = ' '.join(x for x in rest if not x.startswith('--'))
     due = None

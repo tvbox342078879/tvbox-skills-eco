@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional
 
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from core.utils import sanitize_filename, ensure_dir, get_logger, resolve_state_dir
+from core.utils import sanitize_filename, get_logger, resolve_state_dir
 
 
 logger = get_logger("obsidian-exporter")

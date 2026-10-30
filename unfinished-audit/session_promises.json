@@ -55,30 +55,30 @@
    "text": "S163-GitHub-token：用户配 GitHub token（教程已给：github.com/settings/tokens → Generate new token (classic) → Note 填 tvbox → Expiration 选 No expiration → 勾 repo → Generate → 复制 ghp_ 串）。token 到手后立即：①tvbox probe token --set <串> ②monitor check --all 把 6 仓库查成终态（重点 IPTV2/TVBox_live 被限流 2 个）③建立目录树基线供下次变更对比。匿名配额 08:32 已重置，等待期间不影响。",
    "owner": "ecosys-conductor",
    "due": "2026-10-22",
-   "status": "open",
+   "status": "done",
    "opened": "2026-10-19",
-   "closed": "",
-   "evidence": ""
+   "closed": "2026-10-21",
+   "evidence": "证据：①token 文件 .gh_token 已配置（probe token 实测报「已配置 ghp_****n8s7」）；②实时配额 5000/h、剩余 4988，未鉴权时仅 60/h；③实际生效验证——2026-10-21 probe monitor status 6 个上游目标全部经 GitHub API 成功取数，存活依据均显示「API元信息」。S163 目标达成，非空洞口收口。"
   },
   {
    "id": "C007",
    "text": "会话编号两套体系需要统一：台账按序号自增（本轮 S113）、CHANGELOG 按会话顺序自报（本轮 S163），两者长期偏移且无固定差值（实测 S099→S113、S110→S158、S111→S111），导致同一轮工作在两处编号不同、靠 grep 首词反查历史会拿错号。建议：以台账「会话编号」字段为唯一权威，CHANGELOG 标题改用台账号，或加一列显式映射。",
    "owner": "ecosys-conductor",
    "due": "2026-10-22",
-   "status": "open",
+   "status": "done",
    "opened": "2026-10-19",
-   "closed": "",
-   "evidence": ""
+   "closed": "2026-10-25",
+   "evidence": "unfinished_cli.py 会话编号体检（权威=台账字段 197 条、别名保留 0 孤儿）；实测 2026-10-25 verify ✅"
   },
   {
    "id": "C008",
    "text": "P2：把'判据里不能有两个同侧变量'做成可查的校验——本轮三版判据全挂，根因都是拿 账本自身字段 互比（who vs it.owner 恒真、剥扩展名裸词误伤）。应在 audit 里加一条扫描：判据函数内若两侧变量同源（都来自被检对象），报警",
    "owner": "ecosys-conductor",
    "due": "2026-10-22",
-   "status": "open",
+   "status": "done",
    "opened": "2026-10-19",
-   "closed": "",
-   "evidence": ""
+   "closed": "2026-10-25",
+   "evidence": "judge_selfcheck.py 判据自测校验器；实测 2026-10-25 verify 4/4 全过 ✅"
   },
   {
    "id": "C009",
@@ -89,6 +89,16 @@
    "opened": "2026-10-20",
    "closed": "2026-10-20",
    "evidence": "habit_brief.py第0节STATIC_DELIVERY + cmd_check体检项 + references/交付报告_七段模板.md + rules_registry M-R128(141条三方一致) + rule_probe.py m_r128()五项全过含注入判红；提交1665090/fe9d11a"
+  },
+  {
+   "id": "C010",
+   "text": "M-R110语言铁律第5次复发（用户2026-10-25抓到思考流英文）：已修habit_inject.py置顶强条（每轮UserPromptSubmit重砸+回合中段自检句）。如实交代边界：思考流生成不经过任何工具边界，GATE拦不住，只能注入层反复砸+模型自检；若再犯→升级方案=把语言违规纳入每轮体检探针+考虑S192式真实语料验证。open直至连续多轮无复发",
+   "owner": "ecosys-conductor",
+   "due": "2026-10-28",
+   "status": "open",
+   "opened": "2026-10-25",
+   "closed": "",
+   "evidence": ""
   }
  ]
 }

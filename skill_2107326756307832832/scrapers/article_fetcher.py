@@ -1,6 +1,5 @@
 """Fetch full article content from WeChat article URLs."""
 
-import re
 import time
 import random
 from typing import Any, Dict, List, Optional
@@ -14,14 +13,7 @@ except ImportError:
 
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from core.utils import (
-    RateLimiter, get_logger, USER_AGENTS,
-    is_wechat_url, is_wechat_article_link, article_id_from_url,
-    is_sogou_link_url, resolve_sogou_redirect,
-    sanitize_filename, save_json, merge_article, parse_pub_date, detect_blocked,
-    file_size_str,
-    DEFAULT_DATA_DIR, resolve_state_dir,
-)
+from core.utils import RateLimiter, get_logger, USER_AGENTS, is_wechat_url, is_wechat_article_link, article_id_from_url, is_sogou_link_url, resolve_sogou_redirect, save_json, merge_article, parse_pub_date, detect_blocked, file_size_str, resolve_state_dir
 from core.article_parser import parse_article_html, extract_article_meta_from_html
 from core.dedup import Deduplicator
 

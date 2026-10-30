@@ -15,10 +15,10 @@
 用法: python3 probe_src.py [--limit N] [--out /tmp/probe_result.json] [--write]
   --write  测活后**回写源库状态列**（终态化，P011）；不带则只出本地报告
 """
-import os,sys,json,argparse,subprocess,csv,io,time
+import os, sys, json, argparse, subprocess, time
 from collections import Counter
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from core import rows_of_t, src_rows_t, SRC_DBS   # S083·M-R38 单一事实源：复用 core 三态读表
+from core import src_rows_t, SRC_DBS
 
 # ---------- M-R114 统一并发入口（S110） ----------
 # 本文件原先就地写死 max_workers=N，数字无依据。改为按档位表取上限。

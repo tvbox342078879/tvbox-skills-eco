@@ -55,7 +55,7 @@
 | M-R108 | ①用户重复≥3次明确要求立即登记为持久指令(本地 user_standing_instructions.json + 云端③台账双写) ②会话开工首步核对持久指令清单并主动声明已生效 ③skill-evolution 聚类捕获偏好+ecosys-conductor 规则册与开工门禁 ④**会话开工首步主动触发生态联动**：跑 `tvbox brief`(四极联动速览)且命中技能触发词必调 Skill 工具(治 S148『Skill 仅3次/全0触发』双向盲区) | 总册七之三、用户偏好固化纪律·S109固化·S156补强 |
 | M-R109 | 用户用简短代号（数字 1/2…、字母 a/b…、复合 1.2/a.b）回应时，代号默认指代 agent 最近一次回复中推荐的选项，直接映射执行不澄清（例外：代号歧义或选项会导致不可逆/破坏性操作时须先确认）| 总册§九、用户面铁律·S118固化·落地 probe-hub SKILL §2.2 |
 | M-R110 | 回复语言铁律：回复语言一律跟随用户消息语言（简体中文），覆盖所有模型/模式/会话阶段，切换模型（快速/Hy3/深度思考等）不得重置为英文；思维/播报/澄清同样中文 | 总册§九、用户面铁律·1018固化·落地 `references/user_habit_brief.md` §1 |
-| M-R112 | 模型联动闭环：①**习惯随身**——任何模型/新会话开场先读 `references/user_habit_brief.md`（`habit_brief.py show`）对齐语言/交互/风格，不要求用户重教；②**跨模型接力**——切换模型前生成交接摘要（`habit_brief.py handoff`）；③**任务路由**——日常执行→快速模型、复杂推理→重型模型，重型模型不得"繁复化"；④新模型接入须先加载习惯摘要 | 总册§三、联动与协作·1018固化·落地 `scripts/habit_brief.py` |
+| M-R112 | ~~模型联动闭环~~ **已于 T27（2026-10-22）退役**，被 M-R120 取代（③交接摘要并入 M-R120 开工门禁 / M-R144 闭环三关；①模型自动路由平台层无能力；②习惯随身由 M-R110 + habit_brief + onboard_guard 覆盖）。行为约定仍留在 `references/user_habit_brief.md` §5，但不再是独立规则 | 总册§三·T27退役（retracted_by=M-R120） |
 | M-R113 | 监测项与检查器语义须相符：功能/质量类风险（回退/失效/漂移/质量/性能/逻辑/错误/异常/回滚/退化/不一致/缺失/冲突）**严禁**挂命名类检查器（naming_compliance/pkg_naming/subtree_naming，只扫文件名）；确无自动检查器→挂 manual_track。代码级守卫在 `inspect_engine.register_monitor` | 总册§五、监测与检测·S158固化·落地 inspect_engine |
 | M-R23 | 中文模糊匹配（路由/搜索/对账/去重）一律用字符 bigram，禁用整词子串；重叠阈值 ≥2（路由）或 ≥3（对账）；单测必含「同义微差」用例 | 总册·S109固化 |
 | M-R24 | append-only 账本写入一律 merge 语义：查同 key 旧记录→按内容粒度判重→只追加；禁替换式去重；写完必回读验证历史条目仍在 | 总册·S109固化 |
@@ -86,3 +86,15 @@
 | M-R119 | 探针命令的**路径必须自定位**：相对路径（`python3 skill-x/scripts/y.py`）在 cwd 变化后从登记起就不可执行；同理缺 `tvbox` 前缀的裸命令（`conductor size`）、凭空写的命令（`probe self-check` → 实为 `tvbox probe self-check`）都属同一类「登记时看着对、执行时跑不通」（S176 实测：一次扫出 22 条，占已登记命令一半） | 总册·S176固化 |
 | M-R120 | **超 1 分钟的命令必须后台跑**（`run_in_background`），禁止前台阻塞；启动后立刻回报「跑什么/预计多久/我接着做什么」；后台输出必须落盘重定向（句柄会被清掉）；靠完成通知不轮询；长任务期间保持可对话（S176b 用户原话：「超过一分钟，必须后台跑，不然我都找不到人，并且我无法插入对话」） | 总册·S176b固化 |
 | M-R121 | **可对话须由执行层硬拦，不靠自觉**：`PreToolUse`+`Bash` 钩子（`~/.codebuddy/hooks/bg_guard.py`）命中重命令（verify/assess/无参signal-check/rules-probe/watchdog scan/inspect scan）且非后台即 `exit 2`；放行面=已带 run_in_background/&/nohup 或 timeout≤55；防误伤=只看每段管道首个可执行词，heredoc/grep/echo 里的关键词不算（S176b 立，探针 bg_guard_selftest.py 11/11） | 总册·S176b固化 |
+| M-R122 | **收后台结果必须非阻塞**：禁止 block=true 阻塞等待——「放后台」≠「可对话」，收结果也非阻塞，完成靠 task-notification（P044 轮固化） | bg_guard 判据含 block=true 拦截 |
+| M-R123 | **长命令禁止分号/&&/多行 heredoc 串联**：拆成多个单动作调用或转后台执行（gate 钩子实拦，本会话多次命中） | PreToolUse gate 钩子 |
+| M-R124 | **单一版本仓**：跟踪 skills 工作区的 git 仓只能有一个（正本 `skills/.git`），旧外置仓降级 bare 只读快照，出现第二个立即报红 | `regrade_gate.py` git_singleton 映射（T18 补登） |
+| M-R125 | **附件不计入子节点**：禁用子节点数推断备份/附件是否落地，判据=backup_state 或人工核对 | janitor census 判空走 backup_state（T18 补登） |
+| M-R126 | **自由文本入参不许被分词截断**：标题/摘要原样入库，选项先切出，入库后回读比对 | threads/台账写入侧回读校验（T18 补登） |
+| M-R131 | **会话编号只有一套权威**：权威 = 台账 `会话编号` 字段，CHANGELOG 标题里的 `（Sxxx）` 只是历史别名。写新条目标题前必须 lookup 确认，不许凭记忆自报号 | `session_map.py verify`（T36 补登） |
+| M-R132 | **数据统计先验翻页**：凡从云端库统计「总条数」，必须先证明翻页真的生效，否则不许报数。参数名错会被 argparse 静默忽略，同一页被累加多次而得出假总数 | 共守 library；写库侧分页三态读（T36 补登） |
+| M-R134 | **判据必须测它声称要测的东西**：门禁/检测器的判据不得使用与目标无因果关系的代理指标。判「这一轮发了几个调用」须数 transcript 的 messageId，不得用时间窗近似；判「说没说话」须读最后一条 assistant 文本，不得用间隔长短推断。凡判据只能靠猜，该门禁视为**未生效**，不算已落地 | `hooks/transcript_reader_selftest.py`（T36 补登） |
+| M-R135 | **自测必须跑真实样本**：用例不能由自己臆想的写法构成。S192 实证：`bg_guard` 旧自测 11/11 全绿，用例写成 `tvbox inspect scan`，而真实历史 53 次是 `python3 …/inspect.py scan`，一次没拦。**用例抄错 = 假绿，比没有测试更糟**。判据：正例须从 transcript/日志抄录原文；反例须覆盖「已收窄/已后台/局部化」三类放行路径 | `hooks/bg_guard_selftest.py`（T36 补登） |
+| M-R06 | **长任务（>10 秒）必须后台 + 落盘**，会话不许被单条命令堵死；「嘴上归类、手下单点」= 违规。判据：单条命令预计超 10 秒必带 `run_in_background`，输出重定向到文件 | `hooks/hooks_integrity.py`（与 R-BG03 同源·T36 补登） |
+| M-R07 | **前台禁止一切 sleep/等待**：后台任务等通知再读，轮询用瞬时调用；「等」本身也算长任务 | `bg_guard` 判据（与 R-BG03 同源·T36 补登） |
+| R-BG03 | **前台禁止一切 sleep/等待**：「等」这个动作本身也是长任务，它同样必须消失在会话里。本会话实证——`sleep` 循环轮询既占住会话又看不到进度，改为「完成通知 + 瞬时检查」 | `hooks/bg_guard.py`（T36 补登） |

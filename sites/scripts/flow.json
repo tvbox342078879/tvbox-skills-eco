@@ -6,5 +6,8 @@
   "发布产物必须做存在性回验：写入后重新读取该路径，读不到即报「发布未生效」",
   "lib.js 的导出面变更时同步跑 lib.test.js，测试不过不得发布",
   "package.json 的版本号与实际产物一致，不得只在文档里改版本"
+ ],
+ "backlog": [
+  "[清账司派单 2026-10-28] [M08] tvbox_sites_candidate.json ｜ sid=a57970ad0ca8 ｜ 下一步 tvbox conductor issues ／ 先看 sites 名下这条为何是红的，再决定修监测项还是修技能"
  ]
 }

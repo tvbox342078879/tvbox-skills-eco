@@ -140,7 +140,8 @@
  "backlog": [
   "[已清零 2026-10-15] interface 已建 scripts/flow.json（11 步机器可读流程）；候选清单格式契约已就位（hub scripts/contracts.json candidate-list）——S022 盘点第②③项清零",
   "[已清零 S092] 四类判据升为生态单一事实源：classify_site/classify_lives/classify_parses/classify_line 公开可复用（M-R38），供探源司 harvest 复用；_classify_site 保留别名，既有行为不变",
-  "[遗留 S110·正本] 采集缺包级字段：原作者包的 spider/jar 在抽取时被丢弃，导致 508 条 jar系 源无法溯源到 jar 下载地址。修复点在本技能抽取链路（补 spider/jar 字段落库）。收敛自 4 处影子：总账 becf9081fdbc / 5e79eeb5ba4f、probe-hub backlog[12][13]、legacy-watchdog backlog[20] ｜ sid=becf9081fdbc ｜ 下一步 补 tvbox-interface 抽取链路的 jar 字段"
+  "[遗留 S110·正本] 采集缺包级字段：原作者包的 spider/jar 在抽取时被丢弃，导致 508 条 jar系 源无法溯源到 jar 下载地址。修复点在本技能抽取链路（补 spider/jar 字段落库）。收敛自 4 处影子：总账 becf9081fdbc / 5e79eeb5ba4f、probe-hub backlog[12][13]、legacy-watchdog backlog[20] ｜ sid=becf9081fdbc ｜ 下一步 补 tvbox-interface 抽取链路的 jar 字段",
+  "[清账司派单 2026-11-01] [M19] tvbox-interface 平衡性 82.5｜最弱=进化停滞(29.93802425444678) ｜ sid=3f18187f9824 ｜ 下一步 tvbox conductor issues ／ 先看 tvbox-interface 名下这条为何是红的，再决定修监测项还是修技能"
  ],
  "sop_binding": {
   "authority": "本技能 SKILL.md §0-§10（SSOT）+ EXPERIENCE.log（逐单复盘）",

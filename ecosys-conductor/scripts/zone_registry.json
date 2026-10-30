@@ -2,7 +2,7 @@
   "name": "生态区域归属登记表（S158·缝治理）",
   "version": "1.0.0",
   "created": "2026-10-18",
-  "session": "S158",
+  "session": "S202",
   "authority": "ecosys-conductor/references/eco_layers.md",
   "why": "用户 S158 原话：「感觉生态有问题，还没真正联动起来，查，图中这个归谁管，我强调几遍依然没动作」。实测 507 个节点里 315 个（71%）没有任何技能认领——不是没人想动，是**从来没登记过谁负责**。本表把「谁管哪一块」从口头变成可查询的数据，成为 janitor.census 的归属判定依据。",
   "rule": "登记原则：只登记**确实会往里写东西**的技能。只是路过读一下的库不登记（登记=声称负责）。无主的区必须显式写 owner=null + plan，禁止留空装作已解决。",
@@ -99,9 +99,9 @@
       "top": "📁 安全·敏感信息库",
       "node_id": "KGfkuihXOte6sizZTxQCLZ",
       "nodes": 2,
-      "owner": null,
-      "plan": "待用户裁定",
-      "why": "内含 `功夫资源库`（drive）。敏感信息不该由业务技能自动处理，也不该无人看管。",
+      "owner": "library",
+      "plan": "S202",
+      "why": "S202 用户裁定（采纳建议「归 library 治理」）：敏感信息治理属资料库平台职责。原登记为 owner=null 待裁定，q34 只按 top 去重漏更新，本轮补上。",
       "first_action": "由用户裁定归属；建议至少标注「禁止 AI 自动移动」"
     },
     {
@@ -126,9 +126,9 @@
       "top": "🌐 公众号文章归档阅读器",
       "node_id": "CqS02Kqel0sEyMtAAxWdSb",
       "nodes": 1,
-      "owner": null,
-      "plan": "待用户裁定",
-      "why": "web 类节点，与本生态无关。",
+      "owner": "learn-hub",
+      "plan": "S202",
+      "why": "S202 用户裁定：阅读/归档类归学习工坊。原登记为 owner=null 待裁定，本轮补上。",
       "first_action": "由用户决定保留或投递"
     },
     {
@@ -155,6 +155,67 @@
         "复盘1017_",
         "A1015_"
       ]
+    },
+    {
+      "top": "📁 治理·元数据",
+      "node_id": "Zl3uzbq7lEO7heuWzLk8Vk",
+      "nodes": 1,
+      "owner": "ecosys-conductor",
+      "plan": "S196 指派",
+      "why": "治理决策/规则册/归属册类文档，指挥司地盘",
+      "first_action": "已登记，无需动作"
+    },
+    {
+      "top": "📁 账房司",
+      "node_id": "rjauPOlTogYHni2E6iwlCs",
+      "nodes": 1,
+      "owner": "eco-ledger",
+      "plan": "S196 指派",
+      "why": "账房科目表/总账类文档，账房司地盘",
+      "first_action": "已登记，无需动作"
+    },
+    {
+      "top": "📁 学习·Ai学习",
+      "node_id": "5PVSnAO9QWu8dgS8HLLetn",
+      "nodes": 3,
+      "owner": "learn-hub",
+      "plan": "S196 指派",
+      "why": "学习资料域，学习工坊责任田",
+      "first_action": "已登记，无需动作"
+    },
+    {
+      "top": "📁 安全·敏感信息库",
+      "node_id": "KGfkuihXOte6sizZTxQCLZ",
+      "nodes": 2,
+      "owner": "library",
+      "plan": "S202",
+      "why": "S202 用户裁定（采纳建议「归 library 治理」）：敏感信息治理属资料库平台职责。原登记为 owner=null 待裁定，q34 只按 top 去重漏更新，本轮补上。",
+      "first_action": "豁免留痕，不动"
+    },
+    {
+      "top": "🌐 公众号文章归档阅读器",
+      "node_id": "CqS02Kqel0sEyMtAAxWdSb",
+      "nodes": 1,
+      "owner": "learn-hub",
+      "plan": "S202",
+      "why": "S202 用户裁定：阅读/归档类归学习工坊。原登记为 owner=null 待裁定，本轮补上。",
+      "first_action": "豁免留痕，不动"
+    },
+    {
+      "top": "📁 学习·TVBox教程",
+      "node_id": "4uPZCJ0I1zaMdIoHqb2Z43",
+      "nodes": 3,
+      "owner": "learn-hub",
+      "plan": "S202",
+      "why": "S202 用户裁定（原话「按你说的归属归」）：学习类内容归学习工坊。此前为根层无主区（census 缝来源之一）。"
+    },
+    {
+      "top": "📁 学习·工具与方法",
+      "node_id": "QvDQSsY8DTOZgTNea7LrYh",
+      "nodes": 2,
+      "owner": "learn-hub",
+      "plan": "S202",
+      "why": "S202 用户裁定：学习类内容归学习工坊。此前为根层无主区。"
     }
   ],
   "verification": {
@@ -168,5 +229,5 @@
     ]
   },
   "model_note": "★ 归属模型两种挂法：①容器型 → 用 node_id，整棵子树归该技能；②根层级散落组 → 用 match_prefix，按标题前缀匹配根层级直接子节点。两种都在 census 的 load_territory 里统一消费，不许只在表里写好听的话。",
-  "updated": "2026-10-18"
+  "updated": "2026-10-21"
 }

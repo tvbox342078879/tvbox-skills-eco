@@ -125,7 +125,10 @@
   "[本期不处理·S176b] 语义校验需大模型推理层，与当前确定性判据架构不同，须单独立项 ｜ 原条目：[待办] gate 答案自洽目前只查『答案行有没有出处』，没有真正做『从原文能否推出答案』的语义校验——这是最难也最核心的一条，未实现前不许宣称做到了",
   "[本期不处理·S176b] 需外部教材版本源（课标/改版信息），暂无可用数据源 ｜ 原条目：[待办] watch refresh 未实现（教材改版/课标变动需外部版本源），已在命令里如实标注",
   "[本期不处理·S176b] 需接资料库（library）云端 API，涉及外部依赖与授权 ｜ 原条目：[待办] store 索引目前是本地 index.json，未上云（library）；跨设备共享待接入",
-  "[本期不处理·S176b] 跨技能端到端联调，需 exam-generator / knowledge-framework-builder 两边同时在线 ｜ 原条目：[待办] 与 exam-generator / knowledge-framework-builder 的编排尚未端到端联调"
+  "[本期不处理·S176b] 跨技能端到端联调，需 exam-generator / knowledge-framework-builder 两边同时在线 ｜ 原条目：[待办] 与 exam-generator / knowledge-framework-builder 的编排尚未端到端联调",
+  "[已清零 2026-10-20 S184：招式对照已写入 CHANGELOG「规则57 补充对照」] [规则57 招式确认·S184] T-I 写后回读验证（写了≠写成了） → 借鉴：learn-hub 的 _save_json/store 索引/forge 产物全部写后 json.load 回读，并核对条数与关键字段（已实现，见 learn.py 各写点；本条为确认留痕，非新工）",
+  "[已清零 2026-10-20 S184：招式对照已写入 CHANGELOG「规则57 补充对照」] [规则57 招式确认·S184] T-C 白名单用「文件:内容指纹(sha1前10)」做键 → 不适用：learn-hub 无白名单/豁免表这类结构（它维护 materials/index/graph 三类数据面，不维护『哪些文件允许通过』的清单），该招式的前提不存在",
+  "[清账司派单 2026-11-01] [M19] learn-hub 平衡性 83.3｜最弱=进化停滞(33.13489925444678) ｜ sid=39c934001507 ｜ 下一步 tvbox conductor issues ／ 先看 learn-hub 名下这条为何是红的，再决定修监测项还是修技能"
  ],
  "roadmap": [
   "公众号正文抽取接入 wechat-article-scraper（复用，不重写）",

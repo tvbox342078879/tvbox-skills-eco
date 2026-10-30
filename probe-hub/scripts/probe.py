@@ -32,8 +32,11 @@
 库: DB_SRC=wW5xpbS663nA6XK8a7DNsp / DB_DEAD=92dSuG6uUbxitGuyx4Saaf
 """
 import os, sys, io, json, time, argparse, subprocess, hashlib, re, shutil, zlib
+import ast, builtins, inspect, textwrap   # S194：供 _undefined_names（self-check ⑰d 探针）
 from collections import Counter
 from urllib.parse import urlparse, urlsplit, unquote, quote
+import urllib.request
+import urllib.error
 from datetime import datetime, timezone
 
 # ---------- M-R114 统一并发入口（S110 / S163 收口） ----------
@@ -70,7 +73,7 @@ LIB = '/root/.codebuddy/skills/library'
 HUB = '/root/.codebuddy/skills/tvbox-source-hub/scripts'
 BLK = '/root/.codebuddy/skills/tvbox-source-blacklist/scripts/blk.py'
 sys.path.insert(0, HUB)
-from core import SRC_DBS as _SRC_DBS   # noqa: E402
+from core import SRC_DBS as _SRC_DBS, http_get   # noqa: E402
 _SRC_BY_NAME = dict(_SRC_DBS)
 # ★ S160：py/csp 两库合并为「线路源库」，原按名取 'py线路源库'/'成品源库' 会 KeyError。
 #   本技能**实际只读 DB_DEAD / DB_PROD**；DB_SRC 仅作兼容别名，勿新增读取。
@@ -93,6 +96,8 @@ ALOG = os.path.join(SELF_DIR, 'activity_log.json')         # 采样史数据基�
 HARVEST_DIR = os.path.join(SELF_DIR, 'harvest_candidates') # 采集产出暂存
 
 UA = 'okhttp/3.12.0'                                        # TVBox 伪装 UA
+UA_WEB = ('Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 '
+          'Chrome/120 Mobile Safari/537.36')                # 浏览器 UA：发布页探活回退专用（蓝奏云对 okhttp 吐空，实测 0B vs 6551B）
 CURL = 'curl'
 
 # 测活判定码（单一事实源：与 tvbox-interface/scripts/pipeline.py 的 ALIVE_CODES 同口径）
@@ -150,10 +155,20 @@ def _parse_ts(s):
             dt = dt.replace(tzinfo=timezone.utc)   # 无时区信息 → 按 UTC 处理（保守）
         return dt.timestamp()
     except Exception:
-        # 回退：仅取日期部分（某些平台只给 YYYY-MM-DD）
+        # 回退 1：仅取日期部分（某些平台只给 YYYY-MM-DD）
         try:
             return datetime.strptime(t[:10], '%Y-%m-%d').replace(
                 tzinfo=timezone.utc).timestamp()
+        except Exception:
+            pass
+        # 回退 2：HTTP-date（RFC 1123，如 "Sun, 18 Oct 2026 07:21:13 GMT"）
+        # 发布源型目标的 Last-Modified 头即此格式；不解析则活跃度恒"无法判定"。
+        try:
+            from email.utils import parsedate_to_datetime
+            _dt = parsedate_to_datetime(t)
+            if _dt.tzinfo is None:
+                _dt = _dt.replace(tzinfo=timezone.utc)
+            return _dt.timestamp()
         except Exception:
             return None
 
@@ -204,6 +219,20 @@ def _sh(cmd, timeout=20):
         return -1, f'⛔命令失败:{type(e).__name__}'
 
 
+def _sh_bytes(cmd, timeout=20):
+    """执行外部命令，返回 (rc, bytes)——专供二进制正文（zip/jar 前 N KB）。
+
+    为什么不复用 _sh：_sh 走 text=True 按 UTF-8 解码，zip 这类二进制前 64KB 含非法
+    字节序列 → UnicodeDecodeError 被 except 吞成 rc=-1 → 正文指纹恒空、误报"正文
+    取不到"（小虎斑更新包 4.56MB 即踩此坑）。二进制一律用本函数拿原始 bytes。
+    """
+    try:
+        r = subprocess.run(cmd, capture_output=True, timeout=timeout)
+        return r.returncode, (r.stdout or b'')
+    except Exception:
+        return -1, b''
+
+
 # ══════════════════ GitHub 鉴权（S089：token 多源解析 → 解除 60/h 限流） ══════════════════
 #
 # 背景（S088 暴露）：未鉴权 API 限额 60 req/h，一次 monitor check 就吃掉 3 个请求
@@ -225,6 +254,16 @@ ENV_NAMES = ('GITHUB_TOKEN', 'GH_TOKEN', 'TVBOX_GITHUB_TOKEN', 'GITHUB_PAT')
 def _token_file_path():
     """token 文件位置（与监测册同目录，便于随技能走）。"""
     return os.path.join(SELF_DIR, '.gh_token')
+
+
+def _global_token_path():
+    """全局令牌路径（S209：全组件单一事实源，更新令牌只需覆盖它一处）。
+
+    SELF_DIR=skills/probe-hub/scripts，上三级即 /root/.codebuddy/.gh_token。
+    本地 token 文件仅作临时覆盖（token --set）用；本地缺失时自动回退全局，
+    不依赖符号链接等本机状态（换机恢复后照样生效）。
+    """
+    return os.path.normpath(os.path.join(SELF_DIR, '..', '..', '..', '.gh_token'))
 
 
 def _load_token(refresh=False):
@@ -262,8 +301,14 @@ def _load_token(refresh=False):
         if os.environ.get(n) and _accept(os.environ[n], f'环境变量 {n}'):
             return 'ok', _TOKEN_CACHE['value'], _TOKEN_CACHE['source']
 
-    # ② token 文件（首行，忽略 # 注释）
+    # ② token 文件（首行，忽略 # 注释）：本地优先；本地不存在时回退全局令牌
+    #    （S209 单一事实源：全局 /root/.codebuddy/.gh_token 一处更新全组件生效，
+    #    换机恢复由 clone_restore.sh 自动落位，不再依赖符号链接）
     fp = _token_file_path()
+    if not os.path.exists(fp):
+        _gfp = _global_token_path()
+        if os.path.exists(_gfp):
+            fp = _gfp
     if os.path.exists(fp):
         try:
             with io.open(fp, encoding='utf-8') as f:
@@ -362,6 +407,183 @@ def _rate_limit(timeout=15):
         return 'fail', {}
 
 
+# ── 域名型监测目标（S204 扩能）：companion 本地真源 ───────────────────────
+# 云端 _cloud_row_to_target 只读 18 固定列、不含 'kind'，且 _cloud_upsert 对非
+# select/num/date 列（如 '种子' 嵌套 list、'名称'/'kind' 非云列）会静默丢/拒收。
+# 故域名型**结构字段**（模式/种子/前缀格式/名称）只存本地 companion，每次 load
+# 按 id 反推 'kind' 并注入，绝不依赖云端 round-trip。
+_DOMAIN_COMPANION = os.path.join(SELF_DIR, 'monitor_domains.json')
+_DOMAIN_TRANSIENT = ('模式', '种子', '前缀格式')   # 仅存 companion，save 时剥离
+
+# ── 发布源型监测目标（S199·借鉴小虎斑）：对象存储直连包 ──────────────────
+# 背景：现有 monitor 只认 GitHub 类仓库（有 commit 维度）。小虎斑系 TVBox 壳的
+# 配置是「对象存储直连包」（如 xiaohuban.cn-nb1.rains3.com 上的 hban.fuck 容器），
+# 无 commit、无 git 历史——传统监测对其是**黑洞**（不被登记或永远"无法判定"）。
+# 故新增 pub-package 型：以「发布源 URL」为锚，HTTP 轻量探活（Content-Length /
+# Last-Modified / ETag + 前 64KB 内容指纹），与快照比对即知「包在不在 / 变没变」。
+# 结构字段（发布源URL/包类型/关联底包/监测周期）只存本地 companion，
+# 每次 load 按 id 注入 kind='pub-package'，绕开云端非标列丢失（同 domain-set 思路）。
+_PUB_COMPANION = os.path.join(SELF_DIR, 'monitor_pubsources.json')
+_PUB_TRANSIENT = ('发布源URL', '包类型', '关联底包', '监测周期')  # 仅存 companion
+
+
+def _load_pub_companion():
+    """读发布源型 companion（本地真源）。返回 dict 或 None（缺失/损坏）。"""
+    if not os.path.exists(_PUB_COMPANION):
+        return None
+    try:
+        d = json.load(open(_PUB_COMPANION, encoding='utf-8'))
+        return d if isinstance(d, dict) else None
+    except Exception as e:
+        print(f'  ⚠️ 发布源 companion 文件 {os.path.basename(_PUB_COMPANION)} '
+              f'解析失败（{type(e).__name__}）——发布源型目标本轮无法判活')
+        return None
+
+
+def _inject_pub_sources(targets):
+    """对发布源型目标注入结构字段（按 id 反推 kind，绕开云端丢列）。原地注入并返回。
+
+    - companion 里登记的 id → 必为 pub-package（本地真源权威）；
+    - repo 型 / domain-set 完全不碰；
+    - 兜底：companion 有、登记册无 → 按 companion 补出最小指针（不凭空造待查空壳）。
+    """
+    comp = _load_pub_companion()
+    if not comp:
+        return targets
+    pubs = comp.get('pubs', {}) or {}
+    present = {t.get('id') for t in targets if isinstance(t, dict)}
+    for t in targets:
+        if not isinstance(t, dict):
+            continue
+        spec = pubs.get(t.get('id', ''))
+        if not spec:
+            continue
+        t['kind'] = 'pub-package'            # 反推 kind（云端 round-trip 会丢）
+        for k in ('发布源URL', '包类型', '名称', '关联底包', '监测周期'):
+            if k in spec and spec[k] not in (None, ''):
+                t[k] = spec[k]
+        if not t.get('名称'):
+            t['名称'] = spec.get('名称', t.get('id', ''))
+    # 兜底补出：companion 有、登记册无 → 补最小指针（继承本地健康字段，不造空壳）
+    _local_map = {}
+    if os.path.exists(TARGETS):
+        try:
+            _d = json.load(open(TARGETS, encoding='utf-8'))
+            for _t in _d.get('targets', []) or []:
+                if isinstance(_t, dict) and _t.get('id'):
+                    _local_map[_t['id']] = _t
+        except Exception:
+            pass
+    for _id, spec in pubs.items():
+        if _id in present:
+            continue
+        old = _local_map.get(_id) or {}
+        targets.append({
+            'id': _id, 'kind': 'pub-package',
+            '名称': spec.get('名称') or old.get('名称') or _id,
+            '发布源URL': spec.get('发布源URL') or old.get('发布源URL', ''),
+            '包类型': spec.get('包类型') or old.get('包类型') or 'zip',
+            '平台': '发布源',
+            '监测周期': spec.get('监测周期') or old.get('监测周期') or '每周',
+            '关联底包': spec.get('关联底包') or old.get('关联底包', ''),
+            '存活状态': old.get('存活状态') or '待查',
+            '活跃度': old.get('活跃度') or '待查',
+            '上次检查': old.get('上次检查') or '',
+            '下次到期': old.get('下次到期') or '',
+            '变更摘要': old.get('变更摘要') or '',
+        })
+        present.add(_id)
+    return targets
+
+
+def _load_domain_companion():
+    """读域名型 companion（本地真源）。返回 dict 或 None（缺失/损坏）。"""
+    if not os.path.exists(_DOMAIN_COMPANION):
+        return None
+    try:
+        d = json.load(open(_DOMAIN_COMPANION, encoding='utf-8'))
+        return d if isinstance(d, dict) else None
+    except Exception as e:
+        print(f'  ⚠️ 域名 companion 文件 {os.path.basename(_DOMAIN_COMPANION)} '
+              f'解析失败（{type(e).__name__}）——域名型目标本轮无法判活')
+        return None
+
+
+def _inject_domain_sets(targets):
+    """对域名型目标注入结构字段（按 id 反推 kind，绕开云端丢列）。原地注入并返回。
+
+    - companion 里登记的 id → 必为 domain-set（本地真源权威）；
+    - 缺结构字段时该目标存活置 '无法判定'（不冒充当仓库解析失败）；
+    - repo 型目标完全不碰；
+    - 兜底：companion 有、但登记册（云端/本地）缺失的域名目标，按 companion
+      补出最小指针——保证「companion 即权威」：即使云端 sync 因非标 平台 选项
+      被拒，域名目标也不会从监测里凭空消失。
+    """
+    comp = _load_domain_companion()
+    if not comp:
+        return targets
+    domains = comp.get('domains', {}) or {}
+    present = {t.get('id') for t in targets if isinstance(t, dict)}
+    for t in targets:
+        if not isinstance(t, dict):
+            continue
+        spec = domains.get(t.get('id', ''))
+        if not spec:
+            continue
+        t['kind'] = 'domain-set'            # 反推 kind（云端 round-trip 会丢）
+        for k in ('模式', '种子', '前缀格式', '名称', '关联底包', '监测周期'):
+            if k in spec and spec[k] not in (None, ''):
+                t[k] = spec[k]
+        if not t.get('名称'):
+            t['名称'] = spec.get('名称', t.get('id', ''))
+    # 兜底补出：companion 有、登记册无 → 补最小指针。
+    # ★ 关键：云端无这些行时（如 select 拒收的历史遗留），绝不能凭空造「待查」空壳——
+    #   那会把本地文件里已有的真实健康数据（存活/上次检查/摘要）整片抹掉，
+    #   表现为「刚跑完检查，due 又说从没检查过」。故先从本地登记册同名项继承健康字段。
+    _local_map = {}
+    if os.path.exists(TARGETS):
+        try:
+            _d = json.load(open(TARGETS, encoding='utf-8'))
+            for _t in _d.get('targets', []) or []:
+                if isinstance(_t, dict) and _t.get('id'):
+                    _local_map[_t['id']] = _t
+        except Exception:
+            pass
+    # ★ S204：云端优先的**新鲜度校准**。云端那行可能是更早的快照
+    #   （如手动补写时写入的旧值），而本地随后跑检查产生了更新的结果却还没同步上去。
+    #   若一律信云端，就会出现「本地 14:11 的结论被云端 13:59 的旧值盖掉」——
+    #   表现为「刚查完，再看又变回上一条结论」。按 上次检查 时间戳取新者。
+    for t in targets:
+        if not isinstance(t, dict) or t.get('kind') != 'domain-set':
+            continue
+        old = _local_map.get(t.get('id'))
+        if old and (old.get('上次检查') or '') > (t.get('上次检查') or ''):
+            for k in ('存活状态', '活跃度', '上次检查', '下次到期', '变更摘要'):
+                if old.get(k):
+                    t[k] = old[k]
+            t['_src'] = '本地较新'
+    for _id, spec in domains.items():
+        if _id in present:
+            continue
+        old = _local_map.get(_id) or {}
+        targets.append({
+            'id': _id, 'kind': 'domain-set',
+            '名称': spec.get('名称') or old.get('名称') or _id, '平台': '域名型',
+            '监测周期': spec.get('监测周期') or old.get('监测周期') or '每周',
+            '关联底包': spec.get('关联底包') or old.get('关联底包', ''),
+            # 健康字段一律继承本地已有值，没有才落「待查/空」
+            '存活状态': old.get('存活状态') or '待查',
+            '活跃度': old.get('活跃度') or '待查',
+            '上次检查': old.get('上次检查') or '',
+            '下次到期': old.get('下次到期') or '',
+            '变更摘要': old.get('变更摘要') or '',
+            '模式': spec.get('模式'), '种子': spec.get('种子'),
+            '前缀格式': spec.get('前缀格式', ''),
+        })
+        present.add(_id)
+    return targets
+
+
 def load_targets():
     """三态读监测目标登记册 → (state, targets)。**云端优先**，本地兜底。
 
@@ -374,7 +596,13 @@ def load_targets():
     """
     cst, crows = _cloud_rows()
     if cst == 'ok' and crows:
-        return 'ok', [_cloud_row_to_target(r) for r in crows]
+        targets = _inject_pub_sources(_inject_domain_sets([_cloud_row_to_target(r) for r in crows]))
+        # ★ S200（Q-1029-02 修复）：云端固定 18 列不存扩展字段（kind/seed_urls/
+        #   在线状态/source_file），运行时目标丢 kind → _probe_target 误路由到
+        #   _probe_repo，接口探针从未调用。按 id 与本地登记册合并，回补云端缺失的
+        #   扩展字段（本地结构为权威，仅填缺项，不覆盖云端动态状态）。
+        targets = _merge_local_ext(targets)
+        return 'ok', targets
     if cst == 'fail':
         print('  ⚠️ 云端监测册不可达（未授权/网络异常）——本次回退本地登记册；'
               '请勿据此判定「无监测目标」')
@@ -386,11 +614,48 @@ def load_targets():
         t = d.get('targets', [])
         if not isinstance(t, list):
             raise ValueError('targets 非数组')
-        return 'ok', t
+        return 'ok', _inject_pub_sources(t)
     except Exception as e:
         print(f'  ⚠️ 监测登记册损坏无法读取：{os.path.basename(TARGETS)} 解析失败'
               f'（{type(e).__name__}）——请人工修复（勿据此判定「无监测目标」）')
         return 'corrupt', []
+
+
+def _merge_local_ext(cloud_targets):
+    """按 id 与本地登记册（monitor_targets.json）合并，回补云端缺失的扩展字段。
+
+    S200（Q-1029-02 修复）：云端 DB_UPSTREAM 固定 18 列，save 时 skip_cols 跳过
+    kind/seed_urls/在线状态/source_file，load 时 _cloud_row_to_target 也不取这些列
+    → 运行时 179/186 目标丢 kind，60 个 iface 被 _probe_target 误路由到 _probe_repo，
+    接口探针从未调用。本地登记册是扩展字段的单一事实源，此处按 id 回补云端缺项。
+    仅回补云端**缺失**的扩展字段，云端动态状态字段（存活/活跃度/上次检查/内容指纹）
+    不动，避免覆盖真实监测结论。
+    """
+    if not os.path.exists(TARGETS):
+        return cloud_targets
+    try:
+        d = json.load(open(TARGETS, encoding='utf-8'))
+        local = {str(t.get('id')): t for t in d.get('targets', []) if isinstance(t, dict)}
+    except Exception:
+        return cloud_targets
+    if not local:
+        return cloud_targets
+    ext_keys = ('kind', 'seed_urls', '在线状态', 'source_file')
+    out = []
+    for t in cloud_targets:
+        tid = str(t.get('id'))
+        lt = local.get(tid)
+        if lt:
+            for k in ext_keys:
+                lv = lt.get(k)
+                cv = t.get(k)
+                if k == 'seed_urls':
+                    if (not cv) and lv:
+                        t[k] = lv
+                elif (cv in (None, '', False)) and lv not in (None, '', False, []):
+                    t[k] = lv
+        out.append(t)
+    return out
 
 
 def _cloud_row_to_target(r):
@@ -450,16 +715,62 @@ def _cloud_delete(db_id, id_field, keys):
         return False, 0
 
 
+def _merge_with_disk(targets):
+    """并发保护：与磁盘上的最新登记册合并，只保住「更新」的那份。
+
+    规则（按 id 对齐）：
+      · 磁盘有、传入无  → 保留磁盘项（防止本次漏写把它删掉）；
+      · 两边都有        → 谁的「上次检查」更晚用谁；都无则用传入（本次是权威）；
+      · 传入有、磁盘无  → 用传入（新登记/兜底补出）。
+    读磁盘失败 → 直接返回传入列表（**不得因合并失败而拒绝落盘**）。
+    """
+    if not os.path.exists(TARGETS):
+        return targets
+    try:
+        disk = json.load(open(TARGETS, encoding='utf-8')).get('targets') or []
+    except Exception:
+        return targets
+    disk_map = {t.get('id'): t for t in disk if isinstance(t, dict) and t.get('id')}
+    out, seen = [], set()
+    for t in targets:
+        if not isinstance(t, dict):
+            continue
+        _id = t.get('id')
+        seen.add(_id)
+        old = disk_map.get(_id)
+        if old is None:
+            out.append(t)
+            continue
+        # 比较新鲜度：上次检查 更晚者为新
+        new_ts = t.get('上次检查') or ''
+        old_ts = old.get('上次检查') or ''
+        out.append(old if old_ts > new_ts else t)
+    # 磁盘有、本次没带上 → 保留（避免误删）
+    for _id, old in disk_map.items():
+        if _id not in seen:
+            out.append(old)
+    return out
+
+
 def save_targets(targets):
     """写回登记册。**双写**：云端 DB_UPSTREAM（主）+ 本地 JSON（备份/离线兜底）。
 
     S088：本地文件在沙箱重置/跨会话时会丢，故迁云端；但**云端不可达不得导致本地也写不成**
     （否则断网即无法登记）。故双写、各自独立上报结果：
     返回 (cloud_ok, local_ok)。调用方须显式提示任一失败（禁静默）。
+
+    ★ S204 并发保护：本地是全量覆盖写。若两个进程几乎同时 check（如并行跑三个目标），
+    后写的那个基于**旧快照**，会把另一个刚写进去的健康字段整条覆盖回旧值——
+    实测：并行 check 三个域名目标后，只有最后一个的「上次检查/存活」留下，另两个变回空。
+    这不是谁写错了，是「全量覆盖 + 读到旧快照」的固有竞态。
+    修法：落盘前把磁盘上的最新内容读出来，对**本次未产生新结果**的条目
+    （本次 上次检查 早于磁盘上的），用磁盘版本覆盖传入版本——只保住更新的那份，
+    不阻止本次真正的新结论落盘。
     """
     # ① 本地（原子写，离线兜底）
+    merged = _merge_with_disk(targets)
     d = {'_note': '探源司·上游仓库监测登记册（云端 DB_UPSTREAM 的本地备份）',
-         '_schema': _load_schema_doc(), 'targets': targets}
+         '_schema': _load_schema_doc(), 'targets': merged}
     tmp = TARGETS + '.tmp'
     local_ok = False
     try:
@@ -658,14 +969,41 @@ def _cloud_save_targets(targets):
 
     返回 bool（True=同步成功）。**失败不得静默**——调用方提示。
     S095：改走通用 `_cloud_upsert`（单一事实源），列类型声明不变。
+    ★ S204 扩能：域名型指针项只同步云端有列的字段（结构字段走 companion 本地真源，
+    云端无 '种子'/'名称'/'kind' 等列，强写会静默丢/拒收）。仓库型原样同步。
     """
+    _COLS = {'id', '仓库名', '仓库URL', '作者', '平台', '分支', '配置路径',
+             '监测周期', '关联底包', '存活状态', '当前commit', '内容指纹',
+             '活跃度', '上次检查', '下次到期', '变更摘要', '文件数', '近30天提交'}
+    rows = []
+    for t in (targets or []):
+        # ★ S199 修复：发布源型（pub-package）与域名型同源——结构字段（kind/
+        #   发布源URL/包类型）走 companion 本地真源，云端无这些列。若不过滤直接
+        #   rows.append(t) 上传，非标列会触发云端整条拒收，连 18 列里的健康字段
+        #   （存活状态/活跃度/内容指纹/上次检查）也上不去云 → 发布源监测结论无法
+        #   持久化。故与 domain-set 同口径：只 sync 18 列字段。
+        if isinstance(t, dict) and t.get('kind') in ('domain-set', 'pub-package'):
+            row = {k: v for k, v in t.items() if k in _COLS}
+            # ★ 云端「平台」列只有 GitHub/Gitee/GitLab/其他 四个 select 选项，
+            #   非标值（域名型/发布源/空）会被整条拒收（实测首因 invalid fields: [平台]）。
+            #   云端落「其他」，本地登记册仍保留原值供人眼识别（单一事实源在本地）。
+            if row.get('平台') not in ('GitHub', 'Gitee', 'GitLab', '其他'):
+                row['平台'] = '其他'
+            rows.append(row)
+        else:
+            rows.append(t)
     ok, n_add, n_upd = _cloud_upsert(
-        targets, DB_UPSTREAM, 'id',
+        rows, DB_UPSTREAM, 'id',
         select_cols=('平台', '监测周期', '存活状态', '活跃度'),
         num_cols=('文件数', '近30天提交'),
         # ★S169：这两列在库里是 date 类型，按 text 写会**静默丢列**（回执仍 success）。
         date_cols=('上次检查', '下次到期'),
-        skip_cols=('_schema', '_note', 'score'))
+        # ★666（点⑥离线种子基线·tvbox-iface）：扩展中文字段为本地专用元数据，
+        #   云端 DB_UPSTREAM 固定 18 列不接受（实测 invalid fields: [名称 kind 在线状态 ...]），
+        #   按 L251 模式只推标准列、扩展字段留本地（monitor_targets.json 全量保真）。
+        skip_cols=('_schema', '_note', 'score', '名称', 'kind', '在线状态',
+                   'seed_urls', 'seed_baseline', 'source_file',
+                   'extracted_sha12', 'extracted_at'))
     return ok
 
 
@@ -800,6 +1138,11 @@ def _cloud_sync_harvest(lines):
             '名称': it.get('名称', ''),
             '分组类目': cat,
             '来源仓库': it.get('来源仓库', ''),
+            # 点③：live.json 溯源结构范本——四溯源字段透传（缺则留空，不静默丢弃）
+            'sourceUrl': it.get('sourceUrl', ''),
+            'mirror': it.get('mirror', ''),
+            'ua': it.get('ua', ''),
+            'size': it.get('size', ''),
             '测活状态': it.get('测活状态') or '未测',
             '入库状态': it.get('入库状态') or '待入库',
             '采集时间': now_iso(),
@@ -808,7 +1151,8 @@ def _cloud_sync_harvest(lines):
         print('  🔧 分组类目已按库内选项对齐：'
               + ' '.join(f'{k}:{v}' for k, v in _remap.most_common()))
     return _cloud_upsert(rows, DB_HARVEST, '候选id',
-                         select_cols=('分组类目', '测活状态', '入库状态'))
+                         select_cols=('分组类目', '来源仓库', 'sourceUrl', 'mirror',
+                                      'ua', 'size', '测活状态', '入库状态'))
 
 
 def _harvest_id(api):
@@ -1089,10 +1433,12 @@ def _fetch(url, timeout=15):
         for _try in range(2):
             if _try:
                 time.sleep(1)
-            _rc, _out = _sh([CURL, '-sS', '-L', '-m', str(_t0), '-A', UA,
-                             '-w', '\n%{http_code}', _u], timeout=_t0 + 5)
-            if _rc == 0 and _out:
-                rc, out = _rc, _out
+            # C1：底层取数统一走 core.http_get（保留镜像重试/慢标记/状态码语义）
+            st, _pl, _ = http_get(_u, timeout=_t0, ua=UA, return_status=True)
+            if st == 'ok' and _pl:
+                _code, _body = _pl            # _pl = (http_status, text)
+                out = f'{_body}\n{_code}'     # 维持 rpartition('\n') 解析契约
+                rc = 0
                 _got = True
                 break
         if _got:
@@ -1157,6 +1503,11 @@ def _parse_repo(url):
                 return owner, repo, 'Gitee', host
             if 'gitlab' in host:
                 return owner, repo, 'GitLab', host
+            # 极狐 GitLab（jihulab.com）：host 里不含 "gitlab" 字样，但同样是 GitLab 系，
+            # 路径同构 /-/raw/。S198 实测：漏判会落到 Gitea 兜底，导致云端「平台」枚举
+            # 拒收（invalid fields [平台]），玄珠仓库两次登记失败。
+            if 'jihulab' in host:
+                return owner, repo, 'GitLab', host
             # 自建 Gitea / 工蜂 / 其他 Git 服务：按 Gitea 兼容接口尝试（host 驱动）
             return owner, repo, 'Gitea', host
     except Exception:
@@ -1215,13 +1566,13 @@ def _discover_configs(owner, repo, branch, platform='GitHub', host='', limit=60)
         api = (f'https://api.github.com/repos/{owner}/{repo}/git/trees/{branch}'
                f'?recursive=1')
     try:
-        req = urllib.request.Request(api, headers={
-            'User-Agent': UA, 'Accept': 'application/vnd.github+json'})
+        # C1b：底层取数统一走 core.http_get（保留 token/重试/限流分类语义）
+        _hdr = {'Accept': 'application/vnd.github+json'}
         # `_load_token()` 返回 (state, token, source) 三元组，**不是字符串**——
         # 直接当字符串拼进 Authorization 会得到 401（S148 踩过一次）。
         _st, _tk, _ = _load_token()
         if _st == 'ok' and _tk and platform in ('GitHub', ''):
-            req.add_header('Authorization', f'Bearer {_tk}')
+            _hdr['Authorization'] = f'Bearer {_tk}'
         # S148：匿名限流 60 次/h，连跑两条命令就可能撞上 403/429。
         # 一次失败不等于"仓库不可采"——重试 3 次（退避 1/3/7s）。
         # 仍失败时**把限流与网络故障分开报**：限流是"稍后再试"，网络是"可能真没有"。
@@ -1229,17 +1580,23 @@ def _discover_configs(owner, repo, branch, platform='GitHub', host='', limit=60)
         for _attempt, _wait in enumerate((0, 1, 3)):
             if _wait:
                 time.sleep(_wait)
-            try:
-                with urllib.request.urlopen(req, timeout=25) as r:
-                    d = json.loads(r.read().decode('utf-8', 'replace'))
+            _st2, _pl, _rs = http_get(api, timeout=25, ua=UA, headers=_hdr)
+            if _st2 == 'ok':
+                d = json.loads(_pl)
                 tree = d.get('tree') or d.get('items') or []
                 last = None
                 break
-            except Exception as e:
-                last = e
-                _code = getattr(e, 'code', None)
-                if _code not in (403, 429, 500, 502, 503):
-                    break                      # 4xx 除限流外，重试无意义
+            _code = None
+            if _rs and _rs.startswith('http_'):
+                try:
+                    _code = int(_rs[5:])
+                except Exception:
+                    _code = None
+            _e = RuntimeError('HTTP %s' % _rs)
+            _e.code = _code
+            last = _e
+            if _code not in (403, 429, 500, 502, 503):
+                break                      # 4xx 除限流外，重试无意义
         if last is not None:
             raise last
     except Exception as e:
@@ -1282,8 +1639,16 @@ def _discover_configs(owner, repo, branch, platform='GitHub', host='', limit=60)
 
 # ══════════════════ 模块 A：monitor（上游仓库监测） ══════════════════
 
-def _api_get(base, path, timeout=15, headers=None):
+def _api_get(base, path, timeout=30, headers=None):
     """通用 API GET → (state, obj)。state ∈ {'ok','fail','ratelimit','notfound','unauthorized'}。
+
+    ★ S190（实测）：`timeout=15` 对**提交记录接口**不够。
+      songlees355-wq/okay 的 `/commits?per_page=100` 返回 439KB，实测耗时 **19.1s**
+      → 被判 fail → 界面写"近30天提交=未取到"。而换个字段少的仓库就是 1-2s。
+      也就是说：**同样是"未取到"，有的是限流、有的是超时**，处置动作完全不同
+      （等配额 vs 调超时），折叠成一句话就等于没告诉人任何东西。
+      这里把默认提到 30s，并在 `_why_of` 里把 fail 明确点名"超时/网络中断"。
+      不设更大值：单仓 30s × 6 仓并发已是可接受上限，再大就该走异步了。
 
     S091：多平台统一取数入口（原仅 GitHub 有 `_gh_api`）。三态不折叠：
       · 网络失败/非 JSON → 'fail'
@@ -1334,6 +1699,49 @@ def _api_get(base, path, timeout=15, headers=None):
     return 'ok', d
 
 
+def _undefined_names(fn):
+    """静态查：fn 体内『读了但没绑定』的名字（排除局部绑定 / 模块全局 / 内建）。
+
+    ★ S194 为什么要有这个函数：2026-10-21 `monitor add` 五个新目标全部失败，
+      报 `NameError: name 'rec' is not defined`（修完又冒出 `_cfg_try`）。
+      病根是改动时把别处的变量名抄进了 `_platform_meta`——
+      **语法合法、编译通过、lint 不报**，只有真跑到那条分支才炸，
+      而存量目标从不需要再探测默认分支，于是洞一直开着没人看见。
+
+    用法：self-check ⑰d 探针用它查真身 + 查一个故意写坏的样本（反向验证）。
+    ⚠️ 局限（诚实边界）：只看**单个函数体**，不解析闭包外层作用域——
+      故被查函数最好是模块级函数；查嵌套函数会把外层局部变量误报成未定义。
+    """
+    tree = ast.parse(textwrap.dedent(inspect.getsource(fn)))
+    fnode = tree.body[0]
+    bound = {a.arg for a in fnode.args.args} | {a.arg for a in fnode.args.kwonlyargs}
+    if fnode.args.vararg:
+        bound.add(fnode.args.vararg.arg)
+    if fnode.args.kwarg:
+        bound.add(fnode.args.kwarg.arg)
+    for n in ast.walk(fnode):
+        if isinstance(n, ast.Name) and isinstance(n.ctx, (ast.Store, ast.Del)):
+            bound.add(n.id)
+        elif isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            bound.add(n.name)
+        elif isinstance(n, ast.arg):
+            bound.add(n.arg)
+        elif isinstance(n, ast.ExceptHandler) and n.name:
+            bound.add(n.name)
+        elif isinstance(n, (ast.Import, ast.ImportFrom)):
+            for al in n.names:
+                bound.add((al.asname or al.name).split('.')[0])
+        elif isinstance(n, ast.Global):
+            bound.update(n.names)
+        elif isinstance(n, ast.Nonlocal):
+            bound.update(n.names)
+    g = fn.__globals__
+    used = {n.id for n in ast.walk(fnode)
+            if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Load)}
+    return sorted(x for x in used
+                  if x not in bound and x not in g and not hasattr(builtins, x))
+
+
 def _platform_meta(platform, owner, repo, branch, host=''):
     """取平台侧仓库元信息 → 统一结构 dict（含每项三态）。
 
@@ -1356,12 +1764,29 @@ def _platform_meta(platform, owner, repo, branch, host=''):
         out['note'] = f'平台 {platform} 暂不支持 API 监测（仅可测活）'
         return out
 
+    # ★ S189e 真因（配了 token 仍然全是匿名 60/h）：
+    #
+    #   `_api_get(base, path, timeout, headers=None)` —— headers **默认空**。
+    #   S091 把「GitHub 专用 _gh_api」重构成「多平台统一 _api_get」时，
+    #   新写的本函数 4 处调用**全部没有传 headers**，于是：
+    #     · 老路径 `_gh_api` 仍传 `headers=_gh_headers()` → 带 token（没人调它了）
+    #     · 新路径 `_platform_meta` 不传              → **永远匿名**
+    #   实测（2026-10-20）：token 配好、`rate_limit` 报 5000/5000、
+    #   `tvbox probe monitor check --all` 仍只有 1/6 取到数据，
+    #   note 却写着「未鉴权 60/h」——因为请求根本没带 Authorization。
+    #
+    #   不是"配额不够"，是**配额没用上**。这类 bug 特别难查：
+    #   配置动作(✅)与使用动作(❌)各自看着都正常，只有把两者连起来看才发现断点。
+    #   收口修法：整个函数只构造**一次** headers，下面 4 处全部复用（M-R38 单一事实源），
+    #   不许再出现"某处忘了传"。
+    _hs = _gh_headers()
+
     # ① 仓库元信息（pushed_at / default_branch）
     if platform == 'GitLab':
         proj = f'{owner}%2F{repo}'
-        st, d = _api_get(base, f'/projects/{proj}')
+        st, d = _api_get(base, f'/projects/{proj}', headers=_hs)
     else:
-        st, d = _api_get(base, f'/repos/{owner}/{repo}')
+        st, d = _api_get(base, f'/repos/{owner}/{repo}', headers=_hs)
     if st == 'ratelimit':
         out['state'] = 'ratelimit'
         out['note'] = f'{platform} API 限流——无法判定'
@@ -1383,12 +1808,14 @@ def _platform_meta(platform, owner, repo, branch, host=''):
     if platform == 'GitLab':
         proj = f'{owner}%2F{repo}'
         st3, tree = _api_get(base, f'/projects/{proj}/repository/tree'
-                                   f'?recursive=true&per_page=100')
+                                   f'?recursive=true&per_page=100', headers=_hs)
     elif platform == 'Gitee':
         # Gitee 无递归树 API：用 /git/trees/{branch}?recursive=1（v5 支持有限）尝试
-        st3, tree = _api_get(base, f'/repos/{owner}/{repo}/git/trees/{branch}?recursive=1')
+        st3, tree = _api_get(base, f'/repos/{owner}/{repo}/git/trees/{branch}?recursive=1',
+                             headers=_hs)
     else:
-        st3, tree = _api_get(base, f'/repos/{owner}/{repo}/git/trees/{branch}?recursive=1')
+        st3, tree = _api_get(base, f'/repos/{owner}/{repo}/git/trees/{branch}?recursive=1',
+                             headers=_hs)
     if st3 == 'ok' and isinstance(tree, list):
         # GitLab tree 返回 list（每项含 path）；GitHub/Gitea 返回 {'tree':[...]}
         paths = [x.get('path', '') for x in tree if isinstance(x, dict)]
@@ -1405,13 +1832,13 @@ def _platform_meta(platform, owner, repo, branch, host=''):
     if platform == 'GitLab':
         proj = f'{owner}%2F{repo}'
         st2, commits = _api_get(base, f'/projects/{proj}/repository/commits'
-                                      f'?per_page=100&ref_name={branch}')
+                                      f'?per_page=100&ref_name={branch}', headers=_hs)
     elif platform == 'Gitee':
         st2, commits = _api_get(base, f'/repos/{owner}/{repo}/commits'
-                                      f'?per_page=100&sha={branch}')
+                                      f'?per_page=100&sha={branch}', headers=_hs)
     else:
         st2, commits = _api_get(base, f'/repos/{owner}/{repo}/commits'
-                                      f'?per_page=100&sha={branch}')
+                                      f'?per_page=100&sha={branch}', headers=_hs)
     if st2 == 'ok' and isinstance(commits, list):
         cutoff = time.time() - 30 * 86400
         n = 0
@@ -1429,7 +1856,64 @@ def _platform_meta(platform, owner, repo, branch, host=''):
             if ts is not None and ts >= cutoff:
                 n += 1
         out['n_commits_30d'] = n
+    # ★ S190（用户 2026-10-20 23:14 质问「不是你一直敲代码，为啥说技能在工作了」后加）
+    #
+    #   问题不是"取不到"，是**取不到的时候没人说为什么**。
+    #   实测这一晚：`monitor check` 报「近30天提交=未取到」，我为了查原因手写了
+    #   **9 个临时脚本**（打 API、量耗时、抓返回码…）。而脚本本身一个字没提原因。
+    #   这不是"技能在工作"，这是**技能把活推回给人**，还装成已经测过了。
+    #
+    #   修法：把「为什么没取到」变成返回值的一部分（`why`），下游直接打印。
+    #   判据：每个 None 字段必须带一条 why；有值就不写 why（省得满屏噪声）。
+    #   三态口径不变（M-R60）：fail ≠ ratelimit ≠ notfound ≠ timeout，不许并成一句"失败了"。
+    out['why'] = {}
+    out['why_state'] = {}          # ★ 机器判据（别拿中文文案当判据，见下）
+    if out['n_files'] is None:
+        out['why']['n_files'] = _why_of(st3, '目录树接口')
+        out['why_state']['n_files'] = st3
+    if out['n_commits_30d'] is None:
+        out['why']['n_commits_30d'] = _why_of(st2, '提交记录接口')
+        out['why_state']['n_commits_30d'] = st2
+    # ★ S194 修真缺陷（两处未定义变量 + 一段误植）：
+    #   原此处写 `rec` 与 `_cfg_try`——本函数两个都没有（返回字典叫 out，
+    #   而 `_cfg_try` 是 `_repo_probe` 的局部变量，1604 行）。后果：任何走
+    #   「探测默认分支」路径的 `monitor add` 必抛 NameError，5 个新目标全登记失败；
+    #   存量目标掩盖了这个洞（它们从不需要再探测分支）。
+    #   且 **content_sha 不属于本函数职责**——指纹由 `_repo_probe` 取，
+    #   它已在 1612-1614 行自己写了「未取到」的原因（写进 note）。此处复写属越权。
+    #   本函数该管的 None 字段是 pushed_at / n_files / n_commits_30d，
+    #   后两者已有 why，故这里补 pushed_at（S190「每个 None 必须带 why」）。
+    if out['pushed_at'] is None:
+        out['why']['pushed_at'] = ('仓库元信息接口已通，但响应里无 pushed_at/'
+                                   'last_activity_at/updated_at（字段缺失，非失败）')
+        out['why_state']['pushed_at'] = 'missing'
+    # ★ S190b（反向验证踩出来的真坑，必须记下来）：
+    #   自诊断的条件原本写成 `any('限流' in msg for msg in why.values())` ——
+    #   **拿中文文案当判据**。而 `_why_of` 的 ratelimit 文案是
+    #   「被限流（配额耗尽…）」，里面没有"限流"两字中的？有的——但换个措辞就断了，
+    #   而且我改文案时根本不会想到有个 if 在匹配它。反向验证实测：该报警**一次没触发**。
+    #   这正是本项目反复踩的同一个坑：**判据与被判对象耦合在自然语言上**。
+    #   铁律：状态一律用 state 码判，文案只给人看。
     return out
+
+
+def _why_of(state, what):
+    """把一次 API 调用的三态 state 翻译成「人一眼能懂、且能照着修」的原因。
+
+    ★ 这一层存在的理由：`state='fail'` 对上层毫无信息量——同样是 fail，
+      「限流」要等、「超时」要调参、「404」要改登记册、「401」要换 token，
+      **四个完全不同的处置动作被同一个词折叠了**（M-R60 禁的正是这种折叠）。
+    """
+    return {
+        'ratelimit': f'{what}被限流（配额耗尽，等重置或配 token）',
+        # 超时与网络抖动在本项目里是**最常见**的 fail，必须单独点名：
+        # 实测 songlees355-wq/okay 的 commits 接口耗时 19s，而 _api_get 默认 15s 超时，
+        # 于是被判 fail，界面上写"未取到"——用户以为是"仓库没提交"，其实只是慢。
+        'fail': f'{what}请求失败（超时/网络中断，或返回非 JSON）',
+        'notfound': f'{what} 404（仓库不存在，或登记的分支名与实际不符）',
+        'unauthorized': f'{what} 401（token 无效或无权限）',
+        'unsupported': f'{what}该平台不支持',
+    }.get(state, f'{what}返回未知状态 {state!r}')
 
 
 def _probe_repo(t):
@@ -1444,7 +1928,7 @@ def _probe_repo(t):
     owner, repo, platform, host = _parse_repo(url)
     rec = {'alive': '无法判定', 'content_sha': '', 'n_files': None,
            'n_commits_30d': None, 'pushed_at': None, 'dirs': [], 'note': '',
-           'alive_by': ''}
+           'alive_by': '', 'why': {}, 'why_state': {}}
 
     # ① 存活状态：探测仓库主页 HTTP 码
     code = _http_code(url)
@@ -1461,6 +1945,9 @@ def _probe_repo(t):
     mst = meta.get('state')
     rec['pushed_at'] = meta.get('pushed_at')
     rec['n_commits_30d'] = meta.get('n_commits_30d')
+    # ★ S190：把"为什么没取到"一并带出（原先只带 None，原因全丢在 _platform_meta 里）
+    rec['why'] = meta.get('why') or {}
+    rec['why_state'] = meta.get('why_state') or {}
 
     # ★ S169 修：存活判定改用 API 结论优先。
     #   原实现只看 `github.com/{owner}/{repo}` 主页 HTTP 码。实测该域名在本网络
@@ -1506,17 +1993,387 @@ def _probe_repo(t):
         rec['note'] += f'；存活依据={rec["alive_by"]}'
 
     # ⑤ 内容指纹：拉主配置 raw 算 sha（各平台 raw 路径见 _find_config_path）
+    #
+    # ★ S193 补（用户 00:11「查填 token 后说问题」）：**指纹取不到时原来一声不吭**。
+    #   实测：6 个目标里 3 个「内容指纹=—」，而输出里既没 why 也没 note 分支——
+    #   用户只看到一根横杠，无从判断是"没有配置文件"还是"网络拿不到"。
+    #   这正是 S190 定下的铁律被漏掉的一处：**每个 None 字段必须带一条 why**。
+    #   而且指纹与目录树是两套通道：目录树走 api.github.com（带 token），
+    #   指纹走 raw.githubusercontent.com（**不带 token、本网络需走镜像**）——
+    #   所以"目录树取到了、指纹取不到"是完全可能的组合，不能共用一条结论。
     cfg = t.get('配置路径', '') or ''
     raw_base, cands = _find_config_path(owner, repo, branch, platform, host)
     cand_list = [cfg] if cfg else cands
+    _cfg_try = []
     for c in cand_list:
         st, txt = _fetch(raw_base + c)
+        _cfg_try.append(f'{c}={st}')
         if st == 'ok' and txt:
             rec['content_sha'] = _content_sha(txt)
             rec['config_path'] = c
             break
+    if not rec['content_sha']:
+        rec['note'] = (rec.get('note') or '') + \
+            f'；内容指纹未取到（试过 {", ".join(_cfg_try[:4])}）'
 
     return rec
+
+
+def _domain_addr_verdict(mode, code):
+    """域名型单地址判定（与 repo 探测不同，专用于直接域名/host）。
+
+    q43 测活口径：直接域名对探测路径往往只回 4xx，但只要服务器响应（2xx/3xx/4xx）
+    即视为该地址可达/存活；仅 5xx/超时/不可达=无法判定（不轻判死，M-R60）。
+    模式差异：
+      · host-set / ip-direct：4xx（含 403/404）一律当"服务在"→ 存活；
+      · suffix-set：404/410/451 是「后缀通配已撤」→ 已封禁/删除（其余响应→存活）。
+    返回三态字符串（存活/已封禁/删除/无法判定），不引新枚举。
+    """
+    if code is None or code == 0:
+        return '无法判定'            # 超时/不可达（非死）
+    if mode == 'suffix-set':
+        if code in (404, 410, 451):
+            return '已封禁/删除'      # 后缀通配失效
+        if code < 500:
+            return '存活'             # 2xx/3xx/4xx（服务在）
+        return '无法判定'             # 5xx
+    # host-set / ip-direct：直接域名/host 探活路径，4xx 一律算"服务器在"
+    if code < 500:
+        return '存活'                 # 2xx/3xx/4xx 均算服务器在（含 403/404 半活）
+    return '无法判定'                 # 5xx
+
+
+def _probe_domain_set(t):
+    """域名型集合探针：按模式构造待探测 URL，逐地址 HTTP 探测，三态聚合判活。
+
+    返回结构与 _probe_repo 对齐（含 'alive' 键，防 cmd_monitor_check 回写 KeyError）：
+    {alive, content_sha, n_files, n_commits_30d, pushed_at, dirs, note,
+     alive_by, why, why_state, 集合明细}
+    聚合严格落三态（不引新枚举，避免下游断裂）：
+      任一活→存活；全死/通配失效→已封禁/删除；全超时/不可达→无法判定；
+      混合（死+超时、无活）→ 已封禁/删除（有确认死信号优先于超时歧义）。
+    """
+    mode = t.get('模式', 'host-set')
+    seeds = t.get('种子') or []
+    rec = {'alive': '无法判定', 'content_sha': '', 'n_files': None,
+           'n_commits_30d': None, 'pushed_at': None, 'dirs': [], 'note': '',
+           'alive_by': '', 'why': {}, 'why_state': {}, '集合明细': []}
+    if not seeds:
+        rec['note'] = 'companion 无种子'
+        rec['alive_by'] = '结构缺失'
+        return rec
+    urls = []
+    for s in seeds:
+        if mode == 'suffix-set':
+            import random, string
+            rnd = ''.join(random.choices(string.ascii_lowercase, k=8))
+            urls.append(f'https://test{rnd}.{s}.work')   # 复现 q43 探测前缀
+        else:   # host-set / ip-direct：种子已是完整 URL
+            urls.append(s if isinstance(s, str) and s.startswith('http')
+                        else f'http://{s}')
+    n_alive = n_dead = n_undecided = 0
+    detail = []
+    for u in urls:
+        code = _http_code(u, timeout=8)
+        verdict = _domain_addr_verdict(mode, code)
+        detail.append({'url': u, 'code': code, 'verdict': verdict})
+        if verdict == '存活':
+            n_alive += 1
+        elif verdict == '已封禁/删除':
+            n_dead += 1
+        else:
+            n_undecided += 1
+    rec['集合明细'] = detail
+    # 严格三态聚合（不引新枚举，避免下游断裂）
+    if n_alive > 0:
+        rec['alive'] = '存活'
+        rec['alive_by'] = '集合内任一地址存活'
+    elif n_dead > 0:
+        rec['alive'] = '已封禁/删除'
+        rec['alive_by'] = '集合内地址全死/通配失效'
+    else:
+        rec['alive'] = '无法判定'
+        rec['alive_by'] = '集合内地址全超时/不可达'
+    rec['note'] = (f'集合{len(urls)}中：{n_alive}活/{n_dead}死/{n_undecided}超时；'
+                   f'模式={mode}')
+    return rec
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# 发布源型探针（S199·借鉴小虎斑）：对象存储直连包，无 commit 维度
+# ─────────────────────────────────────────────────────────────────────────
+def scan_pub_source(url, timeout=20):
+    """发布源轻量探针：HTTP 探活对象存储直连包 → 三态 dict。
+
+    填补传统 monitor 只认 GitHub 仓库的黑洞：小虎斑系配置是对象存储直连包
+    （无 git 历史、无 commit），靠它即可知「包在不在 / 变没变」。
+
+    三态：
+      · 取到（200/206，有 Content-Length）→ 返回 bytesize/sha12/last_modified/etag
+      · 取不到（404/410/连接拒/域名挂）→ alive='已失效'
+      · 无法判定（超时/412/5xx/编码异常）→ alive='无法判定'
+    轻量：只取前 64KB（Range）算 sha12 检测变更，不整包下载（大包也快）。
+    """
+    if not url:
+        return {'alive': '无法判定', 'note': '发布源URL 为空', 'sha12': '', 'bytesize': None,
+                'last_modified': '', 'etag': '', 'why_state': {'pub': 'empty'}}
+    try:
+        rc, head = _sh([CURL, '-sS', '-I', '-L', '-m', str(timeout), '-A', UA, url])
+        _head_up = (head or '').upper()
+        if rc != 0:
+            return {'alive': '无法判定', 'note': f'发布源探测命令失败（{head[:80] or "超时"}）',
+                    'sha12': '', 'bytesize': None, 'last_modified': '', 'etag': '',
+                    'why_state': {'pub': 'cmd_fail'}}
+        if ('404 NOT FOUND' in _head_up or '410 GONE' in _head_up
+                or 'HTTP/2 404' in _head_up or 'HTTP/1.1 404' in _head_up
+                or 'HTTP/2 410' in _head_up):
+            return {'alive': '已失效', 'note': '发布源返回 404/410（包已下架/路径失效）',
+                    'sha12': '', 'bytesize': None, 'last_modified': '', 'etag': '',
+                    'why_state': {'pub': '404'}}
+        rc2, body_b = _sh_bytes([CURL, '-sS', '-L', '-m', str(timeout), '-A', UA, '-r', '0-65535', url])
+        sha12 = _content_sha(body_b) if rc2 == 0 and body_b else ''
+        last_modified = ''
+        etag = ''
+        bytesize = None
+        for _ln in (head or '').splitlines():
+            _l = _ln.lower()
+            if _l.startswith('last-modified:'):
+                last_modified = _ln.split(':', 1)[1].strip()
+            elif _l.startswith('etag:'):
+                etag = _ln.split(':', 1)[1].strip().strip('"')
+            elif _l.startswith('content-length:'):
+                try:
+                    bytesize = int(_ln.split(':', 1)[1].strip())
+                except Exception:
+                    bytesize = None
+        if not sha12:
+            # 回退：Range 被拦（反爬/挑战页，如实测蓝奏云）时，轻量 GET 探活。
+            # --max-filesize 限 256KB 防误下大包；页面型锚点（蓝奏云发布页）含动态
+            # token（实测连抓两次 sha 不同），故只探活不采指纹，防「内容变更」误报。
+            rc3, body_fb = _sh_bytes([CURL, '-sS', '-L', '-m', str(timeout),
+                                      '--max-filesize', '262144', '-A', UA_WEB, url])
+            if rc3 == 0 and body_fb:
+                return {'alive': '存活',
+                        'note': '发布页探活成功（Range 被拦，GET 回退；页面型锚点无稳定指纹）',
+                        'sha12': '', 'bytesize': bytesize, 'last_modified': last_modified,
+                        'etag': etag, 'why_state': {'pub': 'no_body_get_ok'}}
+            return {'alive': '无法判定', 'note': '发布源 HEAD 可达但正文取不到（可能需鉴权/反爬）',
+                    'sha12': '', 'bytesize': bytesize, 'last_modified': last_modified,
+                    'etag': etag, 'why_state': {'pub': 'no_body'}}
+        return {'alive': '存活', 'note': '发布源直连包可达',
+                'sha12': sha12, 'bytesize': bytesize, 'last_modified': last_modified,
+                'etag': etag, 'why_state': {}}
+    except Exception as e:
+        return {'alive': '无法判定', 'note': f'发布源探测异常：{type(e).__name__}',
+                'sha12': '', 'bytesize': None, 'last_modified': '', 'etag': '',
+                'why_state': {'pub': 'except'}}
+
+
+def _probe_pub_source(t):
+    """发布源型目标的探测派发：组装与 _probe_repo 同构的 rec，便于主流程复用。"""
+    url = t.get('发布源URL') or ''
+    r = scan_pub_source(url)
+    rec = {
+        'alive': r['alive'],
+        'activity': '无法判定',          # 包型无提交维度，活跃度改由"更新时间"判定
+        'note': r.get('note', ''),
+        'content_sha': r.get('sha12', ''),
+        'n_files': None,
+        'n_commits_30d': None,
+        'dirs': [],
+        'pushed_at': None,
+        'why': {},
+        'why_state': r.get('why_state', {}),
+        'pub_bytesize': r.get('bytesize'),
+        'pub_last_modified': r.get('last_modified'),
+        'pub_etag': r.get('etag'),
+    }
+    _lm_ts = _parse_ts(r.get('last_modified', '')) if r.get('last_modified') else None
+    rec['pushed_at'] = _lm_ts          # 让主流程 _activity_verdict 走"按推送时间判定"口径，与仓库型统一；否则发布源型活跃度恒为"无法判定"（S199 整合 bug）
+    if _lm_ts:
+        rec['activity'] = _activity_verdict(None, _lm_ts)
+    return rec
+
+
+def _probe_tvbox_iface(t):
+    """TVBox 接口型端点探测：HTTP GET 配置 → 校验为合法 TVBox json → 三态。
+
+    ★为什么单列一类：TVBox 接口是「配置 URL」（如 xxxx/tvbox.json、api.php/...），
+      既非 git 仓库也非对象存储包。旧 monitor 仅 repo 型完全覆盖不到，
+      导致「作者聚合分发站里的 55 组接口」没法纳入监测（666.zip 实证）。
+    """
+    urls = t.get('seed_urls') or ([t['url']] if t.get('url') else [])
+    if not urls:
+        return {'alive': '无法判定', 'activity': '无法判定',
+                'note': 'tvbox-iface 无可用 URL', 'content_sha': '',
+                'n_files': None, 'n_commits_30d': None, 'dirs': [],
+                'pushed_at': None, 'why_state': {'iface': 'no_url'}}
+    url = urls[0]
+    rec = {'alive': '无法判定', 'activity': '无法判定', 'note': '',
+           'content_sha': '', 'n_files': None, 'n_commits_30d': None,
+           'dirs': [], 'pushed_at': None, 'why_state': {}}
+    try:
+        rc, body = _sh_bytes([CURL, '-sS', '-L', '-m', '20', '-A', UA, url])
+        if rc != 0:
+            rec['alive'] = '无法判定'
+            rec['note'] = f'接口 GET 失败（{body[:80] or "超时"}）'
+            rec['why_state'] = {'iface': 'cmd_fail'}
+            return rec
+        try:
+            j = json.loads(body.decode('utf-8', 'replace'))
+        except Exception:
+            rec['alive'] = '已失效'
+            rec['note'] = '接口返回非 JSON（疑似域名被接管/返回错误页）'
+            rec['why_state'] = {'iface': 'not_json'}
+            return rec
+        _ok = bool(isinstance(j, dict) and (j.get('sites') or j.get('type')
+                                            or j.get('video') or j.get('list')))
+        if not _ok:
+            rec['alive'] = '已失效'
+            rec['note'] = '接口返回 JSON 但非 TVBox 结构（无 sites/type）'
+            rec['why_state'] = {'iface': 'not_tvbox'}
+            return rec
+        rec['alive'] = '存活'
+        rec['note'] = f'TVBox 接口存活（sites/type 校验通过，{len(body)}B）'
+        rec['content_sha'] = _content_sha(body)
+        rec['why_state'] = {'iface': 'ok'}
+    except Exception as e:
+        rec['alive'] = '无法判定'
+        rec['note'] = f'接口探测异常：{type(e).__name__}'
+        rec['why_state'] = {'iface': 'except'}
+    return rec
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# 生命周期声明探针（S199·借鉴小虎斑 mark.json 自报）：与实测活跃度正交交叉
+# ─────────────────────────────────────────────────────────────────────────
+_LIFECYCLE_STATES = ('正式', '测试', '弃更', '停止')
+_LIFECYCLE_KEYWORDS = {            # 自报态关键词 → 归一态
+    '仅供测试': '测试', '测试版': '测试', 'beta': '测试', 'test': '测试',
+    '弃更': '弃更', '已停更': '弃更', '不再维护': '弃更', 'deprecated': '弃更',
+    '停止': '停止', '已停止': '停止', 'stop': '停止',
+    '正式': '正式', '稳定版': '正式', 'release': '正式', 'stable': '正式',
+}
+
+
+def _extract_decl(d, raw):
+    """从 mark.json（可能是 数组/对象/嵌套 list）递归抽取自报信号。
+
+    小虎斑真实结构：[{'name':..., 'list':[{'name':'小虎斑本地更新',
+    'version':'26.10.18-仅供测试'}, ...]}]，version 嵌套在 list[0].version——
+    顶层 .get('version') 直接失效。故递归遍历所有层级，从 version/note/name
+    等字段抽取，并拼成 hay 文本供关键词判定自报态。
+    """
+    vers, notes, dates = [], [], []
+    def walk(node):
+        if isinstance(node, dict):
+            for k, v in node.items():
+                kl = str(k).lower()
+                if isinstance(v, str) and v.strip():
+                    if kl in ('version', 'ver'):
+                        vers.append(v.strip())
+                    elif kl in ('note', 'status', 'remark', 'name', 'title',
+                                'desc', 'description'):
+                        notes.append(v.strip())
+                    elif kl in ('date', 'update', 'updated', 'time'):
+                        dates.append(v.strip())
+                if isinstance(v, (list, dict)):
+                    walk(v)
+        elif isinstance(node, list):
+            for x in node:
+                walk(x)
+    if isinstance(d, (list, dict)):
+        walk(d)
+    if not vers:  # 兜底：原文里抓形如 26.10.18 / 2026.10.18 的版本号
+        m = re.search(r'\d{2}(?:\.\d{1,2}){1,2}(?:-[^\s",}]+)?', raw or '')
+        if m:
+            vers.append(m.group(0))
+    hay = ' '.join(vers + notes + dates)
+    return (vers[0] if vers else '', notes[0] if notes else '',
+            dates[0] if dates else '', hay)
+
+
+def scan_lifecycle_decl(t):
+    """轻量自报探针：尝试抓作者自报的生命周期信号 → 三态 dict。
+
+    小虎斑在 mark.json 自报 version=26.10.18-仅供测试——作者自报态与实测活跃度
+    是正交的两个维度（自报"测试"≠实测"活跃"，交叉才有意义）。
+
+    三态：
+      · 取到自报 → 解析出 (自报版本, 自报态, 自报日期)
+      · 无自报（找不到可直连的声明文件/关键词）→ state='无自报'
+      · 无法判定（超时/网络异常）→ state='无法判定'
+    """
+    url = t.get('发布源URL') or t.get('仓库URL') or ''
+    base = url.rsplit('/', 1)[0] if url and '/' in url else ''
+    cand = []
+    if t.get('kind') == 'pub-package' and base:
+        cand = [f'{base}/mark.json', f'{base}/version', f'{base}/version.txt']
+    elif t.get('仓库URL'):
+        cand = [f'{url.rstrip("/")}/raw/main/mark.json',
+                f'{url.rstrip("/")}/raw/master/mark.json',
+                f'{url.rstrip("/")}/raw/main/version',
+                f'{url.rstrip("/")}/raw/master/version']
+    for u in cand:
+        rc, out = _sh([CURL, '-sS', '-L', '-m', '12', '-A', UA, u])
+        if rc != 0 or not out:
+            continue
+        try:
+            d = json.loads(out)
+        except Exception:
+            d = None
+        ver, note, date, _hay = _extract_decl(d, out)
+        decl_state = '正式'
+        _hay = _hay.lower()
+        for kw, st in _LIFECYCLE_KEYWORDS.items():
+            if kw.lower() in _hay:
+                decl_state = st
+                break
+        if ver or note:
+            return {'state': '取到', '自报版本': ver, '自报态': decl_state,
+                    '自报日期': date, 'note': f'自报信号来自 {u}'}
+    if not cand:
+        return {'state': '无自报', '自报版本': '', '自报态': '', '自报日期': '',
+                'note': '该目标不含可直连的自报文件'}
+    return {'state': '无自报', '自报版本': '', '自报态': '', '自报日期': '',
+            'note': '候选自报文件均未取到（可能不公开/路径不同）'}
+
+
+def cross_lifecycle(decl, activity):
+    """生命周期声明 × 实测活跃度 正交交叉判据 → 结论 dict。
+
+    四个象限：
+      · 声明弃更/停止 ∩ 实测活跃   → 冲突（自报弃更却仍在动，声明可能过期或 fork 别处）
+      · 声明正式       ∩ 实测停滞/归档 → 风险（声明正式却长期不动）
+      · 声明测试       ∩ 任意实测     → 提示（仅供测试源，稳定性低）
+      · 其余                            → 一致
+    """
+    ds = (decl or {}).get('自报态', '') or ''
+    if (decl or {}).get('state') != '取到' or not ds:
+        return {'level': '无', 'msg': '无有效自报，跳过交叉'}
+    if ds in ('弃更', '停止') and activity in ('活跃', '停滞'):
+        return {'level': '冲突', 'msg': f'自报「{ds}」但实测「{activity}」——声明可能过期或非同一分支'}
+    if ds == '正式' and activity in ('停滞', '归档'):
+        return {'level': '风险', 'msg': f'自报「正式」但实测「{activity}」——长期不动，疑似隐性停更'}
+    if ds == '测试':
+        return {'level': '提示', 'msg': '自报「测试」——仅供测试源，稳定性低于正式发布'}
+    return {'level': '一致', 'msg': f'自报「{ds}」与实测「{activity}」一致'}
+
+
+def _probe_target(t):
+    """监测探测分发器：按 kind 选择探针。
+
+    - domain-set（域名型集合）：走 _probe_domain_set（按集合判活）；
+    - pub-package（对象存储直连包）：走 _probe_pub_source（HTTP 轻量探活）；
+    - 其余（仓库型）：保持原 _probe_repo 行为（向后兼容 200+ 目标）。
+    """
+    if t.get('kind') == 'domain-set':
+        return _probe_domain_set(t)
+    if t.get('kind') == 'pub-package':
+        return _probe_pub_source(t)
+    if t.get('kind') == 'tvbox-iface':
+        return _probe_tvbox_iface(t)
+    return _probe_repo(t)
 
 
 def _record_sample(t, rec):
@@ -1531,7 +2388,7 @@ def _record_sample(t, rec):
     state, alog = load_alog()
     if state == 'corrupt':
         return False, {'error': '基座损坏拒绝回写'}
-    url = t.get('仓库URL', '')
+    url = t.get('仓库URL') or t.get('id') or ''   # 域名型无 URL → 用 id 作键，避免撞 ''
     repos = alog.setdefault('repos', {})
     node = repos.setdefault(url, {'history': []})
     hist = node['history']
@@ -1611,7 +2468,7 @@ def cmd_monitor_check(a):
     _HUB = '/root/.codebuddy/skills/tvbox-source-hub/scripts'
     if _HUB not in sys.path:
         sys.path.insert(0, _HUB)
-    _rep = run_bounded(sel, _probe_repo, tier=TIER_WEB, keep_order=True,
+    _rep = run_bounded(sel, _probe_target, tier=TIER_WEB, keep_order=True,
                        label='monitor-check', on_error='record')
     rows = []
     for t, rec in zip(sel, _rep.results):
@@ -1658,12 +2515,20 @@ def cmd_monitor_check(a):
             t['近30天提交'] = rec['n_commits_30d']
         t['下次到期'] = _next_due(t.get('监测周期', '每周'))
         saved, diff = _record_sample(t, rec)
-        rows.append((t, rec, act, diff, saved))
+        # ★ S189d 真根因（前三次都改错了地方）：
+        #   上面 `if not _alive_carry: t['存活状态'] = rec['alive']` 把**沿用/更新**
+        #   已经写进 t 了。于是下一个循环里 `t.get('存活状态')` 与 `rec['alive']`
+        #   必然相等（沿用时长这样也相等），`_alive_carry` 重新算一遍永远是 False
+        #   ——②那个 `if _alive_carry: mark='🕓'` 是**死代码，一次都进不去**。
+        #   实测证据（注入调试）：rec.alive=无法判定、t存活=存活，carry 仍报 False。
+        #   修法：判定不能在下游重算，必须在**回写那一刻**定下来，随行带走。
+        #   S189c 只改图标表达式、S189b 只改横幅位置，都属"改了显示没改取数"。
+        rows.append((t, rec, act, diff, saved, _alive_carry))
 
     # P3 用：读采样史判"是否首轮"（三态：读失败不报首轮也不报对比，交给上面原有的告警）
     _astate, _alog = load_alog()
     aload_repos = _alog.get('repos', {}) if _astate == 'ok' else {}
-    for t, rec, act, diff, saved in rows:
+    for t, rec, act, diff, saved, _alive_carry in rows:
         # 打印用「账面结论」而非「本轮结论」：沿用上期时要说清，不能装作本轮测到。
         # **必须先算显示值再打标题**——mark 图标也要跟着账面结论走，
         # 否则限流轮会把一个已知「存活」的仓库打成 ⚠️（看着像死了）。
@@ -1674,8 +2539,27 @@ def cmd_monitor_check(a):
         _alive_raw = _alive_show
         if _alive_show != rec['alive']:
             _alive_show = f'{_alive_show}（沿用上期·本轮未判定）'
-        mark = {'存活': '✅', '已封禁/删除': '⛔', '无法判定': '⚠️'}.get(_alive_raw, '❓')
-        print(f'\n  {mark} {t.get("仓库名") or t.get("仓库URL")}')
+        # ★ S189c 修（用户实测发现）：沿用上期时不许显示 ✅。
+        #
+        #   原实现：mark 取 `_alive_raw`（沿用后的账面值），于是限流轮里
+        #   一个"上期存活、本轮根本没测"的仓库照样打 ✅。实测 6 个仓库全 ✅，
+        #   而汇总结论写着「本轮 1/6 取到新数据」——**同屏自相矛盾**。
+        #
+        #   原作者加这段注释时的顾虑是对的：「否则限流轮会把一个已知存活的仓库
+        #   打成 ⚠️，看着像死了」。但修法走到了另一头：**为了不让人误判成"死"，
+        #   结果让人误判成"活"**。两个方向都是错的。
+        #
+        #   按三态契约（M-R60 / §3.5.3「取不到 ≠ 目标不可达」）：
+        #     本轮测到 + 活      → ✅ 存活（事实）
+        #     本轮测到 + 死      → ⛔ 已封禁/删除（事实）
+        #     本轮测到 + 判不了  → ⚠️ 无法判定（事实）
+        #     本轮没测到、沿用上期 → 🕓 未测（沿用上期：存活）  ← 原有实现缺这一档
+        #   🕓 这个图标本身就说明"这不是本轮的事实"，不会被误读成活或死。
+        if _alive_carry:
+            mark = '🕓'
+        else:
+            mark = {'存活': '✅', '已封禁/删除': '⛔', '无法判定': '⚠️'}.get(_alive_raw, '❓')
+        print(f'\n  {mark} {t.get("仓库名") or t.get("名称") or t.get("仓库URL") or t.get("id")}')
         # ★ S181（实测）：**None 不是「没数据」，是「没取到」**。
         #   原实现直接 f-string 插值，取不到就印出字面量 `None`：
         #      文件数=None  近30天提交=None
@@ -1684,17 +2568,48 @@ def cmd_monitor_check(a):
         #   n_files/n_commits_30d 变 None，可 meta 主干（repos 元信息）是 ok 的，
         #   于是 note 照旧报"正常"。人看到 `None` 只会当成"这个仓库没数据"，
         #   不会想到"是我配额没了"。这正是 M-R60 禁的「空值冒充结论」。
-        _nf = rec.get('n_files')
-        _nc = rec.get('n_commits_30d')
-        _nf_s = _nf if isinstance(_nf, int) else '未取到'
-        _nc_s = _nc if isinstance(_nc, int) else '未取到'
-        print(f'     存活={_alive_show}  活跃度={_act_show}  文件数={_nf_s}'
-              f'  近30天提交={_nc_s}  指纹={rec.get("content_sha") or "—"}')
+        if t.get('kind') == 'pub-package':
+            _nf = None
+            _nc = None
+            _bs = rec.get('pub_bytesize')
+            _lm = rec.get('pub_last_modified') or '—'
+            _bs_s = f'{_bs}B' if isinstance(_bs, int) else '未取到'
+            print(f'     存活={_alive_show}  活跃度={_act_show}  包大小={_bs_s}'
+                  f'  更新时间={_lm}  指纹={rec.get("content_sha") or "—"}')
+        else:
+            _nf = rec.get('n_files')
+            _nc = rec.get('n_commits_30d')
+            _nf_s = _nf if isinstance(_nf, int) else '未取到'
+            _nc_s = _nc if isinstance(_nc, int) else '未取到'
+            print(f'     存活={_alive_show}  活跃度={_act_show}  文件数={_nf_s}'
+                  f'  近30天提交={_nc_s}  指纹={rec.get("content_sha") or "—"}')
+        # ★ S199：生命周期声明 × 实测活跃度 正交交叉（pub-package 自动跑；
+        #   repo 型仅在单目标 --repo 指定时跑，避免常规巡检拖慢全量）
+        _do_life = (t.get('kind') == 'pub-package') or bool(a.repo)
+        if _do_life:
+            _decl = scan_lifecycle_decl(t)
+            _cross = cross_lifecycle(_decl, t.get('活跃度'))
+            if _cross['level'] in ('冲突', '风险', '提示'):
+                _tag = {'冲突': '⚠️冲突', '风险': '⚠️风险', '提示': 'ℹ️提示'}[_cross['level']]
+                print(f'     {_tag} 生命周期交叉：{_cross["msg"]}')
+        # ★ S190（核心改动）：**未取到必须自带原因**，不许把"为什么"留给人去查。
+        #
+        #   原实现只写一句"部分字段未取到（…多为配额耗尽或限流）"——那是**猜测**，
+        #   而且猜错过：实测 songlees355-wq/okay 的 commits 接口耗时 19s > 15s 超时，
+        #   真实原因是被判超时，可屏幕上写着"配额耗尽"。同一句话害我等配额等了一小时。
+        #   现在原因来自 `_platform_meta` 的实际返回码（三态），不是推测。
+        _why = rec.get('why') or {}
+        for _k, _label in (('n_files', '文件数'), ('n_commits_30d', '近30天提交')):
+            if _k in _why:
+                print(f'       ↳ {_label}未取到：{_why[_k]}')
         if (_nf is None or _nc is None) and rec.get('note') \
-                and '部分字段未取到' not in (rec.get('note') or ''):
-            # 补一句"为什么是未取到"——note 说"API 正常"时尤其要说清，
-            # 否则读者会以为这就是该仓库的真实值。（幂等：加过就不再加）
-            rec['note'] += '；⚠️ 部分字段未取到（文件数/提交数接口失败，多为配额耗尽或限流）'
+                and '部分字段未取到' not in (rec.get('note') or '') \
+                and t.get('kind') not in ('domain-set', 'pub-package'):
+            # NOTE（S190）：原因已由上面逐条打印，这里只留一句总括，不再猜具体成因。
+            # ★ S204：域名型目标**本就不产生** 文件数/提交数（它按集合判活）。
+            #   对它说「部分字段未取到」＝把「不适用」说成「没取到」，
+            #   用户会去排查网络/配额，其实没有任何东西该取。
+            rec['note'] += '；⚠️ 部分字段未取到（原因见上方 ↳ 行）'
         # ★ S181：本轮没测到、账面沿用上期时，note 不能说「无法判定」——
         #   那与上一行的「存活=存活」直接打架。改成「本轮未取到，账面沿用上期」。
         if (_act_show != act or _alive_raw != rec['alive']) and rec.get('note'):
@@ -1709,7 +2624,7 @@ def cmd_monitor_check(a):
             if diff.get('content_changed'): ch.append('内容变更')
             if diff.get('dirs_added'): ch.append(f'新增目录×{len(diff["dirs_added"])}')
             if diff.get('dirs_removed'): ch.append(f'移除目录×{len(diff["dirs_removed"])}')
-            if diff.get('dirs_undecidable'):
+            if diff.get('dirs_undecidable') and t.get('kind') != 'domain-set':
                 ch.append('目录变更无法判定（本期或上期目录树未取到）')
             if ch:
                 print(f'     🔔 相对上期：{"、".join(ch)}')
@@ -1718,18 +2633,25 @@ def cmd_monitor_check(a):
         # ★ P3（S163）：首轮检查后明说"基线已建立"。实测首轮输出全是
         #   「目录变更无法判定（本期或上期目录树未取到）」——用户会误读成功能坏了；
         #   实际是基线刚存、下期起才有对比对象。用采样史期数判（≥2 才算有对比）。
-        _h = ((aload_repos or {}).get(t.get('仓库URL', '')) or {}).get('history', [])
-        if diff and diff.get('dirs_undecidable') and len(_h) <= 1:
+        _h = ((aload_repos or {}).get(t.get('仓库URL') or t.get('id', '')) or {}).get('history', [])
+        if diff and diff.get('dirs_undecidable') and len(_h) <= 1 \
+                and t.get('kind') != 'domain-set':
             print('     📁 首轮基线已建立——下次检查起，目录变更即可对比')
 
     # ★ S181：**用实测结果判决本轮到底有没有在监测**，而不是信 `/rate_limit`。
     #   实测依据：`/rate_limit` 会在两个配额桶之间乱跳（同一秒连查三次，0 与 45 交替，
     #   reset 相差 30 分钟）——**这个端点从原理上答不准**。而「本轮实际拿到了几个字段」
     #   是确定的事实。用它做判决，才不会出现「报额度充足、实际全空转」。
-    _got = sum(1 for _t, _r, _a, _d, _s in rows
+    # ★ S204：域名型目标不产生 文件数/近30天提交（那是仓库型指标），
+    #   若一并计入「取到数据」统计，会让域名型目标永远显示「0/1 取到=等于没监测」，
+    #   再配上「配额端点自报…全限流」的归因——而域名型走的是 curl，跟 GitHub 配额毫无关系。
+    #   这是把仓库型的账套到域名型头上，属归因错位（§3.13 ③ 同族）。故分开统计。
+    _repo_rows = [r for r in rows if r[0].get('kind') not in ('domain-set', 'pub-package')]
+    _dom_rows = [r for r in rows if r[0].get('kind') == 'domain-set']
+    _got = sum(1 for _t, _r, _a, _d, _s, _c in _repo_rows
                if isinstance(_r.get('n_files'), int)
                or isinstance(_r.get('n_commits_30d'), int))
-    _n = len(rows)
+    _n = len(_repo_rows)
     if _n and _got == 0:
         print(f'\n  ⛔ 本轮 0/{_n} 取到数据——**实际等于没监测**（全部沿用上期账面）。')
         _ls, _rl = _rate_limit()
@@ -1738,9 +2660,90 @@ def cmd_monitor_check(a):
               f'该端点会在多个配额桶间跳值，**不可作为判断依据**。')
         print('     确定解法：`tvbox probe token --set <串>`（60/h → 5000/h）。')
     elif _n and _got < _n:
-        print(f'\n  ⚠️ 本轮 {_got}/{_n} 个目标取到新数据，其余沿用上期（配额偏紧）。')
+        # ★ S195：这里原来一律写"（配额偏紧）"——**归因错位**，与 §3.13 ③ 同族。
+        #   实测：39/45 取到数据、GitHub token 明明已配（5000/h 剩 4881），
+        #   真正缺的是 GitLab/Gitee 两平台各自的凭据，跟 GitHub 配额毫无关系。
+        #   把「哪家平台的账」混成一句"配额偏紧"，会让人去配 GitHub token 白忙。
+        #   改法：按**平台**分别算取到率，只对真正缺凭据的平台点名，不再猜原因。
+        _miss = {}
+        for _t, _r, _a, _d, _s, _c in _repo_rows:   # ★ S204：只统计仓库型
+            if not (isinstance(_r.get('n_files'), int) or isinstance(_r.get('n_commits_30d'), int)):
+                _pf = _t.get('平台') or '未知'
+                _miss.setdefault(_pf, []).append(
+                    _t.get('仓库名') or _t.get('名称')
+                    or _t.get('仓库URL') or _t.get('id') or '?')
+        print(f'\n  ⚠️ 本轮 {_got}/{_n} 个目标取到新数据，其余沿用上期账面。')
+        for _pf, _names in sorted(_miss.items(), key=lambda x: -len(x[1])):
+            if _pf == 'GitHub':
+                _hint = '（GitHub 一般不会整批失败，若是同批全挂先查 token 是否真带上）'
+            else:
+                _hint = f'（{_pf} 平台元信息需该平台凭据，缺则只能落「无法判定」，不是死）'
+            print(f'     · {_pf} 未取到 {len(_names)} 条：{", ".join(_names[:5])}'
+                  + (' …' if len(_names) > 5 else '') + _hint)
     elif _n:
         print(f'\n  ✅ 本轮 {_got}/{_n} 个目标全部取到新数据。')
+
+    # ★ S204：域名型目标单列结论（不走 文件数/提交数，改按集合判活口径汇报）
+    if _dom_rows:
+        _dl = {'存活': 0, '已封禁/删除': 0, '无法判定': 0}
+        for _t, _r, _a, _d, _s, _c in _dom_rows:
+            _dl[_r.get('alive', '无法判定')] = _dl.get(_r.get('alive', '无法判定'), 0) + 1
+        print(f'\n  🌐 域名型目标 {len(_dom_rows)} 个（按集合判活，不取文件数/提交数）：'
+              f'存活 {_dl.get("存活", 0)}、已封禁/删除 {_dl.get("已封禁/删除", 0)}、'
+              f'无法判定 {_dl.get("无法判定", 0)}')
+        for _t, _r, _a, _d, _s, _c in _dom_rows:
+            print(f'     · {_t.get("名称") or _t.get("id")}：{_r.get("note") or "—"}')
+    # ★ S199：发布源型目标单列结论（走 HTTP 轻量探活，非仓库型，不取文件数/提交数）
+    _pub_rows = [r for r in rows if r[0].get('kind') == 'pub-package']
+    if _pub_rows:
+        _pl = {'存活': 0, '已封禁/删除': 0, '无法判定': 0}
+        for _t, _r, _a, _d, _s, _c in _pub_rows:
+            _pl[_r.get('alive', '无法判定')] = _pl.get(_r.get('alive', '无法判定'), 0) + 1
+        print(f'\n  📦 发布源型目标 {len(_pub_rows)} 个（HTTP 轻量探活，非仓库型）：'
+              f'存活 {_pl.get("存活", 0)}、已失效 {_pl.get("已封禁/删除", 0)}、'
+              f'无法判定 {_pl.get("无法判定", 0)}')
+        for _t, _r, _a, _d, _s, _c in _pub_rows:
+            _bs = _r.get('pub_bytesize')
+            _bs_s = f'{_bs}B' if isinstance(_bs, int) else '—'
+            print(f'     · {_t.get("名称") or _t.get("id")}：{_r.get("note") or "—"}'
+                  f'（包大小={_bs_s} 更新={_r.get("pub_last_modified") or "—"}）')
+
+    # ★ S190·自诊断（这一条是本轮真正的核心，不是锦上添花）
+    #
+    #   由来：用户 2026-10-20 23:14 质问「不是你一直敲代码，为啥说技能在工作了」。
+    #   复盘：那一晚 `monitor check` 报了 4 次"未取到"，我为了查明原因**手写了 9 个
+    #   临时脚本**（打 API 量耗时、抓返回码、比对分支名……）。而脚本自己一句原因都没有。
+    #   这不是技能在工作，是**技能把排查工作原样推回给人，还让人以为已经测过了**。
+    #
+    #   现在把今晚人工排查的路径固化成判据，让脚本自己走一遍：
+    #     ① 配了 token，却整批出现 ratelimit → 不是配额问题，是**token 没用上**
+    #        （真实事故：`_platform_meta` 4 处调用漏传 headers，token 配好却全程匿名）
+    #     ② 全部失败但错因是 fail（非 ratelimit）→ 不是配额，是网络/超时
+    #     ③ 单个目标失败 → 点名是哪个、为什么（不再一句"其余沿用上期"带过）
+    #
+    #   为什么要"配了 token 还限流"这个特判：正常配好后不可能整批限流（5000/h）。
+    #   一旦出现，就说明**配置与使用之间断了**——今晚正是这种，而它连续 3 次逃过了
+    #   人工复查（因为 rate_limit 端点自报 5000，看着一切正常）。
+    _tok_state, _tok_val, _tok_src = _load_token()
+    _why_cnt = {}
+    _rl_hit = 0                    # 用 state 码计数（不拿中文文案当判据，S190b）
+    for _t, _r, _a, _d, _s, _c in rows:
+        for _k, _msg in (_r.get('why') or {}).items():
+            _why_cnt[_msg] = _why_cnt.get(_msg, 0) + 1
+        for _k, _st in (_r.get('why_state') or {}).items():
+            if _st == 'ratelimit':
+                _rl_hit += 1
+    _has_rl = _rl_hit > 0
+    if _got < _n and _tok_state == 'ok' and _has_rl:
+        print('     🚨 自诊断：token 已配置（{0}），却仍触发限流——'
+              '**这不可能是配额不够**（5000/h）。'.format(_tok_src))
+        print('        极可能是「配置了但请求没带上」：检查各 API 调用是否都传了 headers。')
+        print('        （S190 真实事故：_platform_meta 4 处调用漏传 headers，'
+              'token 全程未生效）')
+    if _why_cnt:
+        print('\n  📋 本轮取不到的逐条原因：')
+        for m, c in sorted(_why_cnt.items(), key=lambda x: -x[1]):
+            print(f'     ×{c}  {m}')
 
     ck, lk = save_targets(targets)
     if not ck:
@@ -1748,8 +2751,12 @@ def cmd_monitor_check(a):
     if not lk:
         print('   ⚠️ 本地登记册写入失败')
     if a.json:
-        print(json.dumps([{'url': t.get('仓库URL'), 'alive': r['alive'], 'activity': ac}
-                          for t, r, ac, _, _ in rows], ensure_ascii=False, indent=2))
+        # ★ 同一处隐患（S189d）：rows 由 5 元组改 6 元组，这里是**第四处解包点**。
+        #   不同步就是 ValueError: too many values to unpack —— 而且只在 --json 时才炸，
+        #   平时跑不出来。改元组结构必须一次把全部解包点找齐（grep 'in rows'）。
+        print(json.dumps([{'url': t.get('仓库URL'), 'alive': r['alive'], 'activity': ac,
+                           'carried': c}
+                          for t, r, ac, _, _, c in rows], ensure_ascii=False, indent=2))
 
 
 def cmd_monitor_diff(a):
@@ -1767,9 +2774,9 @@ def cmd_monitor_diff(a):
         sel = [t for t in targets if a.repo in (t.get('仓库URL', ''), t.get('id', ''))]
     repos = alog.get('repos', {})
     for t in sel:
-        url = t.get('仓库URL', '')
+        url = t.get('仓库URL') or t.get('id') or ''
         hist = (repos.get(url) or {}).get('history', [])
-        print(f'\n  📁 {t.get("仓库名") or url}（{len(hist)} 期采样）')
+        print(f'\n  📁 {t.get("仓库名") or t.get("名称") or url}（{len(hist)} 期采样）')
         if len(hist) < 2:
             print('     样本不足 2 期——无法对比（M-R9：不足 2 期不外推）')
             continue
@@ -1820,10 +2827,10 @@ def cmd_monitor_forecast(a):
     repos = alog.get('repos', {})
     out = []
     for t in sel:
-        url = t.get('仓库URL', '')
+        url = t.get('仓库URL') or t.get('id') or ''
         hist = (repos.get(url) or {}).get('history', [])
         res = _forecast_risk(hist)
-        out.append({'url': url, 'name': t.get('仓库名') or url, **res})
+        out.append({'url': url, 'name': t.get('仓库名') or t.get('名称') or url, **res})
     if a.json:
         print(json.dumps(out, ensure_ascii=False, indent=2))
         return
@@ -1848,21 +2855,36 @@ def cmd_monitor_status(a):
         print('ℹ️ 尚无监测目标。用 `tvbox probe monitor add --url <repo_url>` 登记。')
         return
     print(f'📡 上游仓库监测台（{len(targets)} 个目标）\n')
-    print(f'  {"仓库名":<18} {"平台":<7} {"存活":<10} {"活跃度":<6} {"上次检查":<20}')
-    print('  ' + '─' * 74)
+    print(f'  {"owner/repo":<34} {"平台":<7} {"存活":<10} {"活跃度":<6} {"上次检查":<20}')
+    print('  ' + '─' * 90)
     for t in targets:
-        nm = (t.get('仓库名') or t.get('仓库URL', ''))[:16]
-        print(f'  {nm:<18} {t.get("平台",""):<7} {t.get("存活状态","待查"):<10} '
+        nm = _target_label(t)[:32]
+        print(f'  {nm:<34} {t.get("平台",""):<7} {t.get("存活状态","待查"):<10} '
               f'{t.get("活跃度","待查"):<6} {(t.get("上次检查") or "—")[:19]:<20}')
         # ★ S169：存活若靠 API 元信息判的（主页不可达），必须显形——
         #   否则「存活」是个结论，用户看不出仓库主页其实连不上（M-R113）。
         _note = t.get('变更摘要') or ''
         if '存活依据=' in _note:
-            print(f'  {"":<18} └─ {_note}')
+            print(f'  {"":<34} └─ {_note}')
     due = [t for t in targets if _is_due(t)]
     if due:
         print(f'\n  ⏰ {len(due)} 个已到期未检查：' + ', '.join(
-            t.get('仓库名', t.get('仓库URL', '')) for t in due))
+            _target_label(t) for t in due))
+
+
+def _target_label(t):
+    """★ S195：显示名必须带 owner，否则 `TVBox`×4 / `tvbox`×5 分不清是谁的。
+
+    修复的是 id 撞名之后遗留的**可读性**问题：id 早已是 `platform-owner-repo`
+    复合键（不可混淆），但表格里只打印 repo 名，人眼仍无法区分。
+    优先取 URL 的 owner/repo；取不到才退回「仓库名」字段。
+    """
+    url = (t.get('仓库URL') or '').rstrip('/')
+    m = re.search(r'https?://[^/]+/([^/]+)/([^/?#]+)', url)
+    if m:
+        repo = re.sub(r'\.git$', '', m.group(2))
+        return f'{m.group(1)}/{repo}'
+    return (t.get('仓库名') or t.get('名称') or url or t.get('id') or '?')[:32]
 
 
 def _is_due(t):
@@ -1891,7 +2913,7 @@ def cmd_monitor_due(a):
         return
     print(f'⏰ {len(due)} 个到期未检查：')
     for t in due:
-        print(f'   • {t.get("仓库名") or t.get("仓库URL")}'
+        print(f'   • {t.get("仓库名") or t.get("名称") or t.get("仓库URL") or t.get("id")}'
               f'（{t.get("监测周期","每周")}·上次 {t.get("上次检查") or "从未"}）')
 
 
@@ -1926,7 +2948,9 @@ def cmd_monitor_add(a):
     if not owner:
         print(f'❌ URL 无法解析出 owner/repo：{url}')
         sys.exit(1)
-    tid = repo.lower()
+    # S195：id 改「平台-作者-仓库名」复合键——仓库名做 id 会让重名仓（tvbox×3、TVBox×3）
+    # 在云端 id_map 里互踩，后写覆盖前写（实测 2026-10-21 批量登记暴露）。
+    tid = f'{platform.lower()}-{owner}-{repo}'.lower()
     # S088：分支不可盲信默认 'main'——探测真实默认分支（写错则 raw 全 404）
     branch = a.branch
     if not branch or branch == 'main':
@@ -1949,6 +2973,59 @@ def cmd_monitor_add(a):
     _persist_note(ck, lk)
     if not a.config_path:
         print('   ℹ️ 未指定配置路径 → 检查时将按常见命名自动探测（config.json 等）')
+
+
+def cmd_monitor_import(a):
+    """monitor import：从 seed JSON 批量登记监测目标（支持离线种子基线）。
+
+    ★666 实证驱动：作者聚合分发站里的「55 组 TVBox 接口」是配置 URL，
+      旧 `monitor add` 仅支持单条 git 仓库 URL，没法批量登记。本命令读
+      `[{name, urls:[...], kind, seed_baseline, ...}]` 数组循环建目标，
+      按 kind 分流（tvbox-iface / repo / pub-package），去重按 id。
+    """
+    import re as _re
+    import hashlib as _hl
+    state, targets = load_targets()
+    if state == 'corrupt':
+        print('❌ 登记册损坏，拒绝写入（防覆盖，M-R60）')
+        sys.exit(2)
+    seed = json.load(open(a.file, encoding='utf-8'))
+    if isinstance(seed, dict):
+        seed = seed.get('items') or seed.get('targets') or []
+    added, skipped = 0, 0
+    for it in seed:
+        name = (it.get('name') or it.get('名称') or '').strip()
+        urls = it.get('urls') or []
+        if not name or not urls:
+            skipped += 1
+            continue
+        kind = it.get('kind', 'tvbox-iface')
+        # ★id 唯一性：中文组名 slug 会塌成空串导致批量碰撞（666 实证：60 组只写入 10 条）。
+        #   改用「可读 ascii 前缀 + 名称|主URL 哈希」保证每条唯一。
+        _asc = _re.sub(r'[^0-9a-zA-Z]', '', name)[:6]
+        _h = _hl.md5((name + '|' + (urls[0] if urls else '')).encode('utf-8')).hexdigest()[:8]
+        tid = it.get('id') or ('iface-' + _asc + '-' + _h if _asc else 'iface-' + _h)
+        if any(t.get('id') == tid for t in targets):
+            skipped += 1
+            continue
+        baseline = bool(it.get('seed_baseline', True))
+        rec = {
+            'id': tid, '名称': name, 'kind': kind,
+            'seed_urls': urls,
+            'seed_baseline': baseline,
+            'source_file': it.get('source_file', ''),
+            'extracted_sha12': it.get('extracted_sha12', ''),
+            'extracted_at': it.get('extracted_at', now_iso()),
+            '在线状态': it.get('在线状态', '离线种子（待启用）' if baseline else '存活'),
+            '存活状态': '待查', '活跃度': '待查',
+            '监测周期': it.get('cadence', '每周'),
+            '上次检查': '', '下次到期': '', '变更摘要': '',
+        }
+        targets.append(rec)
+        added += 1
+    ck, lk = save_targets(targets)
+    print(f'✅ 批量导入完成：新增 {added} 条，跳过 {skipped} 条（重复/缺字段）')
+    _persist_note(ck, lk)
 
 
 # S143：测试残留识别词——自检/演示曾把 `gitee.com/easy999/test1`、`github.com/qist/tvbox`
@@ -2208,6 +3285,48 @@ def _rank_repos(items, platform, kw=None):
     return out
 
 
+def _dedup_gate(repos):
+    """S199 准入去重闸（用户 2026-10-22 指令固化）：
+    新仓库进候选册前，先对比**两道名单**——① 上游监测册（已准入的重复）②
+    不可用仓库册（实测判死的，禁再回来）。两册都不在才放行进候选。
+
+    返回 (放行列表, 拦截监测册列表, 拦截不可用册列表)。名单读不到时：
+    监测册读不到 = 闸失效，**放行但打印告警**（不能因闸坏而停止采集）；
+    不可用册读不到 = 无死名单可比，等价于空集（首次运行常态）。
+    """
+    gate_new, hit_mon, hit_dead = [], [], []
+    try:
+        _st, _tg = load_targets()
+        mon_urls = {t.get('仓库URL') for t in (_tg or []) if isinstance(t, dict)}
+    except Exception as _e:
+        sys.stderr.write(f'  ⚠️ 去重闸：监测册读取失败（{_e}）——本轮跳过监测册比对\n')
+        mon_urls = set()
+    dead_fp = os.path.join(SELF_DIR, 'dead_repos.json')
+    dead_urls = set()
+    if os.path.exists(dead_fp):
+        try:
+            _d = json.load(open(dead_fp, encoding='utf-8'))
+            dead_urls = {r.get('url') for r in (_d.get('repos') or [])
+                         if isinstance(r, dict)}
+        except Exception as _e:
+            sys.stderr.write(f'  ⚠️ 去重闸：不可用册损坏（{_e}）——本轮跳过死册比对\n')
+    for r in (repos or []):
+        u = (r or {}).get('url')
+        if not u:
+            continue
+        if u in dead_urls:
+            hit_dead.append(u)
+        elif u in mon_urls:
+            hit_mon.append(u)
+        else:
+            gate_new.append(r)
+    if hit_mon:
+        print(f'   ⏭ 去重闸：{len(hit_mon)} 个已在监测册，不重复进候选册')
+    if hit_dead:
+        print(f'   🚫 去重闸：{len(hit_dead)} 个在不可用仓库册（实测判死），拒绝入册')
+    return gate_new, hit_mon, hit_dead
+
+
 def _save_search(repos, platform=None, sync_cloud=True):
     """保存搜索结果——**合并语义**（M-R60⑧ 变体：禁止空/单平台结果覆盖他平台有效结果）。
 
@@ -2238,6 +3357,8 @@ def _save_search(repos, platform=None, sync_cloud=True):
             except Exception:
                 pass
             old = []
+    # S199 准入去重闸：新结果先过「监测册+不可用册」两道名单，再谈合并
+    repos, _hm, _hd = _dedup_gate(repos)
     # 合并：新结果优先（同 url 覆盖），保留旧结果中未出现的
     merged = {}
     for r in old:
@@ -3108,8 +4229,12 @@ def cmd_decrypt(a):
     - `img`    图片 XOR 还原（按魔数反推密钥，还原后校验魔数）
     - `m3u8`   m3u8 代理重写（KEY 与分片都转绝对地址）
     """
+    # ★ S194 修：经 tvbox 入口分发时 sys.path 不带本目录 → No module named 'armor'
+    #   （同款病已在 2683/3016/3951/6032 行修过，decrypt 入口漏修——实测复现 exit 1）
+    _d = os.path.dirname(os.path.abspath(__file__))
+    if _d not in sys.path:
+        sys.path.insert(0, _d)
     import armor as _am
-
     if a.selftest:
         _e = _am.self_test()
         return 0 if not _e else 1
@@ -3490,7 +4615,8 @@ def cmd_harvest_filter(a):
             tag = 'L2观察·测活仍失败' if f in L2 else f'真实测活未通过({ev[:40]})'
             drop.append((api, tag))
             continue
-        obj = {k: it[k] for k in ('api接口', '名称', '分组类目') if k in it}
+        obj = {k: it[k] for k in ('api接口', '名称', '分组类目',
+                                  'sourceUrl', 'mirror', 'ua', 'size') if k in it}
         obj['测活证据'] = ev
         if f in L2:
             obj['平反'] = True          # 标记：L2 观察项实测通过 → 待撤销黑名单
@@ -3512,18 +4638,28 @@ def cmd_harvest_filter(a):
     outp = inp.replace('.json', '_filtered.json')
     json.dump(keep, open(outp, 'w', encoding='utf-8'), ensure_ascii=False, indent=2)
     # S095：回写云端 DB_HARVEST 测活状态（保留→存活；剔除→失效/无法判定）
+    # 点⑥：接入多生态分诊闸——越界（漫画/书源/音源）不进 DB_HARVEST，留痕不静默丢
     _crows = []
+    _oob = []
     for it, (ok, ev) in results:
         _api = it.get('api接口')
         if not _api:
+            continue
+        enter, reason = can_enter_harvest(it)
+        if not enter:
+            _oob.append({'reason': reason, 'candidate': it})
             continue
         _crows.append({
             'api接口': _api, '名称': it.get('名称', ''),
             '分组类目': it.get('分组类目', '其他'),
             '来源仓库': it.get('来源仓库', ''),
+            '生态类别': it.get('生态类别', ''),
             '测活状态': '存活' if ok else '失效',
             '入库状态': '待入库',
         })
+    if _oob:
+        _record_outofscope(_oob)
+        print(f'  🚧 生态越界 {len(_oob)} 条（已留痕 harvest_outofscope.json，不进 DB_HARVEST）')
     cok, n_add, n_upd = _cloud_sync_harvest(_crows)
     if DB_HARVEST:
         print(f'   ☁️ 云端测活状态回写：{"✅" if cok else "⚠️失败"}'
@@ -3552,7 +4688,8 @@ def cmd_harvest_export(a):
     items = json.load(open(inp, encoding='utf-8'))
     if isinstance(items, dict):
         items = items.get('records') or items.get('items') or []
-    clean = [{k: it[k] for k in ('api接口', '名称', '分组类目') if k in it}
+    clean = [{k: it[k] for k in ('api接口', '名称', '分组类目',
+                                 'sourceUrl', 'mirror', 'ua', 'size') if k in it}
              for it in items if it.get('api接口')]
     if not clean:
         print('⚠️ 无有效候选（缺 api接口 必填字段）')
@@ -3776,6 +4913,40 @@ def cmd_harvest_prune(a):
         print(f'  ⚠️ 生态门面联动跳过（{type(e).__name__}）：备用版已产出，不受影响')
 
 
+def cmd_quality_one(a):
+    """C8（T6）：S110 单条质量评测入口。实现全在 quality.py，薄封装（M-R38 单一实现）。"""
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import quality
+    quality.main(a.url)
+    return 0
+
+
+def cmd_quality_batch_run(a):
+    """C8（T6）：S110 批量质量评测回填两库入口。实现全在 quality_batch.py，薄封装。"""
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import quality_batch
+    argv = ['--db', a.db, '--rounds', str(a.rounds),
+            '--timeout', str(a.timeout), '--workers', str(a.workers)]
+    if getattr(a, 'limit', 0):
+        argv += ['--limit', str(a.limit)]
+    if getattr(a, 'only_pass', False):
+        argv.append('--only-pass')
+    if getattr(a, 'dry', False):
+        argv.append('--dry')
+    return quality_batch.main(argv)
+
+
+def cmd_content_probe_run(a):
+    """C8（T6）：内容层探查入口。实现全在 content_probe.py，薄封装。
+
+    原仓库配置缺失时 content_probe.main 自带守卫（打印警告优雅返回），不崩。
+    """
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import content_probe
+    content_probe.main()
+    return 0
+
+
 def cmd_livecheck(a):
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     import livecheck
@@ -3802,6 +4973,12 @@ def cmd_forge(a):
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     import forge
     return forge.cmd_forge(a)
+
+
+def cmd_shellcrack(a):
+    """模块 G：壳源侦察与抠链（S196）。实现全在 shellcrack.py，此处薄封装（M-R38 单一实现）。"""
+    import shellcrack
+    return shellcrack.cmd_shellcrack(a)
 
 
 
@@ -3931,6 +5108,76 @@ def _lj_api_kind(api):
     if a.startswith('./') or a.startswith('../') or a.startswith('/'):
         return 'local'
     return 'other'
+
+
+# ---------- 点⑥：多生态分诊闸（M-R60 三态——越界留痕不静默丢弃）----------
+HARVEST_OUTOFSCOPE = os.path.join(HARVEST_DIR, 'harvest_outofscope.json')
+# 生态越界类别：属其它软件生态，不进 TVBox 候选册（但留痕可回看）
+_OUT_OF_SCOPE_ECO = ('漫画书源', '阅读书源', '音源')
+
+
+def _classify_ecosystem(it):
+    """内容生态分诊（点⑥）：从既有字段 / URL 特征 / 内容结构判定生态类别。
+
+    取值 ∈ {tvbox接口, 漫画书源, 阅读书源, 音源, 其他}。
+    优先用抽取脚本/调用方已打的 `生态类别`；否则按特征启发式判定。
+    """
+    eco = (it.get('生态类别') or '').strip()
+    if eco in ('tvbox接口', '漫画书源', '阅读书源', '音源', '其他'):
+        return eco
+    api = (it.get('api接口') or it.get('url') or '')
+    # 特征串同时扫「键+值」，否则 bookSourceUrl 这类键特征会被漏判
+    blob = ' '.join(f'{k} {v}' for k, v in it.items())
+    al = api.lower()
+    blob_l = blob.lower()
+    # 阅读/漫画书源：含 bookSourceUrl / bookSource 特征（漫画分组优先判漫画书源）
+    if 'booksource' in blob_l:
+        grp = str(it.get('bookSourceGroup') or it.get('分组类目') or '')
+        if '漫画' in grp or 'comic' in grp.lower() or 'manga' in grp.lower():
+            return '漫画书源'
+        return '阅读书源'
+    # TVBox 结构特征（m3u8/http 直链、tvbox 分组）→ 优先于通用关键词，
+    # 避免「名字含漫画的直播 m3u8」被通用关键词误判为漫画书源（点⑥ 不误杀 tvbox 接口）
+    if ('.m3u8' in al or '.m3u' in al or 'tvbox' in al
+            or it.get('分组类目') in ('直播', '点播', '接口')):
+        return 'tvbox接口'
+    # 漫画书源：漫画特征关键词（仅当前述书源/TVBox 结构均未命中时生效）
+    if any(k in blob_l for k in ('漫画', 'comic', 'manga', 'manhua')):
+        return '漫画书源'
+    # 音源：音乐特征
+    if any(k in blob_l for k in ('music', '音乐', 'song', '网易云',
+                                 'qq音乐', '咪咕', '酷狗', '虾米')):
+        return '音源'
+    return 'tvbox接口'  # 默认保守进册（TVBox 范围），不误杀
+
+
+def can_enter_harvest(it):
+    """多生态分诊闸（点⑥·M-R60）：返回 (是否进候选册, 原因)。
+
+    - tvbox接口 / 其他 → 进册（True）
+    - 漫画书源 / 阅读书源 / 音源 → 越界，不写 DB_HARVEST，留痕 harvest_outofscope.json
+    回填 `生态类别` 到 it，供下游与留痕使用（不静默丢弃，呼应 M-R60 空集合不覆盖非空）。
+    """
+    eco = _classify_ecosystem(it)
+    it['生态类别'] = eco
+    if eco in _OUT_OF_SCOPE_ECO:
+        return False, f'生态越界({eco})'
+    return True, 'in-scope(tvbox)'
+
+
+def _record_outofscope(records):
+    """点⑥：生态越界候选留痕（M-R60 三态——不静默丢弃，可回看）。
+    追加写 harvest_candidates/harvest_outofscope.json。"""
+    try:
+        cur = json.load(open(HARVEST_OUTOFSCOPE, encoding='utf-8')) \
+            if os.path.exists(HARVEST_OUTOFSCOPE) else []
+        if not isinstance(cur, list):
+            cur = []
+    except Exception:
+        cur = []
+    cur.extend(records)
+    json.dump(cur, open(HARVEST_OUTOFSCOPE, 'w', encoding='utf-8'),
+              ensure_ascii=False, indent=2)
 
 
 def _lj_ext_is_relative(ext):
@@ -4697,7 +5944,7 @@ def cmd_harvest_promote(a):
             'host': urlparse(api).netloc,
             '分组类目': it.get('分组类目', '其他'),
             'api接口': api,
-            '体系': it.get('体系', '其他系'),
+            '体系': it.get('体系', '脚本系'),
             '源类型': {'vod': '点播', 'm3u8': '直播', 'py': 'py'}.get(kind, '点播'),
             '真实测活': '通过',
             '测活证据': str(ev)[:200],
@@ -5135,19 +6382,8 @@ def cmd_limits(a):
 
 # ══════════════════ self-check：四监测器活体探针 + 假阳性基线 ══════════════════
 
-def cmd_self_check(a):
-    """六组活体探针：注入已知异常 → 必须捕获 → 清理 → 必须清零；并验假阳性基线。"""
-    # ★ S177 步2 踩到的真坑，记在这里当护栏：本函数 1300 多行，中途有一句
-    #   `a = _score_repo(4240, ...)`（候选评分那条探针的局部变量）把**参数 a 覆盖成了 '59.8'**。
-    #   于是末尾 `getattr(a,'as_json')` 永远拿不到命令行开关 —— 不报错、不告警、
-    #   `--json` 静默无效，只有真去 trace 才看得见（实测：函数内 a 的值是字符串 '59.8'）。
-    #   这正是 M-R63 那一类"检测器自己坏了却仍然报绿"的形态。
-    #   根治办法不是去改那个局部变量，而是**参数一进门就锁进专用名字**：
-    #   后面谁再覆盖 a 都伤不到它。
-    _opt = a
-    print('🔬 探源司·监测器活体探针（注入 → 捕获 → 清理）\n')
-    results = []
-
+def _sc_monitor(results):
+    """self-check 组1：存活判定器/内容指纹/目录差集/活跃度判定/数据基座三态（C6 拆出，顺序不变）。"""
     # ① _alive_verdict：404→已封禁/删除（真阳性）；200→存活（清理后）；
     #    0→无法判定（**不是**"死"——假阳性基线）
     # ★ S177 步2.5：补齐异常隔离。原先是裸调用，被调函数一旦**抛异常**（不是返回错值），
@@ -5264,7 +6500,8 @@ def cmd_self_check(a):
     clean_base = (os.path.exists(ALOG) == had_file
                   and (not had_file or open(ALOG, encoding='utf-8').read() == bak))
     results.append(('数据基座三态', hit_base, clean_base, True))
-
+def _sc_fetch_mirror(results):
+    """self-check 组2：HTTP 拉取三态（404/200/连接失败）（C6 拆出，顺序不变）。"""
     # ⑥ HTTP 拉取三态：S088 实证——GitHub raw 对不存在的文件返回 HTTP 404 +
     #    正文 "404: Not Found"（curl 退出码仍为 0）→ 曾被折叠成 ('ok', 错误页)。
     #
@@ -5298,19 +6535,25 @@ def cmd_self_check(a):
                 self.end_headers()
                 self.wfile.write(body)
 
-    _srv = None
+    _g = globals()
+    _real_hg = _g['http_get']
     try:
-        _srv = _hs.HTTPServer(('127.0.0.1', 0), _H)
-        _port = _srv.server_address[1]
-        _th.Thread(target=_srv.serve_forever, daemon=True).start()
-        _base = f'http://127.0.0.1:{_port}'
-        st_nf, _ = _fetch(f'{_base}/nope.json', timeout=10)
-        st_ok, txt_ok = _fetch(f'{_base}/exists.json', timeout=10)
-        # 连接拒绝：指向一个刚关闭的端口
-        _dead = _hs.HTTPServer(('127.0.0.1', 0), _H)
-        _dead_port = _dead.server_address[1]
-        _dead.server_close()
-        st_bad, _ = _fetch(f'http://127.0.0.1:{_dead_port}/x.json', timeout=5)
+        # C1：底层已统一到 core.http_get（自带 SSRF 拦截），本地 127.0.0.1 探针
+        # server 会被当成内网拦截，无法直接驱动。改为桩 http_get 模拟三种返回，
+        # 既离线可控（符合 S088 二次修正"探针不得依赖网络"），又仍验证 _fetch 的
+        # 状态码映射业务（404→notfound、200→ok、连接失败→fail）。
+        def _fake_hg(_u, timeout=None, ua=None, return_status=False):
+            if _u.endswith('/nope.json'):
+                return ('ok', (404, '404: Not Found'), None)
+            if _u.endswith('/exists.json'):
+                return ('ok', (200, '{"sites":[{"name":"a"}]}'), None)
+            if ':59999' in _u:
+                return ('error', None, 'conn')
+            return ('ok', (200, 'x'), None)
+        _g['http_get'] = _fake_hg
+        st_nf, _ = _fetch('http://127.0.0.1:9/nope.json', timeout=10)
+        st_ok, txt_ok = _fetch('http://127.0.0.1:9/exists.json', timeout=10)
+        st_bad, _ = _fetch('http://127.0.0.1:59999/x.json', timeout=5)
         hit_http = (st_nf == 'notfound')                 # 404 不得折叠成 ok
         clean_http = (st_ok == 'ok' and txt_ok and '404' not in txt_ok[:40])
         base_http = (st_bad == 'fail')                   # 连接失败不得冒充 notfound/ok
@@ -5318,14 +6561,10 @@ def cmd_self_check(a):
         # M-R60⑫：探针自身失败须显式告警，不得静默折叠成"未捕获"
         print(f'  ⚠️ HTTP 三态探针自身失败（{type(_e).__name__}: {_e}）——本次判定不可信')
     finally:
-        if _srv is not None:
-            try:
-                _srv.shutdown()
-                _srv.server_close()
-            except Exception:
-                pass
+        _g['http_get'] = _real_hg
     results.append(('HTTP 拉取三态', hit_http, clean_http, base_http))
-
+def _sc_platform(results):
+    """self-check 组3：鉴权模块/多平台适配（C6 拆出，顺序不变）。"""
     # ⑦ 鉴权模块（S089 新增）：token 三态解析 + 遮罩 + 请求头注入。
     #
     #    为何必须探：鉴权是"看得见的收益"（60→5000 req/h），一旦解析逻辑回退
@@ -5406,7 +6645,8 @@ def cmd_self_check(a):
     except Exception as e:
         print(f'  ⚠️ 多平台适配探针异常：{type(e).__name__}: {e}')
     results.append(('多平台适配', hit_plat, clean_plat, _base_plat))
-
+def _sc_harvest(results):
+    """self-check 组4：harvest判据一致性/活跃度预测（C6 拆出，顺序不变）。"""
     # ⑨ harvest 判据一致性（S092 新增）：harvest 类目必须与整包坊 split 同口径。
     #
     #    为何必须探：harvest 与 split 是**两条独立的抽取路径**，若各自实现类目判据，
@@ -5487,7 +6727,8 @@ def cmd_self_check(a):
     except Exception as e:
         print(f'  ⚠️ 活跃度预测探针异常：{type(e).__name__}: {e}')
     results.append(('活跃度预测', hit_fc, clean_fc, base_fc))
-
+def _sc_search_cloud(results):
+    """self-check 组5：search三态/上云date列/upsert幂等/XML判活/评分分层/残留识别/回执判真（C6 拆出，顺序不变）。"""
     # ⑪ search 三态与写侧保护（S094 新增）：搜索模块的折叠与覆盖。
     #
     #    为何必须探：S094 真实跑 search 抓出三类缺陷（合成数据照不出）：
@@ -5734,7 +6975,8 @@ def cmd_self_check(a):
     except Exception as e:
         print(f'  ⚠️ 上云回执探针异常：{type(e).__name__}: {e}')
     results.append(('上云回执判真', hit_rcpt, clean_rcpt, base_rcpt))
-
+def _sc_blacklist(results):
+    """self-check 组6：黑名单三层三铁律/证书不判死/失败成因分开/元信息坏样本（C6 拆出，顺序不变）。"""
     # ⑰ 黑名单三层与三铁律（S144·M-R96 守护探针）
     #     为什么必须活体证明：三层分级的判据全在 judge_level/load_blacklist 里，
     #     写错一个字（比如把 R3 的 `fails>=2` 写成 `>=1`）不会有任何报错，
@@ -5795,6 +7037,81 @@ def cmd_self_check(a):
         print(f'  ⚠️ 证书/脏URL探针异常：{type(e).__name__}: {e}')
     results.append(('证书类不判死·脏URL不入黑', hit_cert, clean_cert, base_cert))
 
+    # ⑰c 失败成因必须分开（S193 守护探针）
+    #     为什么必须活体证明：这条的病是**静默退化**——
+    #     分类器一直在跑、永远返回一个值，看不出它是不是把不同失败塌成同一个。
+    #     实测本机 curl 对连接失败统一吐 `Couldn't connect to server`，
+    #     关键词判据（找 refused/timeout）把这类全判成 other，
+    #     于是"端口关了"和"超时"在报告里长得一模一样，看的人还是分不清
+    #     该重试还是该判死——分类等于白做。
+    #     ★ 用 **curl 退出码** 做主判据（libcurl 稳定错误码），stderr 只兜底。
+    #     这里测纯函数 `_classify_err`，不依赖网络——否则断网时探针自己失真。
+    hit_ek = clean_ek = base_ek = False
+    try:
+        # 与同文件其他函数同款：先补脚本目录再 import（见 2683/3016/3951 行）。
+        # 不补会 ModuleNotFoundError —— 经 `tvbox` 入口分发时 sys.path 不带本目录，
+        # 这也是 `tvbox probe decrypt` 报 No module named 'armor' 的同一个病。
+        import os as _os
+        _d = _os.path.dirname(_os.path.abspath(__file__))
+        if _d not in sys.path:
+            sys.path.insert(0, _d)
+        import livecheck as _lc
+        # 真阳性：四类失败必须给出**四个不同**的类别
+        ks = (_lc._classify_err('', 6),      # DNS 解析不了
+              _lc._classify_err('', 7),      # 连不上（端口关/被拒/路由不通）
+              _lc._classify_err('', 28),     # 超时
+              _lc._classify_err('certificate has expired', 60))
+        hit_ek = (ks == ('dns', 'refused', 'timeout', 'cert_expired'))
+        # 清理后：无成因时 err_tail 必须返回空串（不得给成功结果硬贴标签）
+        _saved = _lc._last_err_kind
+        _lc._last_err_kind = ''
+        clean_ek = (_lc.err_tail() == '')
+        _lc._last_err_kind = _saved
+        # 假阳性基线：认不出的失败只许落 other，不许冒充已知类别
+        base_ek = (_lc._classify_err('', 0) == 'other'
+                   and _lc._classify_err('something weird', 99) == 'other')
+        if not base_ek:
+            print('  ⚠️ 成因分类假阳性基线不净：未知失败被判成已知类别')
+    except Exception as e:
+        print(f'  ⚠️ 失败成因探针异常：{type(e).__name__}: {e}')
+    results.append(('失败成因分开·DNS/连不上/超时/证书', hit_ek, clean_ek, base_ek))
+
+    # ⑰d 元信息函数不得有未定义变量（S194 守护探针）
+    #     为什么必须活体证明：2026-10-21 实测 `monitor add` 五个新目标**全部失败**，
+    #     报 `NameError: name 'rec' is not defined` → 修完又报 `_cfg_try`。
+    #     病根是 S190 改动时把别处的变量名抄进 `_platform_meta`：
+    #     · 平时**没人走这条路**（存量目标不需要再探测默认分支）→ 洞一直开着没人看见
+    #     · 一走就**必然抛异常**，且是 NameError 不是逻辑错，日志里看着像"偶发"
+    #     这类洞的特征：**语法合法、编译通过、lint 不报**，只有真跑才炸。
+    #     所以探针不能只测"函数能不能 import"，要测**函数体内有没有读未绑定的名字**。
+    #
+    #     ★ S171/S172 铁律：探针必须能抓到"改坏的目标"，否则就是恒过的假绿。
+    #       故三格里有一格是**反向验证**——拿一个故意写坏的函数喂给检查器，
+    #       它必须报出来；报不出来说明检查器本身是瞎的。
+    hit_un = clean_un = base_un = False
+    try:
+        # 真阳性①：真身必须干净（`monitor add` 走的正是这条路）
+        real = _undefined_names(_platform_meta)
+        # 反向验证：故意写坏一份（复刻 S194 的两个坏变量名），检查器必须抓到
+        def _probe_bad_sample(platform, owner):
+            out = {'why': {}}
+            if not rec.get('content_sha'):
+                out['why']['x'] = _cfg_try[:2]
+            return out
+        bad = _undefined_names(_probe_bad_sample)
+        hit_un = (real == [] and 'rec' in bad and '_cfg_try' in bad)
+        # 清理后：干净函数检查为空（不含上一个样本残留）
+        clean_un = (_undefined_names(_undefined_names) == [])
+        # 假阳性基线：正常用模块全局的函数不许被误报
+        base_un = (_undefined_names(_platform_base) == []
+                   and _undefined_names(_content_sha) == [])
+        if not hit_un:
+            print('  ⚠️ 未定义变量探针失效：真身=%s 坏样本检出=%s' % (real, bad))
+    except Exception as e:
+        print(f'  ⚠️ 未定义变量探针异常：{type(e).__name__}: {e}')
+    results.append(('元信息函数无未定义变量·坏样本能抓到', hit_un, clean_un, base_un))
+def _sc_harvest_payload(results):
+    """self-check 组7：原生态保留/addto段随形态/批量测活认api接口/URL归一/jsm拆包（C6 拆出，顺序不变）。"""
     # ⑱ 原生态保留（S144·P7/P8 守护探针）
     #     为什么必须活体证明：lightjson/repack/prune 三条命令都是「读原包→改结构→写新包」，
     #     只要中间用白名单重建，原包里没被列名的键就整体消失——**退出码 0、条数对得上、
@@ -5969,7 +7286,8 @@ def cmd_self_check(a):
     except Exception as e:
         print(f'  ⚠️ jsm 拆包探针异常：{type(e).__name__}: {e}')
     results.append(('jsm拆包分诊·非外链不冒充候选', hit_sj, clean_sj, base_sj))
-
+def _sc_pan_pak(results):
+    """self-check 组8：网盘取料/412归因/MSITEPK2 key自取（C6 拆出，顺序不变）。"""
     # ㉓ 网盘分享取料：分享文案能认出 id + 412 不被当"文件坏"（S170）
     #     为什么必须活体证明：这条链路的坑全在**识别**上，不在下载上——
     #       ① 用户贴的是**整段分享文案**（含口令 `/~xxx~/`），不是干净 URL。
@@ -6023,7 +7341,7 @@ def cmd_self_check(a):
     #       ① 头部解析与声明条数一致（名字锚定，不靠猜偏移）
     #       ② 坏输入（非 magic / 错 key）**必须非 0 退出**
     #       ③ 源码里保留"声明/实解差额"的自证输出，不许只报成功数
-    hit_pak = clean_pak = base_pak = False
+    hit_pak = clean_pak = base_pak = _mc_ok = False
     try:
         import tempfile as _tf
         import struct as _st2
@@ -6081,10 +7399,66 @@ def cmd_self_check(a):
         _txt3 = '\n'.join(_lits3)
         # 「差额」二字必须出现在函数的**输出文案**里，且同处须有实际差额计算
         base_pak = ('差额' in _txt3)
+        # ★扩展（S169 形态）：多候选 dex 时，自动取密钥必须靠"自证"选中正确 key，
+        #   而非静默退化成只列清单。造含真 key + 2 个干扰 64-hex 的伪 dex 验证。
+        try:
+            _dex_fake = os.path.join(d, 'classes.dex')
+            _real_hex = k.hex()
+            _d1 = b'0123456789abcdef' * 4   # 64 hex 干扰串
+            _d2 = b'fedcba9876543210' * 4   # 64 hex 干扰串
+            open(_dex_fake, 'wb').write(
+                b'xx' + _real_hex.encode() + b'yy'
+                + b'zz' + _d1 + b'zz' + _d2 + b'zz')
+            _mc = _pak_key_from_dex(_dex_fake)
+            _picked = None
+            for _c in _mc:
+                if _pak_try_key(pakbuf, ps, ents, _c):
+                    _picked = _c
+                    break
+            _mc_ok = (_picked == _real_hex)
+        except Exception:
+            _mc_ok = False
         shutil.rmtree(d, ignore_errors=True)
     except Exception as e:
         print(f'  ⚠️ MSITEPK2 探针异常：{type(e).__name__}: {e}')
-    results.append(('MSITEPK2·key自取+坏输入不折叠', hit_pak, clean_pak, base_pak))
+    # ★多候选 dex 自证选 key 已并入「捕获」判据（S169 静默缺陷回归锁）：
+    #   单候选能取 + 多候选能自证选中正确 key，二者任一失败即判不捕获。
+    hit_pak = hit_pak and _mc_ok
+    results.append(('MSITEPK2·key自取(含多候选自证)+坏输入不折叠', hit_pak, clean_pak, base_pak))
+def _sc_eco_gate(results):
+    """self-check 组9：多生态分诊闸/取数层镜像回退/破甲模块（C6 拆出，顺序不变）。"""
+    # ㉕ 多生态分诊闸（点⑥·M-R212·M-R60 三态——越界留痕不静默丢弃）
+    #     为什么必须活体证明：分诊闸是新增的"入库前过滤器"，最大假绿风险是
+    #     越界项（漫画/书源/音源）被静默放行进 DB_HARVEST，或反过来误杀 tvbox 接口。
+    #     探针用构造数据证伪（不打真网络），判据取行为结果而非源码字面量（避同侧变量互比）：
+    #       ① tvbox 接口（含 m3u8）→ 进册 True
+    #       ② 漫画书源（bookSourceGroup=漫画 且含 bookSourceUrl 键）→ 挡 False
+    #       ③ 阅读书源（含 bookSourceUrl 键，无漫画分组）→ 挡 False
+    #       ④ 音源（music 特征）→ 挡 False
+    #       ⑤ 名字带"漫画"的 tvbox m3u8 → 仍进册（结构优先于关键词，不误杀）
+    hit_gate = clean_gate = base_gate = False
+    try:
+        _g_tv = {'api接口': 'https://x.com/live.m3u8', '分组类目': '直播'}
+        _g_comic = {'bookSourceGroup': '漫画', 'bookSourceUrl': 'https://c.com/a.json', 'name': '某某漫画'}
+        _g_book = {'bookSourceUrl': 'https://b.com/a.json', 'name': '某某阅读'}
+        _g_music = {'api接口': 'https://m.com/api', 'name': 'music网易云', 'url': 'https://m.com'}
+        _g_tv_wc = {'api接口': 'https://x.com/live.m3u8', 'name': '漫画频道直播'}
+        _r_tv = can_enter_harvest(dict(_g_tv))
+        _r_comic = can_enter_harvest(dict(_g_comic))
+        _r_book = can_enter_harvest(dict(_g_book))
+        _r_music = can_enter_harvest(dict(_g_music))
+        _r_tv_wc = can_enter_harvest(dict(_g_tv_wc))
+        hit_gate = (_r_tv[0] is True
+                    and _r_comic[0] is False and '漫画' in _r_comic[1]
+                    and _r_book[0] is False and '阅读' in _r_book[1]
+                    and _r_music[0] is False and '音源' in _r_music[1])
+        clean_gate = (_r_tv_wc[0] is True)  # 结构优先，名字含漫画不误杀
+        base_gate = (callable(can_enter_harvest)
+                     and isinstance(_OUT_OF_SCOPE_ECO, tuple)
+                     and len(_OUT_OF_SCOPE_ECO) == 3)
+    except Exception as e:
+        print(f'  ⚠️ 分诊闸探针异常：{type(e).__name__}: {e}')
+    results.append(('多生态分诊闸·tvbox进/越界挡·不误杀', hit_gate, clean_gate, base_gate))
 
     # ㉓ 取数层镜像回退（S148·`_fetch` 守护探针）
     #     为什么必须活体证明：`_fetch` 是**所有采集/监测/目录树**的公共底，改它等于改全楼水管。
@@ -6100,7 +7474,7 @@ def cmd_self_check(a):
     # 注意：本段要给 `_sh` / `time.time` 打桩，而**赋值即视为局部变量**会使读取失败，
     # 故一律通过 globals() 存取（避免遮蔽），绝不用裸名赋值。
     _g = globals()
-    _real_sh, _real_clock = _g['_sh'], _g['time'].time
+    _real_httpget, _real_clock = _g['http_get'], _g['time'].time
     # ★ S167 修：必须**同时**固定 `_RAW_REACH`，否则本探针的结论由真实网络决定。
     #   实测（本网络）raw 直连 6 次里 3 次 3s 超时 → `_raw_direct_ok()` 返回 False 并被一次性缓存
     #   → `_fetch` 把镜像排到最前 → 直连不执行 → "直连成功但 >8s" 永不成立 → 慢标记恒 False
@@ -6113,10 +7487,10 @@ def cmd_self_check(a):
         _calls = []
 
         def _mk():
-            """伪造一次 `_sh`：记录被请求的 URL，并返回合法的 200 正文。"""
-            def _fake(args, timeout=None):
-                _calls.append([str(a) for a in args if str(a).startswith('http')])
-                return (0, '{"ok":1}\n200')
+            """伪造一次 `http_get`：记录被请求的 URL，并返回合法的 200 正文（status,payload,reason）。"""
+            def _fake(_u, timeout=None, ua=None, return_status=False):
+                _calls.append([_u])
+                return ('ok', (200, '{"ok":1}'), None)
             return _fake
 
         def _clock(step):
@@ -6143,13 +7517,13 @@ def cmd_self_check(a):
                                '说明它没读缓存（或被替身替换），本段断言不可信')
         _RAW_SLOW['hit'] = False
         _calls.clear()
-        _g['_sh'], _g['time'].time = _mk(), _clock(30)
+        _g['http_get'], _g['time'].time = _mk(), _clock(30)
         st1, _ = _fetch(_url_raw)
         got_slow = (_RAW_SLOW['hit'] is True)
 
         # ② 脏→优先镜像（同一进程内下一次必须第一个就试镜像）
         _calls.clear()
-        _g['_sh'], _g['time'].time = _mk(), _clock(0.2)
+        _g['http_get'], _g['time'].time = _mk(), _clock(0.2)
         st2, _ = _fetch(_url_raw)
         _seq = _calls[0] if _calls else []
         got_mirror_first = bool(_seq) and ('gh-proxy.com' in _seq[0])
@@ -6157,7 +7531,7 @@ def cmd_self_check(a):
         # ③ 快→不标脏（干净状态下直连秒回，不许误标）
         _RAW_SLOW['hit'] = False
         _calls.clear()
-        _g['_sh'], _g['time'].time = _mk(), _clock(0.2)
+        _g['http_get'], _g['time'].time = _mk(), _clock(0.2)
         st3, _ = _fetch(_url_raw)
         got_fast_clean = (_RAW_SLOW['hit'] is False)
 
@@ -6166,7 +7540,7 @@ def cmd_self_check(a):
         # ④ 非 raw 域名：即使脏标记开着，也不许被塞镜像（证明回退是**定向**的）
         _RAW_SLOW['hit'] = True
         _calls.clear()
-        _g['_sh'], _g['time'].time = _mk(), _clock(0.2)
+        _g['http_get'], _g['time'].time = _mk(), _clock(0.2)
         st4, _ = _fetch('https://api.example.com/data.json')
         _seq4 = _calls[0] if _calls else []
         clean_fb = (st4 == 'ok' and len(_seq4) == 1 and 'gh-proxy' not in _seq4[0])
@@ -6185,7 +7559,7 @@ def cmd_self_check(a):
     except Exception as e:
         print(f'  ⚠️ 取数层探针异常：{type(e).__name__}: {e}')
     finally:
-        _g['_sh'], _g['time'].time = _real_sh, _real_clock
+        _g['http_get'], _g['time'].time = _real_httpget, _real_clock
         _RAW_SLOW['hit'] = False        # 清理：探针不许留下脏状态影响真实采集
         # 清理：把 _RAW_REACH 还原成探针进来前的样子，不许把探针设的"可达"留给真实采集
         _RAW_REACH.clear()
@@ -6296,7 +7670,8 @@ def cmd_self_check(a):
     except Exception as e:
         print(f'  ⚠️ 破甲模块探针异常：{type(e).__name__}: {e}')
     results.append(('破甲模块·严格填充/语义判图/形态不串', hit_ar, clean_ar, base_ar))
-
+def _sc_forge_shell(results):
+    """self-check 组10：源验证器/触发词覆盖/写源留档/record_id三态/壳库readback/生态门面（C6 拆出，顺序不变）。"""
     # ── ㉕ py源5步验证器（spider_verify）：坏源必须判失败、不可达不许判失败 ──
     # 离线桩：把 verify_spider 的"跑真源"换成"看源码特征"，只验**判定逻辑**本身。
     # 为什么必须这么测（S148 踩过两次）：
@@ -6528,6 +7903,76 @@ def cmd_self_check(a):
     finally:
         subprocess.run = _orig_run
     results.append(('record_id三态·读失败≠空表', hit_rid, clean_rid, base_rid))
+
+    # C3（T4 治理·2026-1027）：壳源零探针 → 接入壳库 readback，呼应 S196 ⑤「入库必须 readback」
+    # 实测：DB_SHELL=hPF6AUmWmOQa26tOg8Wjb5，good=True，rows=19；坏 id good=False（构造数据可证伪）
+    hit_shell = clean_shell = base_shell = False
+    try:
+        import shellcrack  # probe.py 顶层未 import，此处按需导入（SSOT 取 DB_SHELL）
+        sys.path.insert(0, '/root/.codebuddy/skills/eco-ledger/scripts')
+        import core_ledger as _L
+        _rows, _good = _L.rows_of(shellcrack.DB_SHELL)
+        base_shell = bool(_good) and len(_rows) > 0            # 正常态：壳库可读且有数据
+        _bad, _bad_good = _L.rows_of('__不存在的壳库id__')       # 构造数据：改坏目标
+        hit_shell = (_bad_good is False) and base_shell         # 改坏仍红 + 正常态绿
+        clean_shell = base_shell
+    except Exception as e:
+        print(f'  ⚠️ 壳库 readback 探针异常：{type(e).__name__}: {e}')
+    results.append(('壳库readback', hit_shell, clean_shell, base_shell))
+
+    # C4（T2 治理·2026-1027）：_eco_linked_probe 原为零调用休眠函数 → 接入自检验证生态联动门面可达
+    # 实测：file_to_janitor/register_monitor 均可调用（core.py:279/317）
+    # 呼应 S169 ⑤：构造数据——临时令门面不可达，探针必须变红（防探针自骗）
+    hit_eco = clean_eco = base_eco = False
+    try:
+        import unittest.mock as _mock
+        _janitor_ok, _monitor_ok = _eco_linked_probe()
+        base_eco = bool(_janitor_ok and _monitor_ok)            # 正常态：两门面可达
+        _mod = sys.modules[__name__]
+        with _mock.patch.object(_mod, 'file_to_janitor', None):
+            _janitor_bad, _ = _eco_linked_probe()
+        hit_eco = (_janitor_bad is False) and base_eco          # 门面失效时仍红 + 正常态绿
+        clean_eco = base_eco
+    except Exception as e:
+        print(f'  ⚠️ 生态联动门面探针异常：{type(e).__name__}: {e}')
+    results.append(('生态联动门面可达', hit_eco, clean_eco, base_eco))
+
+
+def cmd_self_check(a):
+    """六组活体探针：注入已知异常 → 必须捕获 → 清理 → 必须清零；并验假阳性基线。"""
+    # ★ S177 步2 踩到的真坑，记在这里当护栏：本函数 1300 多行，中途有一句
+    #   `a = _score_repo(4240, ...)`（候选评分那条探针的局部变量）把**参数 a 覆盖成了 '59.8'**。
+    #   于是末尾 `getattr(a,'as_json')` 永远拿不到命令行开关 —— 不报错、不告警、
+    #   `--json` 静默无效，只有真去 trace 才看得见（实测：函数内 a 的值是字符串 '59.8'）。
+    #   这正是 M-R63 那一类"检测器自己坏了却仍然报绿"的形态。
+    #   根治办法不是去改那个局部变量，而是**参数一进门就锁进专用名字**：
+    #   后面谁再覆盖 a 都伤不到它。
+    _opt = a
+    print('🔬 探源司·监测器活体探针（注入 → 捕获 → 清理）\n')
+    results = []
+    # C6：按探针组抽 10 个子函数（原 1580 行体内联拆出；顺序/行为不变）
+    _sc_monitor(results)
+    _sc_fetch_mirror(results)
+    _sc_platform(results)
+    _sc_harvest(results)
+    _sc_search_cloud(results)
+    _sc_blacklist(results)
+    _sc_harvest_payload(results)
+    _sc_pan_pak(results)
+    _sc_eco_gate(results)
+    _sc_forge_shell(results)
+
+    # ── ㊱ 总调度路由可达（C8·T6）：入口分裂收口的机器判据 ──
+    hit_rt = clean_rt = base_rt = False
+    try:
+        _need = [('quality', None), ('quality-batch', None), ('content-probe', None)]
+        hit_rt = all(k in DISPATCH and callable(DISPATCH[k]) for k in _need)
+        clean_rt = callable(DISPATCH.get(('livecheck',))) \
+            and callable(DISPATCH.get(('forge', 'verify')))
+        base_rt = build_parser() is not None      # 解析器可构建（假阳性基线）
+    except Exception as e:
+        print(f'  ⚠️ 路由可达探针异常：{type(e).__name__}: {e}')
+    results.append(('总调度路由可达', hit_rt, clean_rt, base_rt))
 
     ok = 0
     for name, hit, clean, base in results:
@@ -7017,26 +8462,52 @@ def _cloud_insert(db_id, records):
 
 
 PAN_API = 'https://drive-pc.quark.cn'
+# S197 扩 UC 网盘（drive.uc.cn）：与夸克同 API 体系（阿里系），接口路径一致，
+# 差异只在域名 / pr 参数 / Referer。UC 的 pr 值实测验证，不对再按三态调整。
+PAN_PLATFORMS = {
+    'quark': {'api': 'https://drive-pc.quark.cn', 'referer': 'https://pan.quark.cn/', 'pr': 'ucpro'},
+    'uc':    {'api': 'https://pc-api.uc.cn',     'referer': 'https://drive.uc.cn/', 'pr': 'UCBrowser'},
+    'xunlei':{'api': 'https://api-pan.xunlei.com', 'referer': 'https://pan.xunlei.com/', 'pr': ''},
+}
+#   ⚠️ UC 下载 403 坏法清单（S197 实测，真实分享 4bb62a7a8e794）：
+#     · API 全通：token/detail/直链签发都成功（pc-api.uc.cn 不拒机房 IP）；
+#     · 下载 CDN（dl-uf-sz.pds.uc.cn）→ 18/18 全 403；
+#     · 对照实验 5 组头全 403（无Referer/UC Referer/api来源页/默认UA/Range）→ 拦截与请求头无关；
+#     · 结论：与夸克 412 同构——**下载 CDN 按出口 IP 段拒绝机房网络**，归「无法判定·出口被拒」，
+#       不是文件坏、不是 token 错。处置同夸克：换出口网络或用户手动下载，不许记「源失效」。
 PAN_UA = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
           '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
 
 
-def _pan_req(path, data=None, timeout=30):
-    """调夸克分享 API。返回 (ok, json|err)。**不吞异常**——网络问题要显式分类。"""
+def _pan_req(path, data=None, timeout=30, platform='quark', cookie=None):
+    """调分享 API（夸克/UC）。返回 (ok, json|err)。**不吞异常**——网络问题要显式分类。
+
+    cookie：网盘登录 cookie。实测含 __pus/__puus/__kps 组即有效，**不必含 ck 字段**。
+    save 类接口 require login 必须传；info/pull 留空即 guest。
+    """
     import urllib.request
     import urllib.error
-    url = f'{PAN_API}{path}'
-    hdr = {'User-Agent': PAN_UA, 'Referer': 'https://pan.quark.cn/'}
+    pf = PAN_PLATFORMS.get(platform) or PAN_PLATFORMS['quark']
+    path = path.replace('pr=ucpro', f'pr={pf["pr"]}')
+    url = f'{pf["api"]}{path}'
+    hdr = {'User-Agent': PAN_UA, 'Referer': pf['referer']}
+    if cookie:
+        hdr['Cookie'] = cookie
     body = None
     if data is not None:
         hdr['Content-Type'] = 'application/json'
         body = json.dumps(data).encode()
+    # C1b：底层取数统一走 core.http_get（err_body 保留服务端错误正文，排障必需）
     try:
-        r = urllib.request.Request(url, data=body, headers=hdr)
-        with urllib.request.urlopen(r, timeout=timeout) as resp:
-            return True, json.load(resp)
-    except urllib.error.HTTPError as e:
-        return False, f'HTTP {e.code}'
+        _st, _pl, _rs = http_get(url, timeout=timeout, headers=hdr,
+                                 method='POST' if data is not None else 'GET',
+                                 data=body, err_body=True)
+        if _st == 'ok':
+            return True, json.loads(_pl)
+        if isinstance(_pl, tuple):
+            _code, _b = _pl
+            return False, f'HTTP {_code} {(_b or "")[:300]}'.strip()
+        return False, f'HTTP错误 {_rs}' if _rs and _rs.startswith('http_') else f'网络错误 {_rs}'
     except Exception as e:
         return False, f'{type(e).__name__}: {e}'
 
@@ -7053,7 +8524,31 @@ def pan_parse_share(text):
     if not text:
         return ''
     m = _re.search(r'pan\.quark\.cn/s/([0-9a-zA-Z]+)', text)
+    if m:
+        return m.group(1)
+    # S197：UC 网盘分享（drive.uc.cn/s/<id>）
+    m = _re.search(r'drive\.uc\.cn/s/([0-9a-zA-Z]+)', text)
     return m.group(1) if m else ''
+
+
+def pan_parse_share_ex(text):
+    """四平台版：返回 (id, platform)。platform ∈ {'quark','uc','xunlei','baidu'}；认不出返回 ('', '')。"""
+    import re as _re
+    if not text:
+        return '', ''
+    m = _re.search(r'pan\.quark\.cn/s/([0-9a-zA-Z_]+)', text)
+    if m:
+        return m.group(1), 'quark'
+    m = _re.search(r'drive\.uc\.cn/s/([0-9a-zA-Z_]+)', text)
+    if m:
+        return m.group(1), 'uc'
+    m = _re.search(r'pan\.xunlei\.com/s/([0-9a-zA-Z_-]+)', text)
+    if m:
+        return m.group(1), 'xunlei'
+    m = _re.search(r'pan\.baidu\.com/s/([0-9a-zA-Z_-]+)', text)
+    if m:
+        return m.group(1), 'baidu'
+    return '', ''
 
 
 def cmd_pan_info(a):
@@ -7061,13 +8556,17 @@ def cmd_pan_info(a):
 
     这一步在 IPv4-only 环境下也能完全成功——它走的是 API，不是 CDN。
     """
-    pwd_id = pan_parse_share(a.url)
+    pwd_id, plat = pan_parse_share_ex(a.url)
     if not pwd_id:
-        print('❌ 认不出分享 id：需要形如 https://pan.quark.cn/s/<id> 的链接（或含它的整段分享文案）')
+        print('❌ 认不出分享 id：需要夸克 https://pan.quark.cn/s/<id> 或 UC https://drive.uc.cn/s/<id> 或 迅雷 https://pan.xunlei.com/s/<id> 或 百度 https://pan.baidu.com/s/<id>（或含它们的整段分享文案）')
         sys.exit(2)
+    if plat == 'xunlei':
+        return cmd_pan_info_xunlei(a, pwd_id)
+    if plat == 'baidu':
+        return cmd_pan_info_baidu(a, pwd_id)
 
     ok, r = _pan_req(f'/1/clouddrive/share/sharepage/token?pr=ucpro&fr=pc&uc_param_str=',
-                     {'pwd_id': pwd_id, 'passcode': a.passcode or ''})
+                     {'pwd_id': pwd_id, 'passcode': a.passcode or ''}, platform=plat)
     if not ok:
         print(f'❌ 取 stoken 失败：{r}')
         sys.exit(1)
@@ -7086,7 +8585,7 @@ def cmd_pan_info(a):
         q = (f'/1/clouddrive/share/sharepage/detail?pr=ucpro&fr=pc'
              f'&pwd_id={pwd_id}&stoken={quote(st, safe="")}&pdir_fid={pdir}'
              f'&force=0&_page=1&_size=200&_fetch_total=1')
-        ok, d = _pan_req(q)
+        ok, d = _pan_req(q, platform=plat)
         if not ok:
             print(f'  ⚠️ 目录 {prefix or "/"} 读取失败：{d}（无法判定，不当作空目录）')
             continue
@@ -7104,7 +8603,7 @@ def cmd_pan_info(a):
                              'fid': f.get('fid'),
                              'token': f.get('share_fid_token') or ''})
 
-    print(f"📦 夸克分享 {pwd_id}")
+    print(f"📦 {'UC' if plat == 'uc' else '夸克'}分享 {pwd_id}")
     print(f"   标题：{meta.get('title')}｜作者：{(meta.get('author') or {}).get('nick_name')}"
           f"｜类型：{meta.get('share_type')}")
     print(f"   本期：{'需提取码' if meta.get('expired_type') == 2 else '无需提取码'}"
@@ -7147,13 +8646,13 @@ def cmd_pan_pull(a):
     """取料：拿直链 → 下载。**412 的成因是出口网络被 CDN 拒（非 IPv6、非文件坏）**，必须说清楚。"""
     import urllib.request
     import urllib.error
-    pwd_id = pan_parse_share(a.url)
+    pwd_id, plat = pan_parse_share_ex(a.url)
     if not pwd_id:
         print('❌ 认不出分享 id')
         sys.exit(2)
 
     ok, r = _pan_req(f'/1/clouddrive/share/sharepage/token?pr=ucpro&fr=pc&uc_param_str=',
-                     {'pwd_id': pwd_id, 'passcode': a.passcode or ''})
+                     {'pwd_id': pwd_id, 'passcode': a.passcode or ''}, platform=plat)
     if not ok or r.get('status') != 200:
         print(f'❌ 分享不可用：{r if not ok else r.get("message")}')
         sys.exit(1)
@@ -7166,7 +8665,7 @@ def cmd_pan_pull(a):
         q = (f'/1/clouddrive/share/sharepage/detail?pr=ucpro&fr=pc'
              f'&pwd_id={pwd_id}&stoken={quote(st, safe="")}&pdir_fid={pdir}'
              f'&force=0&_page=1&_size=200&_fetch_total=1')
-        ok, d = _pan_req(q)
+        ok, d = _pan_req(q, platform=plat)
         if not ok:
             print(f'  ⚠️ 目录读取失败：{d}'); continue
         for f in ((d.get('data') or {}).get('list') or []):
@@ -7190,7 +8689,7 @@ def cmd_pan_pull(a):
         # 按 pdir 分组取直链（接口一次能要多条同目录的）
         ok, d = _pan_req('/1/clouddrive/file/download?pr=ucpro&fr=pc&uc_param_str=',
                          {'fids': [f['fid']], 'pwd_id': pwd_id, 'stoken': st,
-                          'fids_token': [f['token']], 'pdir_fid': f['pdir']})
+                          'fids_token': [f['token']], 'pdir_fid': f['pdir']}, platform=plat)
         if not ok or not (d.get('data') or []):
             print(f'  ❌ {f["name"]}：取直链失败（{d}）'); fail_n += 1; continue
         url = d['data'][0].get('download_url') or ''
@@ -7200,7 +8699,7 @@ def cmd_pan_pull(a):
         dst = os.path.join(outdir, os.path.basename(f['name']))
         try:
             rq = urllib.request.Request(url, headers={'User-Agent': PAN_UA,
-                                                     'Referer': 'https://pan.quark.cn/'})
+                                                     'Referer': (PAN_PLATFORMS.get(plat) or PAN_PLATFORMS['quark'])['referer']})
             with urllib.request.urlopen(rq, timeout=a.timeout) as resp, open(dst, 'wb') as fh:
                 shutil.copyfileobj(resp, fh)
             got = os.path.getsize(dst)
@@ -7240,6 +8739,920 @@ def cmd_pan_pull(a):
     sys.exit(0 if ok_n else 1)
 
 
+def _load_pan_cookie(plat='quark'):
+    """读网盘登录态（按平台分文件/环境变量，同 S209 单一事实源风格）。
+    夸克 → .quark_cookie / QUARK_COOKIE；UC → .uc_cookie / UC_COOKIE；
+    迅雷 → .xunlei_cookie / XUNLEI_COOKIE；百度 → .baidu_cookie / BAIDU_COOKIE。
+    缺则返回 ''，由调用方按需报错（转存必须登录）。"""
+    import os
+    if plat == 'uc':
+        fpath, env = '/root/.codebuddy/.uc_cookie', 'UC_COOKIE'
+    elif plat == 'xunlei':
+        fpath, env = '/root/.codebuddy/.xunlei_cookie', 'XUNLEI_COOKIE'
+    elif plat == 'baidu':
+        fpath, env = '/root/.codebuddy/.baidu_cookie', 'BAIDU_COOKIE'
+    else:
+        fpath, env = '/root/.codebuddy/.quark_cookie', 'QUARK_COOKIE'
+    try:
+        if os.path.exists(fpath):
+            return open(fpath, encoding='utf-8').read().strip()
+    except Exception:
+        pass
+    return (os.environ.get(env) or '').strip()
+
+
+# ── 迅雷网盘（S218 续·2026-10-24 本轮回补）──────────────────────────────
+# 迅雷分享转存接口与夸克/UC **不同构**：独立验证码（X-Captcha-Token）+ 独立鉴权
+# （Authorization: x_token）+ 独立列文件（/share + /share/detail）+ 独立转存
+# （POST /share/restore，无需 users/me）。x_token 在网页 localStorage，不在 Cookie 头。
+# captcha_sign 为动态签名（12 轮 md5 加盐），来自 Gopeed 开源迅雷扩展（适配 1.92.89），2026-10-24 实测有效。
+XUNLEI_CLIENT_ID = 'Xqp0kJBXWhwaTpB6'
+XUNLEI_CLIENT_VERSION = '1.92.89'
+XUNLEI_CAPTCHA_SALTS = [
+    'q1FLg', 'OECaw0higFYs7qCdOWvMEe', '1UQvF/CWht+RATnmBnyakvJFHL1jaAb8MRYvdVHQLZ',
+    'OV+xWBsbnAehPNmDEUnjcVT', 'bbuvyCYHdJwBOtJ8Cdeg', '9ROgxnyRfQInpATpkchBTZW',
+    'vXA2EpRk8', 'oEd', 'QCBQwX/', 'P5NlYzyVtGjJUI/dIzi+SOL+mf0Wl17',
+    '7GRbxu7OmpasI841c66J', 'PEVQN9w+A4wRbGoX', 'CJ3yz0fu1kqhPDOyL438W', 'tD75Q',
+]
+
+def _xunlei_captcha_sign(ts, device_id):
+    """迅雷验证码签名：CLIENT_ID+版本+域名+device_id+时间戳 经 12 轮 md5 加盐。"""
+    cur = XUNLEI_CLIENT_ID + XUNLEI_CLIENT_VERSION + 'pan.xunlei.com' + device_id + ts
+    for s in XUNLEI_CAPTCHA_SALTS:
+        cur = hashlib.md5((cur + s).encode()).hexdigest()
+    return '1.' + cur
+
+def _xunlei_device_id(cookie):
+    """迅雷 device_id：取 cookie 里 wdi10. 后的 32 位 hex（与 captcha 签名一致）。"""
+    import re as _re
+    m = _re.search(r'deviceid=wdi10\.([a-f0-9]+)', cookie or '')
+    return (m.group(1)[:32] if m else '0' * 32)
+
+def _xunlei_pwd_from_url(url):
+    """从迅雷分享链接 query 取访问密码（pwd=）；取不到返回空串。"""
+    import urllib.parse as _up
+    try:
+        return (_up.parse_qs(_up.urlparse(url or '').query).get('pwd') or [''])[0]
+    except Exception:
+        return ''
+
+def _xunlei_captcha_token(device_id):
+    """POST xluser-ssl.xunlei.com/v1/shield/captcha/init 拿验证码令牌。"""
+    import time as _t
+    ts = str(int(_t.time() * 1000))
+    sign = _xunlei_captcha_sign(ts, device_id)
+    body = {'client_id': XUNLEI_CLIENT_ID, 'action': 'get:/drive/v1/share',
+            'device_id': device_id,
+            'meta': {'username': '', 'phone_number': '', 'email': '',
+                     'package_name': 'pan.xunlei.com', 'client_version': XUNLEI_CLIENT_VERSION,
+                     'captcha_sign': sign, 'timestamp': ts, 'user_id': '0'}}
+    hdr = {'User-Agent': PAN_UA, 'Content-Type': 'application/json',
+           'X-Client-Id': XUNLEI_CLIENT_ID, 'X-Client-Version': XUNLEI_CLIENT_VERSION,
+           'X-Device-Id': device_id, 'Referer': 'https://pan.xunlei.com/'}
+    # C1b：底层取数统一走 core.http_get（err_body 保留服务端错误正文）
+    try:
+        _st, _pl, _rs = http_get('https://xluser-ssl.xunlei.com/v1/shield/captcha/init',
+                                 timeout=30, headers=hdr, method='POST',
+                                 data=json.dumps(body).encode(), err_body=True)
+        if _st == 'ok':
+            d = json.loads(_pl)
+        elif isinstance(_pl, tuple):
+            return False, 'captcha/init HTTP %d %s' % (_pl[0], (_pl[1] or '')[:120])
+        else:
+            return False, 'captcha/init %s' % _rs
+        if not d.get('captcha_token'):
+            return False, 'captcha/init 未返回 captcha_token：%s' % str(d)[:120]
+        return True, d['captcha_token']
+    except Exception as e:
+        return False, '%s: %s' % (type(e).__name__, e)
+
+def _xunlei_headers(captcha_token, cookie=None, token=None, device_id=''):
+    """迅雷请求头：验证码令牌 + Cookie + Authorization(登录态) + 设备标识。"""
+    hdr = {'User-Agent': PAN_UA, 'X-Client-Id': XUNLEI_CLIENT_ID,
+           'X-Client-Version': XUNLEI_CLIENT_VERSION, 'X-Device-Id': device_id,
+           'X-Captcha-Token': captcha_token, 'Referer': 'https://pan.xunlei.com/'}
+    if cookie:
+        hdr['Cookie'] = cookie
+    if token:
+        hdr['Authorization'] = token
+    return hdr
+
+def _xunlei_get(url, hdr):
+    """迅雷 GET，返回解析后的 json。（C1b：走 core.http_get）"""
+    _st, _pl, _rs = http_get(url, timeout=30, headers=hdr)
+    if _st != 'ok':
+        raise RuntimeError('迅雷 GET 失败: %s' % _rs)
+    return json.loads(_pl)
+
+def _xunlei_post(url, hdr, body):
+    """迅雷 POST（JSON），返回解析后的 json。（C1b：走 core.http_get）"""
+    h = dict(hdr)
+    h['Content-Type'] = 'application/json'
+    _st, _pl, _rs = http_get(url, timeout=30, headers=h, method='POST',
+                             data=json.dumps(body).encode())
+    if _st != 'ok':
+        raise RuntimeError('迅雷 POST 失败: %s' % _rs)
+    return json.loads(_pl)
+
+def _xunlei_token(cookie):
+    """迅雷登录态 x_token（JWT）。优先从 cookie 文本解析 x_token=；取不到则回退到
+    独立文件 .xunlei_token 或环境变量 XUNLEI_TOKEN
+    （迅雷 x_token 在网页 localStorage，不在请求 Cookie 头，故单独存放）。"""
+    import os, re as _re
+    if cookie:
+        m = _re.search(r'(?:^|;\s*)x_token=([^;]+)', cookie)
+        if m:
+            return m.group(1).strip()
+        m = _re.search(r'(?:^|;\s*)(?:authorization|token)=([^;]+)', cookie, _re.I)
+        if m:
+            return m.group(1).strip()
+    p = '/root/.codebuddy/.xunlei_token'
+    if os.path.exists(p):
+        return open(p, encoding='utf-8').read().strip()
+    return (os.environ.get('XUNLEI_TOKEN') or '').strip()
+
+
+def _xunlei_share_files(share_id, passcode, cookie=None, token=None, device_id=''):
+    """递归列出迅雷分享内全部文件。返回 (ok, rows, pass_code_token, root_ids)。
+    根层 /share?share_id=&pass_code=；folder 递归 /share/detail?parent_id=&pass_code_token=。
+    文件在响应顶层 files（非 data.files）；folder kind=drive#folder。参数必须 urlencode。
+    root_ids 为分享顶层条目 id（转存 file_ids 用）。"""
+    import urllib.parse as _up
+    ok, ct = _xunlei_captcha_token(device_id)
+    if not ok:
+        return False, ct, '', []
+    hdr = _xunlei_headers(ct, cookie=cookie, token=token, device_id=device_id)
+    q = _up.urlencode({'share_id': share_id, 'pass_code': passcode or '',
+                       'limit': '100', 'space': '', 'thumbnail_size': 'SIZE_MEDIUM', 'scene': 'NORMAL'})
+    try:
+        d = _xunlei_get('https://api-pan.xunlei.com/drive/v1/share?' + q, hdr)
+    except Exception as e:
+        return False, '根层列文件失败：%s' % e, '', []
+    pct = (d.get('pass_code_token') or '').strip()
+    root = d.get('files') or []
+    out, root_ids = [], []
+    for f in root:
+        out.append(f)
+        root_ids.append(f.get('id'))
+        if f.get('kind') == 'drive#folder':
+            _xunlei_walk(share_id, f['id'], pct, hdr, out)
+    return True, out, pct, root_ids
+
+def _xunlei_walk(share_id, folder_id, pct, hdr, out, _depth=0):
+    """递归展开 folder（/share/detail?parent_id=&pass_code_token=，必须 urlencode）。"""
+    import urllib.parse as _up
+    if _depth > 20:
+        return
+    q = _up.urlencode({'share_id': share_id, 'parent_id': folder_id, 'pass_code_token': pct,
+                       'limit': '100', 'space': '', 'thumbnail_size': 'SIZE_MEDIUM', 'scene': 'NORMAL'})
+    try:
+        d = _xunlei_get('https://api-pan.xunlei.com/drive/v1/share/detail?' + q, hdr)
+    except Exception:
+        return
+    for f in (d.get('files') or []):
+        out.append(f)
+        if f.get('kind') == 'drive#folder':
+            _xunlei_walk(share_id, f['id'], pct, hdr, out, _depth + 1)
+
+
+def _xunlei_restore_status(d):
+    """转存任务状态：优先读取 restore_status/phase_type/task_status/status/phase。"""
+    for k in ('restore_status', 'phase_type', 'task_status', 'status', 'phase'):
+        v = d.get(k)
+        if v:
+            return str(v).upper()
+    return ''
+
+def _xunlei_restore_task_id(d):
+    """转存任务 id：优先读取 restore_task_id/task_id/id。"""
+    for k in ('restore_task_id', 'task_id', 'id'):
+        v = d.get(k)
+        if v:
+            return str(v)
+    return ''
+
+def _xunlei_restore_done(d, file_ids):
+    """转存是否已同步完成。"""
+    return _xunlei_restore_status(d) in ('RESTORE_COMPLETE', 'PHASE_TYPE_COMPLETE', 'COMPLETE')
+
+def _xunlei_restore_error(d):
+    """转存是否已失败。"""
+    return _xunlei_restore_status(d) in ('RESTORE_ERROR', 'PHASE_TYPE_ERROR', 'ERROR', 'FAILED')
+
+def _xunlei_wait_restore(task_id, file_ids, hdr, timeout=60):
+    """轮询转存任务（GET /drive/v1/tasks/{id}），最多 timeout 秒。返回 (done, msg)。
+    参考 Gopeed 开源迅雷扩展 waitRestoreTask（MAX_RESTORE_POLL=120，1s 间隔）。"""
+    url = 'https://api-pan.xunlei.com/drive/v1/tasks/' + quote(task_id, safe='')
+    for _ in range(timeout):
+        try:
+            d = _xunlei_get(url, hdr)
+        except Exception as e:
+            return False, '轮询异常：%s' % e
+        st = _xunlei_restore_status(d)
+        if st in ('RESTORE_COMPLETE', 'PHASE_TYPE_COMPLETE', 'COMPLETE'):
+            return True, '任务完成'
+        if st in ('RESTORE_ERROR', 'PHASE_TYPE_ERROR', 'ERROR', 'FAILED'):
+            return False, '任务失败：%s' % (d.get('message') or st)
+        time.sleep(1)
+    return False, '超时未结束'
+
+
+def cmd_pan_info_xunlei(a, pwd_id):
+    """迅雷分享清单（不下载，走 API，IPv4 可成功）。"""
+    ck = _load_pan_cookie('xunlei')
+    token = _xunlei_token(ck) if ck else ''
+    did = _xunlei_device_id(ck) if ck else ''
+    passcode = a.passcode or _xunlei_pwd_from_url(a.url)
+    ok, rows, _pct, _root = _xunlei_share_files(pwd_id, passcode, cookie=ck, token=token, device_id=did)
+    if not ok:
+        print(f'❌ 读取迅雷分享失败：{rows}')
+        sys.exit(1)
+    files = [r for r in rows if r.get('kind') != 'drive#folder']
+    print(f"📦 迅雷分享 {pwd_id}｜条目 {len(rows)}（文件 {len(files)}）\n")
+    if a.json:
+        print(json.dumps({'share_id': pwd_id, 'items': rows}, ensure_ascii=False, indent=1))
+        return
+    if files:
+        print(f"   {'大小':>10}  路径")
+        for r in sorted(files, key=lambda x: -int(x.get('size') or 0)):
+            print(f"   {_fmt_size(int(r.get('size') or 0)):>10}  {r.get('name')}")
+    print(f"\n   下一步：tvbox probe harvest pan save --url https://pan.xunlei.com/s/{pwd_id}")
+
+
+def cmd_pan_save_xunlei(a, pwd_id):
+    """★迅雷网盘分享转存（S218 续）。
+
+    链路：列分享文件（/share + /share/detail，验证码令牌即可，无需登录态）
+    → 转存（POST /drive/v1/share/restore，需 Authorization: x_token 登录态）。
+    转存 body（下划线风格）：parent_id(空=我的云盘根)、share_id、pass_code_token、
+    ancestor_ids=[]、file_ids=[顶层条目id]、specify_parent_id=true。
+    异步任务则轮询 GET /drive/v1/tasks/{id}。
+    参考 Gopeed 开源迅雷扩展（1.92.89），2026-10-24 实测列文件有效。"""
+    import os
+    ck = _load_pan_cookie('xunlei')
+    if not ck:
+        print("""❌ 缺少迅雷网盘 Cookie，无法读取分享/转存。
+   迅雷凭证分两部分（实测确认）：
+     · Cookie 部分（sessionid/deviceid）→ 写入 `/root/.codebuddy/.xunlei_cookie`
+       （登录 pan.xunlei.com 后复制任意请求的 Cookie 头整串；你已给过）
+     · **x_token（JWT，Authorization 用）不在 Cookie 头，在网页 localStorage**
+       → 写入 `/root/.codebuddy/.xunlei_token`（单行，权限 600）
+         或环境变量 `export XUNLEI_TOKEN='eyJ...'`
+   获取 x_token：F12 → 应用/Application → 本地存储/Local Storage → 选 pan.xunlei.com
+     → 找键 `x_token`（值是一长串 eyJ...）→ 复制完整值
+   注：仅复制 Cookie 头（sessionid）不够——转存报 401 帐号认证失败；必须有 x_token。""")
+        sys.exit(1)
+    did = _xunlei_device_id(ck)
+
+    # 1) 列文件（验证码令牌即可，不需要 x_token）
+    passcode = a.passcode or _xunlei_pwd_from_url(a.url)
+    ok, rows, pct, root_ids = _xunlei_share_files(pwd_id, passcode, cookie=ck, device_id=did)
+    if not ok:
+        print(f'❌ 读取迅雷分享失败：{rows}')
+        sys.exit(1)
+    files = [r for r in rows if r.get('kind') != 'drive#folder']
+    if a.match:
+        files = [f for f in files if a.match in f.get('name', '')]
+    if not files:
+        print('❌ 没有可转存的文件'); sys.exit(1)
+
+    # 2) 校验登录态（转存必须有 x_token）
+    token = _xunlei_token(ck)
+    if not token:
+        print(f'✅ 分享可读（共 {len(files)} 个文件），但**缺少 x_token 登录态，无法转存**。\n'
+              f'   请按上方提示把 x_token 写入 /root/.codebuddy/.xunlei_token 或环境变量 XUNLEI_TOKEN 后重试。')
+        sys.exit(1)
+
+    # 3) 计算要转存的顶层 file_ids（默认整分享；--match 时取其所在根条目）
+    root_set = set(root_ids)
+    if a.match:
+        by_id = {r.get('id'): r for r in rows}
+        sel = set()
+        for f in files:
+            fid = f.get('id')
+            if fid in root_set:
+                sel.add(fid); continue
+            cur = by_id.get(f.get('parent_id'))
+            while cur and cur.get('id') not in root_set:
+                cur = by_id.get(cur.get('parent_id'))
+            if cur:
+                sel.add(cur.get('id'))
+        file_ids = list(sel)
+    else:
+        file_ids = list(root_ids)
+    if not file_ids:
+        print('❌ 没有可转存的顶层条目'); sys.exit(1)
+
+    # 4) 转存：POST /drive/v1/share/restore（需 x_token 登录态）
+    ok2, ct = _xunlei_captcha_token(did)
+    if not ok2:
+        print(f'❌ 获取验证码令牌失败：{ct}'); sys.exit(1)
+    hdr = _xunlei_headers(ct, cookie=ck, token=token, device_id=did)
+    to_parent = '' if (a.to in ('', '0', None)) else a.to  # 迅雷根目录是空串，非 '0'
+    body = {
+        'parent_id': to_parent,
+        'share_id': pwd_id,
+        'pass_code_token': pct,
+        'ancestor_ids': [],
+        'file_ids': file_ids,
+        'specify_parent_id': True,
+    }
+    try:
+        d = _xunlei_post('https://api-pan.xunlei.com/drive/v1/share/restore', hdr, body)
+    except urllib.error.HTTPError as e:
+        print(f'❌ 转存请求被拒 HTTP {e.code}：{e.read()[:240].decode("utf-8", "replace")}')
+        sys.exit(1)
+    except Exception as e:
+        print(f'❌ 转存请求失败：{type(e).__name__} {e}'); sys.exit(1)
+
+    # 5) 处理响应：同步完成 / 异步任务轮询 / 失败
+    if _xunlei_restore_done(d, file_ids):
+        print(f'  ✅ 转存完成：{len(file_ids)} 个顶层条目（含 {len(files)} 个文件）'
+              f'→ 网盘（parent_id={to_parent or "我的云盘根"}）')
+        sys.exit(0)
+    task_id = _xunlei_restore_task_id(d)
+    if task_id:
+        done, msg = _xunlei_wait_restore(task_id, file_ids, hdr)
+        if done:
+            print(f'  ✅ 转存任务完成：{msg}｜{len(file_ids)} 个顶层条目'
+                  f'→ 网盘（parent_id={to_parent or "我的云盘根"}）')
+            sys.exit(0)
+        print(f'  ❌ 转存任务未完成：{msg}'); sys.exit(1)
+    if _xunlei_restore_error(d):
+        print(f'  ❌ 转存被拒：{d.get("message") or d}'); sys.exit(1)
+    print(f'  ⚠️ 转存已提交（无明确完成状态）：task={task_id}'
+          f'｜file_ids={len(file_ids)} 个顶层条目。请稍后到网盘确认。')
+    sys.exit(0)
+
+
+def cmd_pan_save(a):
+    """★直送二期（S170 延续）：把分享里的文件**转存到用户自己的夸克网盘**。
+
+    链路：token → detail 取清单 → sharepage/save（**fid 参数必须是数组**，
+    逗号串会 500 inner error，2026-10-24 实测）→ task 轮询确认（2=完成 3=失败）。
+    save 接口 `require login [guest]`——**必须有你的夸克登录态**，否则被拒。
+    与 pull 不同，save **走 API 域（drive-pc.quark.cn），不经过 CDN 下载域**，
+    所以本机房出口可达（同 token/detail），唯一卡点是登录态。
+    """
+    import os
+    from collections import defaultdict
+    pwd_id, plat = pan_parse_share_ex(a.url)
+    if not pwd_id:
+        print('❌ 认不出分享 id：需要夸克 https://pan.quark.cn/s/<id> 或 UC https://drive.uc.cn/s/<id> 或 迅雷 https://pan.xunlei.com/s/<id> 或 百度 https://pan.baidu.com/s/<id>')
+        sys.exit(2)
+    if plat == 'xunlei':
+        return cmd_pan_save_xunlei(a, pwd_id)
+    if plat == 'baidu':
+        return cmd_pan_save_baidu(a, pwd_id)
+
+    ok, r = _pan_req(f'/1/clouddrive/share/sharepage/token?pr=ucpro&fr=pc&uc_param_str=',
+                     {'pwd_id': pwd_id, 'passcode': a.passcode or ''}, platform=plat)
+    if not ok or r.get('status') != 200:
+        print(f'❌ 分享不可用：{r if not ok else r.get("message")}')
+        sys.exit(1)
+    st = r['data']['stoken']
+
+    # 收齐文件（含子目录），记录 fid + share_fid_token + pdir
+    queue, files = [('0', '')], []
+    while queue:
+        pdir, prefix = queue.pop(0)
+        q = (f'/1/clouddrive/share/sharepage/detail?pr=ucpro&fr=pc'
+             f'&pwd_id={pwd_id}&stoken={quote(st, safe="")}&pdir_fid={pdir}'
+             f'&force=0&_page=1&_size=200&_fetch_total=1')
+        ok, d = _pan_req(q, platform=plat)
+        if not ok:
+            print(f'  ⚠️ 目录读取失败：{d}'); continue
+        for f in ((d.get('data') or {}).get('list') or []):
+            if f.get('dir'):
+                queue.append((f['fid'], f"{prefix}{f.get('file_name')}/"))
+            else:
+                files.append({'name': f"{prefix}{f.get('file_name')}",
+                              'fid': f['fid'],
+                              'token': f.get('share_fid_token') or '',
+                              'pdir': f.get('pdir_fid') or pdir})
+
+    if a.fid:
+        files = [f for f in files if f['fid'] == a.fid]
+    if a.match:
+        files = [f for f in files if a.match in f['name']]
+    if not files:
+        print('❌ 没有可转存的文件'); sys.exit(1)
+
+    # ★硬前置：登录态（save 必须，按平台选凭证文件）
+    ck = _load_pan_cookie(plat)
+    if not ck:
+        if plat == 'uc':
+            print("""❌ 缺少 UC 网盘登录态，无法转存。
+   转存接口 sharepage/save 要求登录。请提供你的 UC 网盘登录 cookie：
+     · 方式①：写入文件 `/root/.codebuddy/.uc_cookie`（单行，cookie 原文，权限 600）
+     · 方式②：环境变量 `export UC_COOKIE='...'`
+   获取方法：登录 drive.uc.cn 后复制任意请求的 Cookie 头**整串**即可——
+   实测含 __pus/__puus 组就有效，不需要专门找 ck 字段。""")
+        else:
+            print("""❌ 缺少夸克登录态，无法转存。
+   转存接口 sharepage/save 要求登录。请提供你的夸克网盘登录 cookie：
+     · 方式①：写入文件 `/root/.codebuddy/.quark_cookie`（单行，cookie 原文，权限 600）
+     · 方式②：环境变量 `export QUARK_COOKIE='...'`
+   获取方法：登录 pan.quark.cn 后复制任意请求的 Cookie 头**整串**即可——
+   实测含 __pus/__puus/__kps 组就有效，**不需要专门找 ck 字段**。""")
+        sys.exit(1)
+
+    to = a.to or '0'
+    by_pdir = defaultdict(list)
+    for f in files:
+        by_pdir[f['pdir']].append(f)
+
+    ok_n, fail_n = 0, 0
+    for pdir, grp in by_pdir.items():
+        ok, d = _pan_req('/1/clouddrive/share/sharepage/save?pr=ucpro&fr=pc&uc_param_str=',
+                         {'pwd_id': pwd_id, 'stoken': st,
+                          'fid_list': [x['fid'] for x in grp],          # ★必须是数组，逗号串会 500
+                          'fid_token_list': [x['token'] for x in grp],  # ★同上
+                          'to_pdir_fid': to, 'pdir_fid': pdir, 'scene': 'link'},
+                         platform=plat, cookie=ck)
+        if not ok:
+            print(f'  ❌ 目录 {pdir} 转存请求失败：{d}'); fail_n += len(grp); continue
+        code = d.get('status') or d.get('code')
+        if code != 200:
+            print(f'  ❌ 目录 {pdir} 转存被拒：code={code} {d.get("message")}'); fail_n += len(grp); continue
+        # 轮询任务状态：2=完成 3=失败（实测约 2 秒一轮内完成）
+        task_id = (d.get('data') or {}).get('task_id') or ''
+        done = False
+        if task_id:
+            import time as _t
+            for _i in range(15):
+                _t.sleep(2)
+                ok2, t2 = _pan_req(f'/1/clouddrive/task?pr=ucpro&fr=pc&task_id={quote(task_id, safe="")}&retry_index={_i}',
+                                   platform=plat, cookie=ck)
+                td = (t2.get('data') or {}) if ok2 and isinstance(t2, dict) else {}
+                if td.get('status') == 2:
+                    done = True; break
+                if td.get('status') == 3:
+                    break
+        else:
+            done = True  # 无 task_id 时以 200 受理为准
+        if done:
+            ok_n += len(grp)
+            print(f'  ✅ 转存 {len(grp)} 个文件到网盘（to_pdir_fid={to}，任务已完成）')
+        else:
+            print(f'  ⚠️ 目录 {pdir} 转存任务未确认完成（task_id={task_id}）'); fail_n += len(grp)
+
+    if plat == 'uc':
+        src = '文件 .uc_cookie' if os.path.exists('/root/.codebuddy/.uc_cookie') else '环境变量 UC_COOKIE'
+    else:
+        src = '文件 .quark_cookie' if os.path.exists('/root/.codebuddy/.quark_cookie') else '环境变量 QUARK_COOKIE'
+    print(f'\n   转存小结：成功 {ok_n}｜失败 {fail_n}｜分享 {pwd_id}｜登录态来源：{src}')
+    if ok_n:
+        sid = _pan_snapshot_save(plat, pwd_id, to, [f['name'] for f in files])
+        if sid:
+            print(f'   快照已存 id={sid}｜撤销用：tvbox probe harvest pan rm --undo {sid} --platform {plat}')
+    sys.exit(0 if ok_n and not fail_n else 1)
+
+
+def _parse_since(s):
+    """--since 时间解析：'30'→最近30分钟；13位数字→毫秒时间戳；否则试 ISO。
+
+    为什么要它：按文件名关键词猜"哪些是刚转存的"很脆弱（漏掉不含关键词的、
+    误伤同名的）。接口每个文件都返回 created_at，按时间筛才稳。
+    """
+    import time as _t
+    import datetime as _dt
+    s = (s or '').strip()
+    if not s:
+        return 0
+    if s.isdigit():
+        n = int(s)
+        if n < 100000:          # 小于十万视为"分钟数"
+            return int((_t.time() - n * 60) * 1000)
+        return n                # 13 位＝毫秒时间戳
+    for fmt in ('%Y-%m-%d %H:%M', '%Y-%m-%d %H:%M:%S', '%Y-%m-%d'):
+        try:
+            return int(_dt.datetime.strptime(s, fmt).timestamp() * 1000)
+        except ValueError:
+            continue
+    print(f'❌ 认不出时间：{s}（用分钟数如 30，或 2026-10-25 00:00）')
+    sys.exit(2)
+
+
+def _fmt_ts(ms):
+    import datetime as _dt
+    try:
+        return _dt.datetime.fromtimestamp(ms / 1000).strftime('%Y-%m-%d %H:%M:%S')
+    except Exception:
+        return str(ms)
+
+
+def _pan_snapshot_save(plat, pwd_id, to, names):
+    """转存快照：记下本次转存了哪些文件（供 --undo 精确撤销）。
+
+    为什么必须有：转存接口只回 task_id，**不回"落盘后的新 fid"**，
+    所以事后只能按文件名反推。把当时转存的文件名清单存下来，
+    撤销时才能精确匹配，而不是拿关键词瞎猜（本轮 42 个误转就是这么猜的）。
+    """
+    import time as _t
+    import hashlib as _h
+    fp = '/root/.codebuddy/.pan_snapshots.json'
+    try:
+        d = json.load(open(fp, encoding='utf-8')) if os.path.exists(fp) else {'snapshots': []}
+    except Exception:
+        d = {'snapshots': []}
+    sid = _h.sha1(('%s|%s|%s' % (plat, pwd_id, _t.time())).encode('utf-8')).hexdigest()[:10]
+    d.setdefault('snapshots', []).append({
+        'id': sid, 'time': int(_t.time() * 1000), 'platform': plat,
+        'pwd_id': pwd_id, 'to': to, 'names': list(names)})
+    d['snapshots'] = d['snapshots'][-20:]      # 只留最近 20 次，防无限膨胀
+    try:
+        json.dump(d, open(fp, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
+        os.chmod(fp, 0o600)
+        return sid
+    except Exception:
+        return ''
+
+
+def _pan_snapshot_load(sid):
+    """读快照：sid='last' 取最近一次，否则按 id 精确取。"""
+    fp = '/root/.codebuddy/.pan_snapshots.json'
+    try:
+        d = json.load(open(fp, encoding='utf-8'))
+    except Exception:
+        return None
+    snaps = d.get('snapshots') or []
+    if not snaps:
+        return None
+    if sid == 'last':
+        return snaps[-1]
+    for s in snaps:
+        if s.get('id') == sid:
+            return s
+    return None
+
+
+def _write_backup_manifest(sel, plat):
+    """破坏性操作门禁第 2 步：删前把待删清单落盘备份（可据此核对/恢复）。"""
+    import time as _t
+    fp = '/root/.codebuddy/pan_rm_backup_%s.json' % _t.strftime('%m%d_%H%M%S')
+    try:
+        json.dump({'time': int(_t.time() * 1000), 'platform': plat,
+                   'items': [{'fid': x['fid'], 'name': x['name'],
+                              'dir': x.get('dir'), 'size': x.get('size', 0)} for x in sel]},
+                  open(fp, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
+        print(f'   💾 删前备份清单已落盘：{fp}')
+        return fp
+    except Exception as e:
+        print(f'   ⚠️ 备份清单写入失败：{e}')
+        return ''
+
+
+def cmd_pan_rm(a):
+    """★删除你自己网盘里的文件/目录。默认**预演**（只列将删的），--yes 才真删。
+
+    删除走 `/1/clouddrive/file/delete`（夸克/UC 同构），body 传 filelist（fid 数组）。
+    删目录会递归清掉里面所有内容。写操作，需登录态（与 save 同套 cookie）。
+    筛选：--fid 精确（逗号分隔，优先）｜--match 多关键词（逗号分隔，任一命中即选）｜都不给则删整个 --pdir 范围。
+    """
+    import urllib.parse as _up
+    plat = a.platform
+    ck = _load_pan_cookie(plat)
+    if not ck:
+        print('❌ 缺少 %s 网盘登录态，无法删除。请提供 cookie 写入 /root/.codebuddy/.%s_cookie（权限600）'
+              % ('夸克' if plat == 'quark' else 'UC', plat))
+        sys.exit(1)
+
+    # 1) 列出目标范围内全部条目（支持递归进子目录）
+    items = []
+    queue = [a.pdir or '0']
+    while queue:
+        pdir = queue.pop(0)
+        q = (f'/1/clouddrive/file?pr=ucpro&fr=pc&pdir_fid={_up.quote(pdir, safe="")}'
+             f'&_page=1&_size=200&_fetch_total=1&_fetch_sub_count=1')
+        ok, d = _pan_req(q, platform=plat, cookie=ck)
+        if not ok:
+            print(f'  ⚠️ 目录 {pdir} 读取失败：{d}'); continue
+        for f in ((d.get('data') or {}).get('list') or []):
+            items.append({'fid': f.get('fid'), 'name': f.get('file_name') or '',
+                          'dir': bool(f.get('dir')), 'size': int(f.get('size') or 0),
+                          'ct': int(f.get('created_at') or 0)})   # ★创建时间，供 --since 用
+            if a.recursive and f.get('dir'):
+                queue.append(f['fid'])
+
+    # 2) 筛选（--undo 优先：按转存快照精确撤销，不用文件名猜）
+    if getattr(a, 'undo', ''):
+        snap = _pan_snapshot_load(a.undo)
+        if not snap:
+            print(f'❌ 找不到快照：{a.undo}（用 last 取最近一次）'); sys.exit(1)
+        want = set(snap.get('names') or [])
+        sel = [x for x in items if x['name'] in want]      # 精确名匹配，不是子串
+        print(f'   ↩️  按快照 {snap.get("id")} 撤销（快照 {len(want)} 个文件名，精确匹配到 {len(sel)} 项）')
+    elif a.fid:
+        want = set(x for x in a.fid.split(',') if x.strip())
+        sel = [x for x in items if x['fid'] in want]
+    elif a.match:
+        keys = [k.strip() for k in a.match.split(',') if k.strip()]
+        sel = [x for x in items if any(k in x['name'] for k in keys)]
+    else:
+        sel = items  # 没指定则整个 --pdir 范围
+
+    # 2.5) --since：只保留该时间点之后新增的（按转存/创建时间筛，不靠文件名猜）
+    if getattr(a, 'since', ''):
+        th = _parse_since(a.since)
+        before = len(sel)
+        sel = [x for x in sel if x['ct'] >= th]
+        print(f'   ⏱️  按创建时间筛（{_fmt_ts(th)} 之后）：{before} → {len(sel)} 项')
+
+    if not sel:
+        print('❌ 没有匹配到要删的文件'); sys.exit(1)
+
+    # 3) 预演 / 执行
+    print(f"🗑️  将删除 {len(sel)} 项（{'【执行】' if a.yes else '【预演】加 --yes 才真删'}）：")
+    for x in sel:
+        print(f"   [{'目录' if x['dir'] else '文件'}] {x['name']}  (fid={x['fid']})")
+
+    if not a.yes:
+        print('\n   预演完毕，未删除任何东西。确认无误后加 --yes 执行。')
+        sys.exit(0)
+
+    # 破坏性门禁第 2 步：执行前必须落备份清单（清单→备份→确认→执行，缺一即中止）
+    _bk = _write_backup_manifest(sel, plat)
+    if not _bk:
+        print('❌ 备份清单未生成，按破坏性操作门禁中止删除')
+        sys.exit(1)
+
+    fids = [x['fid'] for x in sel]
+    ok_n = 0
+    for i in range(0, len(fids), 50):
+        chunk = fids[i:i + 50]
+        ok, d = _pan_req('/1/clouddrive/file/delete?pr=ucpro&fr=pc&uc_param_str=',
+                         {'actoin_type': 2, 'exclude_fids': [], 'filelist': chunk},
+                         platform=plat, cookie=ck)
+        if not ok:
+            print(f'  ❌ 删除请求失败：{d}'); continue
+        code = d.get('status') or d.get('code')
+        if code not in (200, 0, 'ok', None):
+            print(f'  ❌ 删除被拒：code={code} {d.get("message")}'); continue
+        ok_n += len(chunk)
+        print(f'  ✅ 已删除 {len(chunk)} 项')
+    print(f'\n   删除小结：成功 {ok_n}｜失败 {len(fids) - ok_n}')
+    sys.exit(0 if ok_n == len(fids) else 1)
+
+
+# ── 百度网盘（S218 续·2026-10-24 本轮回补）──────────────────────────────
+# 百度与夸克/UC/迅雷**不同构**：独立 cookie（BDUSS/STOKEN/PANPSC）+
+# 独立分享解析（surl→shareid+uk）+ 独立列文件（share/list）+
+# 独立转存（share/transfer，fsidlist 明文 JSON 数组，配 shareid+share_uk+bdstoken，
+#   无需 RSA 加密——disk-share 前端 JS 无 RSA 公钥，契约来自 BaiduPCS-Go 逆向佐证）。
+BAIDU_REF = 'https://pan.baidu.com/'
+BAIDU_APP_ID = '250528'
+
+def _baidu_req(url, ck, data=None, timeout=20):
+    """百度 GET/POST（form）。data 有则 POST(form-urlencoded)，无则 GET。返回解析 json。"""
+    hdr = {'User-Agent': PAN_UA, 'Cookie': ck, 'Referer': BAIDU_REF}
+    if data is not None:
+        import urllib.parse as _up
+        _st, _pl, _rs = http_get(url, timeout=timeout,
+                                 headers={**hdr, 'Content-Type': 'application/x-www-form-urlencoded'},
+                                 method='POST', data=_up.urlencode(data).encode('utf-8'))
+    else:
+        _st, _pl, _rs = http_get(url, timeout=timeout, headers=hdr)
+    if _st != 'ok':
+        raise RuntimeError('百度请求失败: %s' % _rs)
+    return json.loads(_pl)
+
+def _baidu_fetch_raw(url, ck, timeout=20):
+    """抓原始 HTML/JS（用于从分享页 JS 提取 RSA 公钥）。（C1b：走 core.http_get）"""
+    _st, _pl, _rs = http_get(url, timeout=timeout,
+                             headers={'User-Agent': PAN_UA, 'Cookie': ck, 'Referer': BAIDU_REF})
+    if _st != 'ok':
+        raise RuntimeError('百度页面抓取失败: %s' % _rs)
+    return _pl
+
+def _baidu_parse_surl(text):
+    """从分享文本抠出 surl + 提取码。返回 (surl, pwd)。"""
+    import re as _re
+    m = _re.search(r'pan\.baidu\.com/s/([0-9a-zA-Z_-]+)', text or '')
+    if not m:
+        return '', ''
+    surl = m.group(1)
+    pm = _re.search(r'[?&]pwd=([0-9a-zA-Z]+)', text or '')
+    return surl, (pm.group(1) if pm else '')
+
+def _baidu_shareinfo(surl, pwd, ck):
+    """从分享页内联 locals 提取 shareid + share_uk（分享者 uk）+ bdstoken。返回 (ok, shareid, share_uk, bdstoken, err)。
+
+    实测确证：百度 `api/shareinfo` 接口已废弃（404），而页面 locals 内联了 shareid/share_uk/bdstoken；
+    `uk`（当前登录用户）≠ `share_uk`（分享者），分享列表/转存必须用 share_uk。故直接抓页提取。"""
+    import re as _re
+    try:
+        html = _baidu_fetch_raw('https://pan.baidu.com/s/' + surl + ('?pwd=' + pwd if pwd else ''), ck)
+    except Exception as e:
+        return False, '', '', '', '抓分享页失败：%s' % e
+    sid = _re.search(r'share_uk["\']?\s*[:=]\s*["\']?(\d+)', html)
+    uk = _re.search(r'shareid["\']?\s*[:=]\s*["\']?(\d+)', html)
+    bt = _re.search(r'bdstoken["\']?\s*[:=]\s*["\']?([0-9a-f]+)', html)
+    if not sid or not uk:
+        return False, '', '', '', '分享页未含 shareid/share_uk（链接无效、需登录查看，或 cookie 失效）'
+    return True, uk.group(1), sid.group(1), (bt.group(1) if bt else ''), ''
+
+def _baidu_verify(surl, pwd, ck, shareid, share_uk):
+    """验证提取码，返回 (ok, stoken, err)。百度要求先 verify 拿 stoken，再带 stoken 列文件/转存。"""
+    import urllib.parse as _up
+    data = {'shareid': shareid, 'uk': share_uk, 'pwd': pwd,
+            'clienttype': '0', 'channel': 'chunlei', 'web': '1', 'app_id': BAIDU_APP_ID}
+    try:
+        d = _baidu_req('https://pan.baidu.com/share/verify', ck, data)
+    except Exception as e:
+        return False, '', 'share/verify 失败：%s' % e
+    if d.get('errno') != 0:
+        return False, '', 'share/verify 错误：errno=%s %s（提取码错误，或 cookie 登录态失效需重登重发）' % (d.get('errno'), d.get('errmsg'))
+    return True, (d.get('stoken') or ''), ''
+
+def _baidu_bduss_alive(ck):
+    """轻量探活：BDUSS 登录态是否有效（仅依赖 BDUSS，不依赖分享专用 STOKEN）。返回 bool。"""
+    try:
+        d = _baidu_req('https://pan.baidu.com/api/quota?check_free=1&checkexpire=1&web=1', ck)
+        return d.get('errno') == 0
+    except Exception:
+        return False
+
+def _baidu_verify_hint(ck, err_v):
+    """verify 失败时的精准指引：区分「服务端风控(出口IP)」与「登录态整体失效」。"""
+    if 'errno=-12' in err_v:
+        if _baidu_bduss_alive(ck):
+            return ('❌ 验证提取码失败（errno=-12，err_msg 为空）：账号 BDUSS 登录态有效、'
+                    'quota 正常，但分享验证被百度服务端静默拒绝。\n'
+                    '   实测「所有参数/UA/请求方式组合都 -12 且空 err_msg、连无效 shareid 也 -12」，'
+                    '而 quota/list 接口正常——这种表现通常是当前运行出口'
+                    '（数据中心 / 云服务器 IP）被百度对分享操作风控。\n'
+                    '   → 请在你的本机（家庭宽带、已登录该账号的浏览器网络）运行同样命令，'
+                    '用此 cookie 重试；或让请求走非机房出口 IP。cookie 本身无需重发。')
+        return ('❌ 验证提取码失败（errno=-12）：登录态整体失效。\n'
+                '   → 重新登录 pan.baidu.com，F12 复制整串 Cookie 覆盖写入 '
+                '/root/.codebuddy/.baidu_cookie（权限 600），再重跑。')
+    return '❌ 验证提取码失败：%s' % err_v
+
+
+def _baidu_resolve_stoken(surl, pwd, ck, shareid, share_uk, force_verify=False):
+    """决定列文件/转存所需的 stoken。百度契约：无密码分享直接 list（errno=0）；
+    有密码分享 list 返回 -9，需先 verify 拿 stoken。返回 (stoken, err)，err='' 即成功。
+
+    force_verify：转存(save)场景必须为 True——公开分享虽能直接 list，但 transfer
+    仍需要 verify 拿到的 stoken。列文件(info)场景用默认 False（公开分享跳过 verify 即可）。
+
+    实测价值：沙箱环境 share/verify 被百度静默风控（errno=-12 空 err_msg），但 share/list
+    对公开分享完全可用——故「先无密码试 list」既能让公开分享端到端跑通列文件，
+    又能把转存所需的 verify/transfer 风控精准隔离出来。"""
+    import urllib.parse as _up
+    short = surl[1:] if surl.startswith('1') else surl
+    q = {'web': '5', 'app_id': BAIDU_APP_ID, 'desc': '1', 'showempty': '0',
+         'page': '1', 'num': '100', 'order': 'time',
+         'shorturl': short, 'root': '1', 'view_mode': '1'}
+    try:
+        d = _baidu_req('https://pan.baidu.com/share/list?' + _up.urlencode(q), ck)
+    except Exception as e:
+        return '', 'share/list 失败：%s' % e
+    errno = d.get('errno')
+    if errno == 0:
+        if not force_verify:
+            return '', ''  # 列文件(info)：公开无密码，无需 stoken
+        # 转存(save)：公开分享也需 verify 拿 stoken 供 transfer
+        ok_v, stoken, err_v = _baidu_verify(surl, pwd, ck, shareid, share_uk)
+        if not ok_v:
+            return '', err_v
+        return stoken, ''
+    if errno == -9:
+        if not pwd:
+            return '', '此分享需要提取码，请加 ?pwd= 或在命令后加 --passcode <提取码>'
+        ok_v, stoken, err_v = _baidu_verify(surl, pwd, ck, shareid, share_uk)
+        if not ok_v:
+            return '', err_v  # 命令函数会用 hint 美化 -12
+        return stoken, ''
+    return '', 'share/list 错误：errno=%s %s' % (errno, d.get('errmsg'))
+
+
+def _baidu_collect(surl, pwd, ck, shareid, share_uk, out, stoken='', dir_fsid='', prefix='', _depth=0):
+    """递归列文件，写入 out（含子目录）。返回 err 或 ''。
+    实测契约（来自 disk-share 前端 JS getShareList）：GET /share/list?
+      web=5&app_id=250528&desc=1&showempty=0&page=N&num=100&order=time
+      &shorturl=<surl去开头1>&root=1&view_mode=1[&pwd=..][&stoken=..][&dir=<fs_id>]
+    shorturl 必须把 URL 里 surl 开头的 '1' 去掉（JS: _surl.split('').slice(1).join('')）。"""
+    import urllib.parse as _up
+    if _depth > 20:
+        return ''
+    short = surl[1:] if surl.startswith('1') else surl
+    page = 1
+    while True:
+        q = {'web': '5', 'app_id': BAIDU_APP_ID, 'desc': '1', 'showempty': '0',
+             'page': str(page), 'num': '100', 'order': 'time',
+             'shorturl': short, 'root': '1', 'view_mode': '1'}
+        if pwd:
+            q['pwd'] = pwd
+        if stoken:
+            q['stoken'] = stoken
+        if dir_fsid:
+            q['dir'] = dir_fsid
+        try:
+            d = _baidu_req('https://pan.baidu.com/share/list?' + _up.urlencode(q), ck)
+        except Exception as e:
+            return 'share/list 失败：%s' % e
+        if d.get('errno') != 0:
+            return 'share/list 错误：errno=%s %s' % (d.get('errno'), d.get('errmsg'))
+        lst = d.get('list') or []
+        if not lst:
+            break
+        for f in lst:
+            isdir = (f.get('isdir') == 1)
+            name = f.get('server_filename') or f.get('filename') or ''
+            full = prefix + name
+            out.append({'fs_id': f.get('fs_id'), 'name': full, 'isdir': isdir,
+                        'size': int(f.get('size') or 0), 'md5': f.get('md5')})
+            if isdir:
+                e2 = _baidu_collect(surl, pwd, ck, shareid, share_uk, out, stoken,
+                                    dir_fsid=str(f.get('fs_id')), prefix=full + '/', _depth=_depth + 1)
+                if e2:
+                    return e2
+        if not d.get('more') or len(lst) < 100:
+            break
+        page += 1
+    return ''
+
+# 注：百度网盘网页端分享转存（/share/transfer）实测用 fsidlist 明文 JSON 数组（非 RSA filelist），
+# disk-share 前端 JS（common-chunks-all）中亦无 RSA 公钥，故无需 RSA 加密与公钥提取。
+# 转存见 _baidu_transfer（fsidlist 方式，契约来自 BaiduPCS-Go 逆向 + 网页端佐证）。
+
+def _baidu_transfer(surl, pwd, ck, shareid, share_uk, bdstoken, items, to_path='/'):
+    """转存。items=[(fs_id, server_filename), ...]。返回 (ok, err)。
+    实测契约（BaiduPCS-Go 逆向 + 网页端 disk-share JS 佐证）：POST /share/transfer，
+    fsidlist 为明文 JSON 数组字符串，配 shareid + share_uk + bdstoken，无需 RSA 加密 filelist。"""
+    fsidlist = json.dumps([str(f) for f, _ in items], ensure_ascii=False)
+    data = {'shareid': shareid, 'uk': share_uk, 'fsidlist': fsidlist,
+            'path': to_path, 'bdstoken': bdstoken,
+            'clienttype': '0', 'channel': 'chunlei', 'web': '1', 'app_id': BAIDU_APP_ID}
+    try:
+        d = _baidu_req('https://pan.baidu.com/share/transfer', ck, data)
+    except Exception as ex:
+        return False, 'share/transfer 失败：%s' % ex
+    if d.get('errno') != 0:
+        return False, 'share/transfer 错误：errno=%s %s' % (d.get('errno'), d.get('errmsg'))
+    return True, ''
+
+def cmd_pan_info_baidu(a, surl):
+    """百度分享清单（列文件，不下载）。"""
+    ck = _load_pan_cookie('baidu')
+    if not ck:
+        print('❌ 缺少百度网盘登录态（/root/.codebuddy/.baidu_cookie）。F12 复制 pan.baidu.com 的 Cookie 整串写入该文件（权限600）。')
+        sys.exit(1)
+    pwd = a.passcode or _baidu_parse_surl(a.url)[1]
+    ok, shareid, share_uk, bdstoken, err = _baidu_shareinfo(surl, pwd, ck)
+    if not ok:
+        print('❌ 读取百度分享失败：%s' % err); sys.exit(1)
+    stoken, e = _baidu_resolve_stoken(surl, pwd, ck, shareid, share_uk)
+    if e:
+        if 'errno=-12' in e:
+            print(_baidu_verify_hint(ck, e)); sys.exit(1)
+        print('❌ ' + e); sys.exit(1)
+    out = []
+    e2 = _baidu_collect(surl, pwd, ck, shareid, share_uk, out, stoken=stoken)
+    if e2:
+        print('❌ 列文件失败：%s' % e2); sys.exit(1)
+    files = [r for r in out if not r['isdir']]
+    print(f"📦 百度分享 {surl}｜条目 {len(out)}（文件 {len(files)}）\n")
+    if files:
+        print(f"   {'大小':>10}  路径")
+        for r in sorted(files, key=lambda x: -x['size']):
+            print(f"   {_fmt_size(r['size']):>10}  {r['name']}")
+    print(f"\n   下一步：tvbox probe harvest pan save --url https://pan.baidu.com/s/{surl}")
+
+def cmd_pan_save_baidu(a, surl):
+    """★百度网盘分享转存（S218 续）。"""
+    ck = _load_pan_cookie('baidu')
+    if not ck:
+        print('❌ 缺少百度网盘登录态（/root/.codebuddy/.baidu_cookie）。F12 复制 pan.baidu.com 的 Cookie 整串写入该文件（权限600）。')
+        sys.exit(1)
+    pwd = a.passcode or _baidu_parse_surl(a.url)[1]
+    ok, shareid, share_uk, bdstoken, err = _baidu_shareinfo(surl, pwd, ck)
+    if not ok:
+        print('❌ 读取百度分享失败：%s' % err); sys.exit(1)
+    stoken, e = _baidu_resolve_stoken(surl, pwd, ck, shareid, share_uk, force_verify=True)
+    if e:
+        if 'errno=-12' in e:
+            print(_baidu_verify_hint(ck, e)); sys.exit(1)
+        print('❌ ' + e); sys.exit(1)
+    out = []
+    e2 = _baidu_collect(surl, pwd, ck, shareid, share_uk, out, stoken=stoken)
+    if e2:
+        print('❌ 列文件失败：%s' % e2); sys.exit(1)
+    files = [r for r in out if not r['isdir']]
+    if a.match:
+        files = [f for f in files if a.match in f['name']]
+    if not files:
+        print('❌ 没有可转存的文件'); sys.exit(1)
+    items = [(f['fs_id'], f['name']) for f in files]
+    ok2, err2 = _baidu_transfer(surl, pwd, ck, shareid, share_uk, bdstoken, items, to_path=(a.to or '/'))
+    if not ok2:
+        print(f'❌ 转存失败：{err2}'); sys.exit(1)
+    print(f'✅ 转存完成：{len(items)} 个文件 → 网盘（{a.to or "我的网盘根"}）')
+    sys.exit(0)
+
+
 # ══════════════════ MSITEPK2 单文件资源容器（S171） ══════════════════
 # ★为什么值得单独支持：**一个 2MB 的 site.pak 装了 78 个资源**（源清单 + m3u + 图标 + 健康数据
 #   + 整个前端页面）。对"整包分发"这件事，单文件容器比目录树强得多——一次请求拿全站，
@@ -7249,7 +9662,7 @@ def cmd_pan_pull(a):
 #   magic(8)='MSITEPK2' + count(4 BE)
 #   每条 24B：name_len(2BE) + name(UTF-8) + off(4BE 相对 payloadStart) + len(4BE) + iv(16B)
 #   头部读完的位置即 payloadStart。数据区 spec:
-#     AES-128-CBC(PKCS5) 解密 → zlib inflate（标准头 78 da）
+#     AES-256-CBC(PKCS5) 解密 → zlib inflate（标准头 78 da）
 #   ★key 是**独立字段** `SiteKeys.SITE_KEY_HEX`（32 hex 字符×2=64 hex = 32 字节 → AES-256）。
 #     `create([B pak, [B key)` 里断言 `key.length == 32`，所以是 **AES-256**，别写成 128。
 #
@@ -7317,6 +9730,28 @@ def _pak_read(buf, payload_start, ent, key):
     return zlib.decompress(dec)
 
 
+def _pak_try_key(buf, pstart, entries, hexkey):
+    """自证：用候选 hex 当 AES-256 key 试解**前两条**记录，zlib 能 inflate 出正长度即采用。
+
+    ★为什么自证而非盲选：真实 dex 里 64-hex 串往往不止一个（sha/uuid/常量），
+      原实现靠"恰好 1 个候选"的前提太脆——多候选就静默退化成只列清单。
+      改成"谁能真解开就用谁"，把"取密钥"从猜变成验（呼应 S169 测活归因思路）。
+    """
+    try:
+        k = bytes.fromhex(hexkey)
+    except ValueError:
+        return False
+    if len(k) != 32 or not entries:
+        return False
+    for e in entries[:2]:
+        try:
+            _pak_read(buf, pstart, e, k)
+            return True
+        except Exception:
+            continue
+    return False
+
+
 def cmd_comb_pak(a):
     """MSITEPK2 解包：列清单 / 全解 / 取单条。"""
     path = a.file
@@ -7347,8 +9782,17 @@ def cmd_comb_pak(a):
                 elif not cands:
                     print(f'   ⚠️ {os.path.basename(dex)} 里没找到 64 hex 的串')
                 else:
-                    print(f'   ⚠️ {os.path.basename(dex)} 里有 {len(cands)} 个候选，'
-                          f'用 --key 指定其中一个：'); [print('      ', c) for c in cands[:8]]
+                    # ★多候选不再静默放弃：逐候选自证，选中能真解开的那个
+                    for c in cands:
+                        if _pak_try_key(buf, pstart, entries, c):
+                            key = bytes.fromhex(c)
+                            print(f'   key：{os.path.basename(dex)} 有 {len(cands)} 个候选，'
+                                  f'自证选中 {c[:8]}…（其余 {len(cands) - 1} 个解不开）')
+                            break
+                    else:
+                        print(f'   ⚠️ {os.path.basename(dex)} 里有 {len(cands)} 个候选，'
+                              f'逐个自证都没解开，用 --key 指定：')
+                        [print('      ', c) for c in cands[:8]]
 
     if a.list_only or key is None:
         print(f"\n   {'大小':>10}  名字")
@@ -7373,10 +9817,18 @@ def cmd_comb_pak(a):
             data = _pak_read(buf, pstart, e, key)
         except Exception as ex:
             print(f"❌ {e['name']}：{type(ex).__name__}: {ex}"); sys.exit(1)
+        # ★--out 优先；其次 --outdir/名；都没有才吐 stdout（兼容老用法）
         if a.out:
-            os.makedirs(os.path.dirname(os.path.abspath(a.out)) or '.', exist_ok=True)
-            open(a.out, 'wb').write(data)
-            print(f"   ✅ {e['name']} → {a.out}  {_fmt_size(len(data))}")
+            outp = a.out
+        elif a.outdir:
+            os.makedirs(a.outdir, exist_ok=True)
+            outp = os.path.join(a.outdir, e['name'])
+        else:
+            outp = None
+        if outp:
+            os.makedirs(os.path.dirname(os.path.abspath(outp)) or '.', exist_ok=True)
+            open(outp, 'wb').write(data)
+            print(f"   ✅ {e['name']} → {outp}  {_fmt_size(len(data))}")
         else:
             sys.stdout.buffer.write(data)
         return
@@ -7425,6 +9877,8 @@ def build_parser():
     fc = ms.add_parser('forecast'); fc.add_argument('--repo'); fc.add_argument('--json', action='store_true')
     ms.add_parser('status')
     ad = ms.add_parser('add'); ad.add_argument('--url', required=True); ad.add_argument('--author'); ad.add_argument('--cadence', default='每周'); ad.add_argument('--branch', default='main'); ad.add_argument('--config-path'); ad.add_argument('--related')
+    im = ms.add_parser('import', help='从 seed JSON 批量登记监测目标（离线种子基线）')
+    im.add_argument('--file', required=True, help='seed JSON：[{name, urls:[...], kind, seed_baseline}]')
     rm = ms.add_parser('remove', help='撤登记（按 id 或 URL 片段；须 --yes 确认）')
     rm.add_argument('target', help='目标 id 或 URL 片段')
     rm.add_argument('--yes', action='store_true', help='确认执行（缺省为预演 dry-run）')
@@ -7432,6 +9886,10 @@ def build_parser():
     pt.add_argument('--yes', action='store_true', help='确认执行（缺省为预演）')
     ms.add_parser('due')
 
+    dl = sub.add_parser('deliver', help='大集成消费优选投递（影视/音乐/直播/小说·一期）')
+    dl.add_argument('--type', default='影视', help='类目：影视/音乐/直播/小说')
+    dl.add_argument('--top', type=int, default=3, help='挑前 N 优')
+    dl.add_argument('--json', action='store_true', help='输出 json（上机实测优先）')
     s = sub.add_parser('search', help='搜索更多仓库')
     ss = s.add_subparsers(dest='cmd', required=True)
     sg = ss.add_parser('github'); sg.add_argument('--topic', default='tvbox'); sg.add_argument('--limit', type=int, default=20)
@@ -7520,6 +9978,35 @@ def build_parser():
     p2.add_argument('--outdir', default='.')
     p2.add_argument('--match', default='', help='只下文件名含该子串的')
     p2.add_argument('--timeout', type=int, default=120)
+    p3 = hps.add_parser('save', help='★直送二期：转存分享到你的夸克网盘（需登录态 ck）')
+    p3.add_argument('--url', required=True)
+    p3.add_argument('--passcode', default='')
+    p3.add_argument('--fid', default='', help='只转存该 fid（默认全部）')
+    p3.add_argument('--match', default='', help='只转存文件名含该子串的')
+    p3.add_argument('--to', default='0', help='目标目录 fid，0=根目录')
+    p3.add_argument('--json', action='store_true')
+    p4 = hps.add_parser('rm', help='★删除你自己网盘里的文件/目录（先预演，--yes 才真删）')
+    p4.add_argument('--pdir', default='0', help='从哪个目录开始列，0=根目录')
+    p4.add_argument('--recursive', action='store_true', help='递归进入子目录')
+    p4.add_argument('--match', default='', help='只删文件名含该子串的')
+    p4.add_argument('--fid', default='', help='直接指定 fid（逗号分隔），优先于 --match')
+    p4.add_argument('--platform', default='quark', choices=['quark', 'uc'])
+    p4.add_argument('--yes', action='store_true', help='确认执行删除（缺省仅预演列出）')
+    p4.add_argument('--since', default='', help='只删创建时间晚于该点的：数字=最近N分钟；13位=毫秒时间戳；或 2026-10-25 00:00')
+    p4.add_argument('--undo', default='', help='按转存快照精确撤销：last=最近一次转存，或快照 id')
+
+    # ★C8（T6）入口分裂收口：S110 质量评测 + 内容层探查 接入总调度（不删、不降级）
+    qy = sub.add_parser('quality', help='S110 单条质量评测（画质/速度/广告/质量分）')
+    qy.add_argument('url', help='m3u8 播放地址')
+    qb = sub.add_parser('quality-batch', help='S110 批量质量评测并回填成品源库/线路源库')
+    qb.add_argument('--db', choices=['成品源库', '线路源库', 'both'], default='成品源库')
+    qb.add_argument('--limit', type=int, default=0, help='只测前 N 条（0=全量）')
+    qb.add_argument('--only-pass', action='store_true', help='只测真实测活=通过的')
+    qb.add_argument('--rounds', type=int, default=2)
+    qb.add_argument('--timeout', type=int, default=12)
+    qb.add_argument('--workers', type=int, default=6, help='并发数（M-R114 B档上限 6）')
+    qb.add_argument('--dry', action='store_true', help='只打印不写库')
+    cpb = sub.add_parser('content-probe', help='内容层探查：读原仓库配置逐站探内容层（需 TVBOX_ORIG_DIR）')
 
     # ★S171 MSITEPK2 单文件资源容器（一个 pak 装 78 个资源）
     pk = sub.add_parser('pak', help='★MSITEPK2 单文件资源容器解包（S171）')
@@ -7570,6 +10057,32 @@ def build_parser():
     fg_c.add_argument('api', nargs='?', help='单条接口地址')
     fg_c.add_argument('--in', dest='infile', help='批量清单 json：[{"api":...,"name":...}]')
     fg_c.add_argument('--out', help='把结果写到 json（便于后续写库）')
+    # S194：借鉴道长 spider-craft 落地——留档审计 + 站点画像
+    fg_sub.add_parser('audit', help='★留档审计：七项闸门查 sources/ 账实一致性（索引↔磁盘）')
+    fg_p = fg_sub.add_parser('profile', help='★站点画像：43 项特征扫描→防御等级 0-4→推荐探源司命令')
+    fg_p.add_argument('url', help='待画像的站点地址')
+    # S204：本地 py/js 源清单生成器（借鉴用户 1026 提供的 auto_json.py 分发形态）
+    fg_pl = fg_sub.add_parser('packlocal', help='★本地 py/js 目录扫描→验源（py真跑/js静态）→出 auto_config.json')
+    fg_pl.add_argument('--dir', dest='dir', help='待扫描目录（递归）')
+    fg_pl.add_argument('--out', dest='out', help='输出配置路径（缺省 <目录>/auto_config.json）')
+    fg_pl.add_argument('--keep-unverified', dest='keep_unverified', action='store_true',
+                       help='「无法判定」也进清单并打标（默认只收「通过」）')
+
+    # 模块 G：壳源侦察与抠链（S196 固化）——第三类料源「播放页壳」的发现与变现
+    sh = sub.add_parser('shellcrack', help='★壳源侦察+抠链：CMS站形态分诊→三模板金律正则→urljoin→真拉分片验活→入播放页壳库（S196）')
+    sh_sub = sh.add_subparsers(dest='cmd', required=True)
+    sh_c = sh_sub.add_parser('crack', help='抠单个播放页壳')
+    sh_c.add_argument('page', help='壳页面 URL')
+    sh_c.add_argument('--name', help='名称（缺省取 host）')
+    sh_c.add_argument('--save', action='store_true', help='结果写入播放页壳库')
+    sh_p2 = sh_sub.add_parser('probe', help='★形态分诊：ac=detail 判 直链站/壳/API死，是壳则当场抠')
+    sh_p2.add_argument('api', help='CMS api.php/provide/vod 接口')
+    sh_p2.add_argument('--name', required=True)
+    sh_p2.add_argument('--save', action='store_true')
+    sh_s = sh_sub.add_parser('scan', help='★批量：对候选清单逐站分诊+抠链')
+    sh_s.add_argument('--in', dest='infile', help='候选清单 json：[[名称,接口],...]（缺省用内置 shellcrack_cands.json）')
+    sh_s.add_argument('--save', action='store_true', help='抠出的壳入库')
+    sh_sub.add_parser('status', help='壳库 readback（入库后必须回读，不许只看回执）')
 
     tk = sub.add_parser('token', help='GitHub 凭据：查看状态/配置/写入/清除')
     tk.add_argument('--set', metavar='TOKEN', help='写入 token 文件（0600）')
@@ -7632,6 +10145,7 @@ DISPATCH = {
     ('monitor', 'forecast'): cmd_monitor_forecast,
     ('monitor', 'status'): cmd_monitor_status,
     ('monitor', 'add'): cmd_monitor_add,
+    ('monitor', 'import'): cmd_monitor_import,
     ('monitor', 'remove'): cmd_monitor_remove,
     ('monitor', 'purge-test'): cmd_monitor_purge_test,
     ('monitor', 'due'): cmd_monitor_due,
@@ -7658,8 +10172,21 @@ DISPATCH = {
     ('forge', 'verify'): cmd_forge,
     ('forge', 'classify'): cmd_forge,   # S162
     ('forge', 'list'): cmd_forge,
+    ('forge', 'audit'): cmd_forge,      # S194 七项闸门
+    ('forge', 'profile'): cmd_forge,    # S194 站点画像
+    ('forge', 'packlocal'): cmd_forge,  # S204 本地 py/js 清单生成器
+    ('shellcrack', 'crack'): cmd_shellcrack,    # S196 模块 G
+    ('shellcrack', 'probe'): cmd_shellcrack,
+    ('shellcrack', 'scan'): cmd_shellcrack,
+    ('shellcrack', 'status'): cmd_shellcrack,
     ('harvest', 'splitjsm'): cmd_harvest_splitjsm,
-    ('harvest', 'pan'): lambda a: cmd_pan_info(a) if a.pan_cmd == 'info' else cmd_pan_pull(a),
+    ('harvest', 'pan'): lambda a: (cmd_pan_info(a) if a.pan_cmd == 'info'
+                                   else cmd_pan_pull(a) if a.pan_cmd == 'pull'
+                                   else cmd_pan_save(a) if a.pan_cmd == 'save'
+                                   else cmd_pan_rm(a)),
+    ('quality', None): cmd_quality_one,             # C8 S110 单条质量评测
+    ('quality-batch', None): cmd_quality_batch_run,  # C8 S110 批量评测回填
+    ('content-probe', None): cmd_content_probe_run,  # C8 内容层探查
     'pak': cmd_comb_pak,
     ('livecheck',): cmd_livecheck,
     ('blacklist', 'list'): cmd_bl_list,
@@ -7674,6 +10201,14 @@ DISPATCH = {
 
 def dispatch(argv=None):
     """供调度器 tvbox 在同进程内直接调用，共享 core 缓存与并行池。"""
+    # ★ 横幅挂这里，不挂 main()。
+    #   实测教训（S189b，两次改错）：
+    #     ① 第一版挂在 main()，且用 sys.stdout.isatty() 判断 → tvbox 走 dispatch，
+    #        main() 根本不是入口，横幅一次都没打印；
+    #     ② 第二版去掉 isatty 但仍挂 main() → 只有直跑脚本才显示，
+    #        而真实使用里 `tvbox probe ...` 占绝大多数（135 次 vs 直跑 7 次）。
+    #   两次都是**没在真实路径上验证**。现在挂到 dispatch —— 直跑和经 tvbox 都必过此处。
+    _criteria_banner(argv)
     a = AP.parse_args(argv)
     if a.mod == 'self-check':
         cmd_self_check(a)
@@ -7691,6 +10226,12 @@ def dispatch(argv=None):
         cmd_comb_pak(a)
         return
 
+    if a.mod == 'deliver':                # 大集成消费优选投递（一期）
+        sys.path.insert(0, '/root/.codebuddy/skills/probe-hub/scripts')
+        from deliver import run as _deliver_run
+        _deliver_run(a)
+        return
+
     fn = DISPATCH.get((a.mod, getattr(a, 'cmd', None)))
     if fn is None:
         print(f'未知子命令: {a.mod} {getattr(a, "cmd", "")}')
@@ -7702,7 +10243,73 @@ def dispatch(argv=None):
         sys.exit(rc)
 
 
+def _criteria_banner(argv=None):
+    """跑脚本时把「该守的规矩」直接印在屏幕上。
+
+    ## 为什么放在这里（不是放在 SKILL.md 里）
+
+    实测（40MB 真实会话转录）：
+        脚本被执行 219 次 ｜ SKILL.md 被加载 2 次  → 109 : 1
+    本技能：脚本跑过 7 次，SKILL.md **一次没被加载**。
+
+    也就是说：**判据写在文档里，而执行走的是脚本，两者从来没接上。**
+    活是干完了，但口径是我自拟的、DB_UPSTREAM 没回写、快照没生成。
+    这是结构缺陷，不是"忘了触发"——再怎么改触发词都治不好。
+
+    ## 为什么印横幅，而不是硬拦
+
+    硬拦需要判断"该不该拦"，实测四种判据全部证伪（词表 36% 且误伤、
+    whoami 相关度不可靠、lanes 是给人看的句子、路径判据只覆盖 28% 且
+    拦在"已经知道自己干什么"的地方）。
+    横幅不需要判断：**脚本一跑就一定出现**，我照不照做你一眼能看出。
+
+    ## 内容从哪来（防脱钩）
+
+    不写死文案，每次从本技能 SKILL.md 的 §2.1 硬约束段实时读。
+    文档改了横幅就跟着改，不会出现"横幅还在说旧规矩"（M-R38 单一事实源）。
+
+    ## 跳过条件
+
+      · 环境变量 PROBE_HUB_NO_BANNER=1 / PROBE_HUB_BANNER=0
+      · 本次 argv 带 --json（机读输出，横幅会破坏 JSON 解析）
+    """
+    if os.environ.get('PROBE_HUB_NO_BANNER') == '1':
+        return
+    if os.environ.get('PROBE_HUB_BANNER') == '0':
+        return
+    args = list(argv) if argv is not None else sys.argv[1:]
+    if '--json' in args:
+        return
+
+    items = []
+    try:
+        doc = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                           'SKILL.md')
+        text = open(doc, encoding='utf-8').read()
+        m = re.search(r'\*\*硬约束\*\*（违反即返工）：(.+?)(?=\n\n|\n>|\n###)', text, re.S)
+        if m:
+            for line in m.group(1).split('\n'):
+                line = line.strip()
+                mm = re.match(r'^\d+\.\s*(.+)$', line)
+                if mm:
+                    items.append(mm.group(1).strip())
+    except Exception:
+        pass
+
+    if not items:
+        return
+
+    print('┌─ 探源司判据（本技能 SKILL.md §2.1 硬约束，跑脚本即须遵守）', file=sys.stderr)
+    for i, it in enumerate(items, 1):
+        s = it if len(it) <= 46 else it[:44] + '…'
+        print(f'│ {i}. {s}', file=sys.stderr)
+    print('│ 另：结论须按 §3.5/§3.7/§3.5.3 判据给；上游状态须写 DB_UPSTREAM', file=sys.stderr)
+    print('│     跳过横幅：PROBE_HUB_NO_BANNER=1 或带 --json', file=sys.stderr)
+    print('└' + '─' * 60, file=sys.stderr)
+
+
 def main():
+    # 横幅由 dispatch() 内部打印（直跑与经 tvbox 都必经那里），此处不再重复
     dispatch()
 
 

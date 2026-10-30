@@ -23,8 +23,6 @@ exit code：0=通过（可有警告）｜1=有阻断级问题（不要写）｜2
 """
 import argparse
 import json
-import os
-import subprocess
 import sys
 
 LIB = '/root/.codebuddy/skills/library'

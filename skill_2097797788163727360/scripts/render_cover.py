@@ -14,8 +14,7 @@ render_cover.py — CSDN 封面图程序化渲染器（Pillow + 中文字体）
 import argparse
 import math
 import os
-import sys
-from PIL import Image, ImageDraw, ImageFont, ImageFilter
+from PIL import Image, ImageDraw, ImageFont
 
 
 # ── 样式配置 ──────────────────────────────────────────────

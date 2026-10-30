@@ -14,7 +14,7 @@
 
 ③ 会话台账 TO4LwsjVVdR8JRAUlkejk3 ｜ ④ 资料库经验库 XTuuj8mKtqnZSolDdeDxkq
 """
-import os,sys,json,csv,io,time,argparse,subprocess,re,shutil
+import os, sys, json, io, time, argparse, subprocess, re, shutil
 from collections import Counter,defaultdict
 
 # 共享效率核心（S123 收窄：仅同一进程内与 link/blk 共享 core 模块实例；跨技能 CLI 单命令调用时各自独立实例）
@@ -38,6 +38,8 @@ DB_ECO='T4kODtANe7rSrtZTu4sIND'    # 🧩 TVBox技能生态登记库
 SKILLS='/root/.codebuddy/skills'
 SELF=os.path.dirname(os.path.abspath(__file__))
 ROOT=os.path.dirname(SELF)
+# ★ P089 根治：进化收口落池统一入口（ledger_closure intake 封装闸门重登记+tvbox lib-log+log）
+LEDGER='/root/.codebuddy/skills/ecosys-conductor/scripts/ledger_closure.py'
 LOG=os.path.join(ROOT,'evolution_log.jsonl')
 SNAP=os.path.join(ROOT,'rule_count_snapshot.json')
 
@@ -89,6 +91,15 @@ SEED_MOVES={
               r'saved\s*,',r'不得谎报',r'拒绝覆盖',r'写失败',r'落盘失败',
               r'回读.{0,6}不一致',r'回读.{0,4}校验'],
         'cond':'任何写库/写文件/写云端后'},
+ 'T-J':{'name':'高危schema变更先在测试库演练',
+        'kw':[r'测试库演练',r'schema.{0,8}演练',r'枚举.{0,6}(增删|变更)',r'字段级.{0,4}变更.{0,6}先',r'select.{0,8}(故障|损坏)',r'脏索引'],
+        'cond':'字段级 schema 变更（枚举增删/改类型/重建字段）前'},
+ 'T-K':{'name':'批量写入大payload必分块（25条为界）',
+        'kw':[r'分块',r'整批.{0,6}(假|伪)成功',r'批量.{0,6}(写入|成功)',r'25\s*条',r'payload.{0,8}大'],
+        'cond':'批量写库 >25 条时'},
+ 'T-L':{'name':'「等外部恢复」欠账必配判愈探针',
+        'kw':[r'判愈探针',r'判愈',r'退出码.{0,6}(0|恢复)',r'等.{0,4}外部.{0,4}恢复',r'探针.{0,6}体检',r'恢复.{0,6}(不|无)知道',r'migrate'],
+        'cond':'欠账属于「等待外部环境恢复」类时'},
 }
 
 # 防噪：这些技能自身讲"招式/进化"定义 → 自指噪声，不参与扫描
@@ -497,9 +508,92 @@ def _ledger_sync_after_register(name, version='1.0.0'):
         print(f'  ⚠️ 账房钩子不可用（{type(e).__name__}: {str(e)[:80]}）——请手动跑 tvbox ledger sync-versions')
 
 
-def register_eco(name,trigger,desc,version='1.0.0',state='活跃',upgrade='是',intro=''):
-    """新建/更新技能时自动登记进生态库（已存在→更新版本号，保持同步）"""
+def compute_upgrade(name, version=None):
+    """按**实际短板**判定「可升级」，返回 (是/否, 理由列表)。
+
+    ★ S185（M-R38 第九次·「有默认值的地方就有假数据」）：
+      改之前 `register_eco(..., upgrade='是')` —— **所有技能登记时一律写成"是"**。
+      后果实测：生态库 14 个技能里 13 个标 🔼可升级，只剩 1 个「否」（还是平台自带）。
+      标记本来想表达「这技能还有升级空间」，结果表达的是「这技能登记过了」——
+      **有区分度的字段退化成常量，比没有这个字段更糟**：它让人以为盘点过了。
+
+      为什么不改成默认 '否'：那只是把常量从"是"换成"否"，同样不携带信息。
+      所以改为**从已有真实信号派生**，四个信号都是别处已经在维护的：
+        ① 未清 backlog（unfinished_ledger.json，owner/skill 字段）
+        ② 自检项 < 5（flow.json 的 self_check，与 hygiene「自检偏薄」同阈值同口径）
+        ③ 版本停在 1.0.0 / 空（从未真正迭代过）
+        ④ 有未映射的复发问题（evolve 报出的 recurring 未落技能）——此处不重复算，
+           因为 ④ 最终会表现为 ①（复发会被记进欠账总账）。
+
+      平台自带技能（library 等）排除：它们不参与本生态三件套契约，
+      自检恒为 0 会造成永久"可升级"假阳性。
+    """
+    reasons = []
+    # 平台自带技能不参与
+    PLATFORM = {'library', 'computer-use', 'figma-connector', 'github-connector',
+                'gongfeng-connector', 'ima-skills', 'sites', 'wecom-connector'}
+    if name in PLATFORM:
+        return '否', ['平台自带技能，不参与生态三件套契约']
+
+    # ① 未清 backlog
+    #    ★ 只认 `skill` 字段（= 哪个技能自身有缺陷），**不认 `owner`**。
+    #    实测两字段差异很大：`ecosys-conductor` 的 owner 有 7 条、skill 有 10 条，
+    #    而 `legacy-watchdog` owner 有 2 条、skill 有 0 条——
+    #    owner 是"谁负责修"，skill 是"哪个技能有问题"。用 owner 会把
+    #    「帮别人擦屁股擦得多」误判成「自己需要升级」，方向正好相反。
+    try:
+        import json as _j
+        led = _j.load(open(f'{SKILLS}/unfinished-audit/unfinished_ledger.json', encoding='utf-8'))
+        items = led if isinstance(led, list) else (led.get('items') or [])
+        n_open = 0
+        for it in items:
+            if not isinstance(it, dict):
+                continue
+            st = str(it.get('status') or '')
+            if any(k in st for k in ('已结', '关闭', '已闭环', '已完成', 'done', 'closed')):
+                continue
+            if str(it.get('skill') or '') == name:
+                n_open += 1
+        if n_open:
+            reasons.append(f'自身未清欠账 {n_open} 条')
+    except Exception:
+        pass
+
+    # ② 自检项（与 hygiene「自检偏薄」同阈值同口径：<5）
+    for p in (f'{SKILLS}/{name}/flow.json', f'{SKILLS}/{name}/scripts/flow.json'):
+        if os.path.exists(p):
+            try:
+                d = json.loads(open(p, encoding='utf-8').read())
+                nsc = len(d.get('self_check') or [])
+                if nsc < 5:
+                    reasons.append(f'自检偏薄（{nsc} 项 < 5）')
+            except Exception:
+                pass
+            break
+
+    # ③ 版本未迭代
+    v = str(version or '')
+    if not v:
+        try:
+            fm = parse_fm(os.path.join(SKILLS, name, 'SKILL.md'))
+            v = str(fm.get('version') or '')
+        except Exception:
+            v = ''
+    if v in ('', '1.0.0', '0.0.1'):
+        reasons.append(f'版本未迭代（{v or "无"}）')
+
+    return ('是' if reasons else '否'), (reasons or ['无短板'])
+
+
+def register_eco(name,trigger,desc,version='1.0.0',state='活跃',upgrade=None,intro=''):
+    """新建/更新技能时自动登记进生态库（已存在→更新版本号，保持同步）
+
+    `upgrade=None` 时**按实际短板现算**（见 compute_upgrade）。
+    显式传 '是'/'否' 仍允许，用于人工覆盖——但默认值不再是常量。
+    """
     now=time.strftime('%Y-%m-%dT%H:%M:00Z',time.gmtime())
+    if upgrade is None:
+        upgrade, _why = compute_upgrade(name, version)
     exist=rows_of(DB_ECO)
     rec={k:v for k,v in {
         'version':{'text':version},'末次升级':{'date':now},
@@ -607,7 +701,10 @@ def _eco_registry_names():
     """
     fp = os.path.join(SKILLS, 'ecosys-conductor', 'scripts', 'eco_skills.json')
     try:
-        return {n for n in json.load(open(fp, encoding='utf-8'))['eco_skills'] if n != 'library'}
+        # S210：去掉 'library' 硬编码排除——S199 已把 library 纳入正本清单
+        # （建库五闸 M-R201 的 owner），再排除它会让招式库/平衡性永远看不见
+        # library，报「未被招式库扫描到（无法判定）」的假象（P:招式隔离60 实证）。
+        return {n for n in json.load(open(fp, encoding='utf-8'))['eco_skills']}
     except Exception:
         return set()
 
@@ -1012,6 +1109,18 @@ def cmd_propose(a):
       C. 跨技能学习：cross-learn 队列里待推送的招式
     """
     props=_load_props()
+    # ★ S199 修：去重键必须**带状态语义**——原实现只按 (skill,type,ref) 去重，
+    #   于是「已 done 的提案」也占着键位：一旦某条被驳回/退还后重新聚类，或提案已被
+    #   判为 rejected（=明确不采纳），下一轮 propose 既不会再提，也看不到它——
+    #   变成"既不进也不出"的黑洞。
+    #   更糟的反向情形（本轮实测）：4 条 recur 提案刚标 done，propose 立刻又生成同键新提案，
+    #   因为 `exist` 里虽有旧键、`continue` 却只挡"已存在"，可新 items 里那 4 条被
+    #   commit 判 done 后键仍在 → 理论不该重复，**但 commit 的闸会把 done 退回 pending**，
+    #   退回后 resolved_note 仍在，propose 再跑就会造出第 5 条同 ref 的新 pending。
+    #   → 现在把「曾判 done 且带 resolved_note」的 ref 记进 _settled，**永久不再提议**；
+    #     被判 rejected 的同样进 _settled（用户明确不采纳，不该反复骚扰）。
+    _settled={(p['skill'],p.get('type'),p.get('ref')) for p in props['items']
+              if p.get('status') in ('done','rejected') or str(p.get('resolved_note') or '').strip()}
     exist={(p['skill'],p.get('type'),p.get('ref')) for p in props['items']}
     new=[]
     targets=[a.skill] if getattr(a,'skill','') else _all_skills()
@@ -1026,7 +1135,7 @@ def cmd_propose(a):
             continue
         for tid,nm,cond,ns in unused:
             key=(sk,'move',tid)
-            if key in exist: continue
+            if key in exist or key in _settled: continue
             new.append({'skill':sk,'type':'move','ref':tid,
                         'what':f'吸收通用招式 [{tid}] {nm}',
                         'why':f'跨{ns}技能复用；适用条件：{cond}',
@@ -1037,7 +1146,21 @@ def cmd_propose(a):
         '记录读写':'tvbox-source-hub','规则维护':'ecosys-conductor','表格编辑':'workbuddy-sheetagent',
         '字段管理':'tvbox-source-hub','纠错返工':'ecosys-conductor','新接口处理':'tvbox-interface',
         '建库建夹':'tvbox-source-hub','节点移动改名':'tvbox-janitor','整包入库':'tvbox-interface',
+        # ★ S184 补齐：实测 recurring 报出「生态治理 13×」「查询答疑 7×」两个类型，
+        #   因未映射被**静默跳过**——提案池少两条最该进化的燃料，而日志只有一行 ⚠️。
+        #   「跳过」无声，就等于"从来没发生过"，这正是 P031「41 条 done 却零吸收」的同族病。
+        #   归属判据：situational（问题性质）→ 谁负责这类活，而不是谁的数据碰巧被提到。
+        '生态治理':'ecosys-conductor',   # 13×：跨技能协调/台账/门禁，conductor 主责
+        '查询答疑':'ecosys-conductor',   #  7×：`tvbox conductor ask` 是生态单一口
+        # ★ T26（P051）：这两个类型只在 link.py 的 lib-log 枚举出现 = 资料库平台操作经验，
+        #   与「记录读写/字段管理」同侧，归 tvbox-source-hub。此前未映射 → 每轮 propose
+        #   打两行 ⚠️ 跳过，提案池持续漏燃料（S184 同族病）。
+        '上传入库':'tvbox-source-hub',
+        '分页查询':'tvbox-source-hub',
     }
+    # ★ S184：未映射类型不再静默丢弃——收集起来在末尾统一报，且计入"漏燃料"计数。
+    #   M-R57 三态：映射成功=进提案；未映射=显式报出（不是成功也不是消失）。
+    _unmapped = []
     try:
         import io, contextlib
         buf=io.StringIO()
@@ -1057,14 +1180,23 @@ def cmd_propose(a):
             if not m:
                 continue
             n,src,typ=int(m.group(1)),m.group(2),m.group(3).strip()
+            # ★ T26（P051）：类型为空 = 云端台账写入侧漏传 type，聚类正则会把空行解析成
+            #   空串当类型名。空类型**不许进提案**（映射不到技能，生成即垃圾），且必须
+            #   显式报出——数据脏要让看的人知道，不是悄悄消失（M-R60）。
+            if not typ:
+                _unmapped.append(('（类型为空·写入侧漏传）', n))
+                print(f'  ⚠️ {n}× 台账条目类型字段为空（写入侧漏传）——无法映射，已跳过')
+                continue
             if n < mn:
                 continue
             sk=TYPE2SKILL.get(typ)
             if not sk:
-                print(f'  ⚠️ 复发类型「{typ}」未映射技能，跳过（请补 TYPE2SKILL）')
+                # S184：不再静默丢弃，收集后统一报（含次数），让人知道漏了多少燃料
+                _unmapped.append((typ, n))
+                print(f'  ⚠️ 复发类型「{typ}」{n}× 未映射技能，已跳过（请补 TYPE2SKILL）')
                 continue
             key=(sk,'recur',typ)
-            if key in exist: continue
+            if key in exist or key in _settled: continue
             new.append({'skill':sk,'type':'recur','ref':typ,
                         'what':f'复发问题「{typ}」{n} 次 → 需固化进技能',
                         'why':f'{src}台账/经验库该类型累计 {n} 次（阈值≥{mn}），解法应沉淀为规则或工具',
@@ -1075,7 +1207,7 @@ def cmd_propose(a):
     # C. 跨技能学习队列
     for q in props.get('cross_queue',[]):
         key=(q['to'],'cross',q['move'])
-        if key in exist: continue
+        if key in exist or key in _settled: continue
         new.append({'skill':q['to'],'type':'cross','ref':q['move'],
                     'what':f'跨技能学习：借鉴 [{q["move"]}] {q.get("name","")}',
                     'why':q.get('why',''),'source':'cross-learn 队列',
@@ -1177,7 +1309,28 @@ def _verify_decl(skill_dir, tid):
     return '、'.join(ok[:3]), ''
 
 
-def _move_landed(skill, tid):
+def _looks_like_recur(tid):
+    """`tid` 是不是一个 recur 类型名（而不是招式代号 T-X）？
+
+    recur 提案的 `ref` 存的是**问题类型中文名**（"记录读写"/"生态治理"…），
+    招式提案的 `ref` 存的是 `T-A`…`T-I`。
+
+    ★ 第一版只判"不是 T-X 就当归 recur"——实测立刻踩坑：
+      传 `T-Z`（写错的招式号）也被当成 recur 类型名，返回 `none`（无固化说明），
+      而它其实是"招式号不存在"。把"打错字"说成"没固化的复发问题"，是骗人。
+    ★ 第二版判据：**含中日韩文字**才算 recur 类型名。
+      理由：`TYPE2SKILL` 里的类型全是中文（记录读写/生态治理/表格编辑…），
+      而招式号一定是 ASCII。这个特征比"类型名白名单"稳（不受 TYPE2SKILL 增删影响），
+      也比"不是 T-X"准（能分开 T-Z 这种打错的招式号）。
+      代价：将来若出现英文类型名，会被判 unknown —— 那也比误判成 none 强（unknown 看得见，none 会被当真）。
+    """
+    t = str(tid or '').strip()
+    if not t:
+        return False
+    return re.search(r'[\u4e00-\u9fff]', t) is not None
+
+
+def _move_landed(skill, tid, note=None):
     """回读校验：招式 `tid` 是否**真的落进了技能**。返回 (state, detail)。
 
     ★ S182（本条是 S181 发现「41 条 done 空转」后的正式落地）：
@@ -1204,7 +1357,18 @@ def _move_landed(skill, tid):
         return 'unknown', f'技能目录不存在：{skill}'
     spec_m = SEED_MOVES.get(tid)
     if not spec_m:
-        # 非 SEED 招式（如 recur 类提案）没有关键词表 → 无法判定，不得当已落地
+        # ★★ T34/P061：这里以前**无条件**返回 unknown，注释还写着"如 recur 类提案"——
+        #   等于把 recur 判据挡在门外，而 recur 判据其实一直存在（活在 `_gate_moves` 内联分支里）。
+        #   后果：`evolve patch`、补丁文件里教人自查的命令、任何新调用点，遇到 recur 必报 unknown。
+        #   实测 8 条 done 的 recur 提案全部 unknown。
+        #   `unknown` 的语义是"没查成"（M-R60：不许折叠成"没做"），
+        #   但**这里不是没查成，是根本没去查**——那是判据缺位，不是情形不可判。
+        #   归一：能查到判据（recur）就转过去办；真的没有判据（瞎写的招式号）才 unknown。
+        #   recur 的 `tid` 传的是中文类型名（"记录读写"/"生态治理"…），
+        #   所以调用方必须把 `resolved_note` 一起传进来——见新签名。
+        if _looks_like_recur(tid):
+            return _recur_landed(skill, note or '')
+        # 非 SEED 招式、又不是 recur 类型名 → 确实无判据，不得当已落地
         return 'unknown', f'招式 {tid} 不在 SEED_MOVES，无判据'
     kws = spec_m['kw']
     py_txt, md_txt, sh_txt = [], [], []
@@ -1218,7 +1382,36 @@ def _move_landed(skill, tid):
             if f.endswith('.py'):
                 py_txt.append(s)
             elif f.endswith('.md'):
-                md_txt.append(s)
+                # ★★ T33/P058·M-R134 修正：**文档证据只认「技能自己的声明文件」**。
+                #   原实现把技能目录下**所有** `.md` 拼成一篇，于是 `materials/` 里
+                #   存的学习资料/复盘正文也成了判据的证据源。实测两例：
+                #     · learn-hub/T-F 判 doc，命中的是
+                #       `materials/…/复盘1022_T23….md` 里一句
+                #       「1. 审计总账实况（缺 due/next/owner 计数）——拿到「不闭环」的量化画像。」
+                #       ——那是在讲审计方法，跟「本技能要不要机械量化」毫无关系，只因含"量化"二字。
+                #     · tvbox-janitor/T-E 判 doc，命中的是 CHANGELOG 里一行**跨行清单**
+                #       `- \`T-C …\` / \`T-F …\` / \`T-E 活体探针\` / …`，
+                #       紧跟的结论在**下一行**（「本技能当前不适用：清道夫没有白名单/评分/自检探针」），
+                #       判据只认同一行 → 认真写过结论反被判成欠账。
+                #   两处错误方向相反，根因同一个：**证据源没有门槛，形态没有对齐**。
+                #   门槛：只认技能根目录下的 SKILL.md / CHANGELOG.md / README.md
+                #        （= 技能对自己行为的正式声明）。嵌套资料是"被讲的对象"，不是"谁在承诺"。
+                #   ★★ 但第一版"只认根目录"收得过头（同轮实测）：`references/` 是技能的
+                #      **正式规则册/设计正本**，也是它对自己的声明。ecosys-conductor/T-D 的
+                #      唯一结论就写在 `references/eco_layers.md:51`：
+                #        `| **谁去动** | 清道夫把节点移入「🗑 待删收件箱」→ **用户按单删**
+                #          （云端无删除 API，这是硬边界） |`
+                #      一行都不收 → T-D 从 na 掉成 none（纯空转）。**假阴性比假阳性更坏**：
+                #      判 doc 会被人翻出来看，判 none 直接被当欠账归档，没人再查。
+                #   → 放行 references/，但仍排除 materials/ 与 archive/ 这类**存档/学习资料**目录：
+                #     那些是"发生过什么"的记录，不是"技能承诺做什么"的声明。
+                #     实测误判源头正是 `materials/…/复盘1022_T23….md` 里一句"量化画像"。
+                _rel = os.path.relpath(p, d).replace(os.sep, '/')
+                _top = _rel.split('/')[0]
+                _is_decl = (_rel in ('SKILL.md', 'CHANGELOG.md', 'README.md')
+                            or (_top == 'references' and _rel.count('/') >= 1))
+                if _is_decl:
+                    md_txt.append(s)
             # ★★ S182 第九次修正：**脚本不只有 .py**。
             #   automation-task-manager 的写后回读验证整个实现在 scheduler-api.sh 里
             #   （verify_created_params 真做回读比对、不一致 return 3），是 T-I 最标准的落地，
@@ -1305,19 +1498,100 @@ def _move_landed(skill, tid):
     #   等于**要求技能再实现一遍它已经写好的东西**。
     #   注意顺序：先判 na（不适用），再判采纳（已借鉴），最后才判 doc。
     #   同一行既有「借鉴 T-X」又有「不适用」时以不适用为准（那是评估结论）。
+    # ★★ T24 根治（用户 2026-10-22：「要把问题从根上解决了，而不是只登记」）：
+    #   原实现把 `借鉴 T-X / 已借鉴 / 已采用 / 已吸收 / 采纳 T-X` 直接算**完成态**。
+    #   实测 41 条 done 里，按规范用招式真名回读，只有 8 条真有落点，**33 条是空转**：
+    #   它们只在「招式对照」里写了一句"借鉴 T-D"，闸门就判 na=完成态。
+    #   —— 一句话就能洗成完成，说明这个判据本身就是假的（比没有判据更坏）。
+    #   判据修正：**"我借鉴了" 是声明，不是证据**。要算完成，必须二选一：
+    #     ① 脚本命中关键词（真实现）；② 不适用且有理由（认真评估过的结论）；
+    #     ③ 带**可核实指针**（反引号里的路径/函数名，且文件真实存在）——见 _ptr_ok。
+    #   「借鉴/吸收/采用」从此降级为 doc（只说不做），不再充当完成态。
     _ADOPT_RE = re.compile(
         r'借鉴\s*T-[A-I]|已借鉴|已采用|已吸收|参考\s*T-[A-I]|采纳\s*T-[A-I]', re.I)
+
+    def _ptr_ok(ln):
+        """该行的指针是否可核实：反引号内容像路径/函数，且真实存在。返回 (是否, 证据)。"""
+        for m in re.finditer(r'`([^`]{3,})`', ln):
+            tok = m.group(1).strip()
+            # 只认"像位置"的：含 / 或以 .py/.sh/.md 结尾，或形如 func()/file.py:12
+            if '/' in tok or re.search(r'\.(py|sh|bash|md|json)\b', tok) or re.match(r'^\w+\(\)$', tok):
+                cand = tok.split(':')[0]
+                base = os.path.basename(cand)
+                # 全路径直接验；相对/裸文件在技能目录树里找
+                if os.path.exists(cand):
+                    return True, tok
+                for root, _d, files in os.walk(d):
+                    if base in files:
+                        return True, os.path.join(root, base)
+        return False, ''
     _lines = _md.splitlines()
     na_hits, doc_hits, adopt_hits = [], [], []
+    # ★★ T33/P058·M-R134 根治：**「提到过这个词」≠「在讲这招」**。
+    #   M-R134（判据必须测它声称要测的东西）本轮又栽一次，真实案例：
+    #     tvbox-janitor 的 CHANGELOG **第一行标题**是
+    #       `## v1.2.7 — 版本对齐补记（T18 探针发现 CHANGELOG 漏记）`
+    #     它含特征词"探针"（T-E 的关键词表里有 `探针`），于是被当成
+    #     「文档在叙述 T-E 的做法」→ 判 doc。而这句话讲的是 **T18 那次用探针查出的漏记**，
+    #     跟"本技能要不要做活体探针"没有半点关系。
+    #     更糟的是 idx=0，没有上一行、下两行是别的段落 → 必然落 doc，无法自愈。
+    #   同型错误在这一轮里已经出现三次（janitor/T-E 标题、learn-hub/T-F 复盘正文、
+    #   `materials/` 下的学习资料）。共性都是：**判据拿特征词当主语**。
+    #   修法：命中行必须能指认"说的是哪一招"，二选一——
+    #     ① 行内出现该招式代号 `T-X`；或
+    #     ② 行内出现该招式**全名**（SEED_MOVES[tid]['name'] 里逗号/括号前的部分，
+    #        如 `活体探针`、`机械量化`）——全名比 kw 严得多，顺嘴提到很难撞上。
+    #   只有特征词、指不出是谁的句子，**既不算落地也不算欠账**，直接不看。
+    #   这不是放松判据，是让它只测它声称要测的东西（M-R134）。
+    #   ★★ 但第一版收得过头了（同轮实测）：`references/eco_layers.md` 里
+    #     `| **谁去动** | 清道夫把节点移入「🗑 待删收件箱」→ **用户按单删**（云端无删除 API，这是硬边界） |`
+    #   这一行没写 T-D 代号、也没写招式全名"移动替代删除"，但它**是 T-D 的评估结论**
+    #   （T-D 的要义就是"删不掉就降维成移动"）。把结论类证据一起打掉，
+    #   ecosys-conductor/T-D 从 na 掉成 none（纯空转）—— 这是**假阴性**，比原来的假阳性更隐蔽：
+    #   假阳性看得见（判 doc 会被翻），假阴性看不见（判 none 直接被当欠账归档）。
+    #   补第③条通道：**行内既有结论词、又有该招式的特征词**，也算指认成功。
+    #   为什么这样不会把 janitor 那个标题又放回来：那个标题里没有任何结论词
+    #   （不适用/已用/硬边界…），只有"探针发现漏记"，走不进这条通道。
+    _spec_name = (SEED_MOVES.get(tid) or {}).get('name') or ''
+    _name_key = re.split(r'[（(]', _spec_name)[0].strip()
+    _TID_RE = re.compile(r'T-[A-I]')
+
+    def _names_move(line, hit_kw_now):
+        """这一行到底在说哪一招？指得出来才返回 True。"""
+        if _TID_RE.search(line):
+            return True
+        if _name_key and len(_name_key) >= 3 and _name_key in line:
+            return True
+        # ③ 结论句 + 本招特征词：结论词认得出"这是在给结论"，
+        #    特征词认得出"结论是关于这招的"，两者同现才算指认。
+        if hit_kw_now and (_NA_RE.search(line) or _DONE_RE.search(line)):
+            return True
+        return False
+
     for idx, ln in enumerate(_lines):
         hit_kw = [k for k in kws if re.search(k, ln, re.I)]
         if not hit_kw:
+            continue
+        if not _names_move(ln, hit_kw):
             continue
         # 招式名常出现在"清单"行（`T-C 指纹白名单` / `T-F 机械量化` / …）——
         # 那是登记表，不是叙述也不是结论，单看它不算证据。
         # 但清单行后面常跟一段总说明（"…— **本技能当前不适用**：清道夫没有白名单结构"），
         # 那是真结论。所以清单行不直接判，改为**向下看 3 行**找结论。
-        is_list = len(re.findall(r'`?\bT-[A-I]\b', ln)) >= 2
+        # ls_list 口径要宽：原文是 `- \`T-C 指纹白名单\` / \`T-F 机械量化\` / \`T-E 活体探针\` / …`，
+        # 反引号夹着招式名，旧的 `\bT-[A-I]\b` 中间被中文挡住也勉强能中，但清单常写成
+        # `T-A 三态契约 / T-B 薄壳` 这种**不带反引号**的形态，故改为"一行里出现 ≥2 个 T-X"。
+        is_list = len(re.findall(r'\bT-[A-I]\b', ln)) >= 2
+        # ★★ T33/P058：**清单行不能只看"下一行"**。
+        #   janitor 实际原文：
+        #     L253 `- \`T-C 指纹白名单\` / \`T-F 机械量化\` / \`T-E 活体探针\` / \`T-H 哑巴检测\` / \`T-B 搬迁薄壳\` /`
+        #     L254 `  \`T-D 移动替代删除\` — **本技能当前不适用**：清道夫没有"白名单/评分/自检探针"这些结构，`
+        #   关键词（活体探针）在 L253，结论在 L254 —— 隔了正好一行，`_lines[idx+1:idx+5]` 本应能覆盖。
+        #   但"1 处在讲做法"说明它走进了**非清单分支**（is_list 判 False）：
+        #   因为 `\bT-[A-I]\b` 的 `\b` 在"试"与"T"之间不成立（都是非 ASCII 单词字符外的边界
+        #   行为不稳），一行里只数出 1 个。
+        #   兜底：**凡是命中关键词的行，都用"关键词行 + 后续 4 行"合并判定**，
+        #   不依赖 is_list。代价是可能把邻段的结论借过来一点，但这比"写了结论还判欠账"轻。
         # ★★ S182 第九次修正之六：**表格行不是叙述**。
         #   probe-hub 遗留的那条原文是张表的**数据行**：
         #     `| 真实测活判据（livecheck.py·S097） | 直接 import 复用，不重写（M-R38 单一事实源） |`
@@ -1327,8 +1601,14 @@ def _move_landed(skill, tid):
             # ★ 但表格里也可能写着真结论（`云端无删除 API，这是硬边界`）——
             #   一律跳过会把真评估也丢掉（实测 ecosys-conductor/T-D 就是这么丢的）。
             #   表格行不记 doc（登记性质），但行内有明确结论词就算已评估。
-            if _NA_RE.search(ln) or _ADOPT_RE.search(ln) or _DONE_RE.search(ln):
-                na_hits.append(ln.strip()[:120])
+            if _NA_RE.search(ln) or _DONE_RE.search(ln):
+                # T24：借鉴类词不再算结论；但带可核实指针的可以（_ptr_ok）
+                if _ptr_ok(ln)[0]:
+                    na_hits.append(ln.strip()[:120])
+                elif _ADOPT_RE.search(ln):
+                    doc_hits.append(ln.strip()[:120])
+                else:
+                    na_hits.append(ln.strip()[:120])
             continue
         # ★★ S182 第九次修正之五：**"剥掉关键词再找结论词"会自己造出结论**。
         #   probe-hub 实际原文：
@@ -1355,7 +1635,11 @@ def _move_landed(skill, tid):
             na_hits.append(ln.strip()[:120])
             continue
         if _ADOPT_RE.search(ln):
-            adopt_hits.append(ln.strip()[:120])
+            # T24：纯"借鉴"行只有带可核实指针才记完成，否则按 doc（只说不做）
+            if _ptr_ok(ln)[0]:
+                adopt_hits.append(ln.strip()[:120])
+            else:
+                doc_hits.append(ln.strip()[:120])
             continue
         if is_list:
             # 向下 3 行找结论；找到则本条算"已评估"
@@ -1366,7 +1650,8 @@ def _move_landed(skill, tid):
             #   所以跳到第 4 行；同时要求命中行**紧邻**（下一行或下两行），
             #   不是"整个 3 行窗口里随便哪里飘来一个不适用"。
             _tail = ' '.join(_lines[idx + 1: idx + 5])
-            if _NA_RE.search(_tail) or _ADOPT_RE.search(_tail) or _DONE_RE.search(_tail):
+            if _NA_RE.search(_tail) or _DONE_RE.search(_tail) \
+                    or (_ADOPT_RE.search(_tail) and _ptr_ok(_tail)[0]):
                 na_hits.append((ln.strip()[:80] + ' … ' + _tail.strip())[:120])
             # 找不到结论也不记 doc —— 清单行本身不是"叙述做法"的证据
             continue
@@ -1388,7 +1673,8 @@ def _move_landed(skill, tid):
         #     L251 `` `T-D 移动替代删除` — 本技能当前不适用：…``          ← 结论（跨两条清单）
         #   只向下找就把这种"总起+结论"的写法漏了。向上也看一行，代价很小。
         _up = _lines[idx - 1] if idx > 0 else ''
-        if _NA_RE.search(_win) or _ADOPT_RE.search(_win) or _DONE_RE.search(_win) \
+        if _NA_RE.search(_win) or _DONE_RE.search(_win) \
+                or (_ADOPT_RE.search(_win) and _ptr_ok(_win)[0]) \
                 or _DONE_RE.search(_up) or _NA_RE.search(_up):
             na_hits.append((ln.strip()[:70] + ' … ' + (_up + ' ' + _win).strip())[:120])
             continue
@@ -1419,7 +1705,8 @@ def _move_landed(skill, tid):
         #     这句空话就会被"紧贴结论"豁免掉。实测确认**确实如此**。
         #     所以 `_na_idx` 必须用**同一套实质校验**——只有真结论才配当参照点。
         _na_idx = {i for i, ln in enumerate(_lines)
-                   if (_NA_RE.search(ln) or _ADOPT_RE.search(ln) or _DONE_RE.search(ln))
+                   if (_NA_RE.search(ln) or _DONE_RE.search(ln)
+                       or (_ADOPT_RE.search(ln) and _ptr_ok(ln)[0]))
                    and (bool(re.search(r'`[^`]{3,}`', ln))
                         or (len(re.split(r'[:：—–]', ln, 1)) > 1
                             and len(re.split(r'[:：—–]', ln, 1)[1].strip()) >= 8))}
@@ -1455,6 +1742,39 @@ def _prop_key(p):
     return (p.get('skill') or '', p.get('type') or '', p.get('ref') or '')
 
 
+def _recur_landed(skill, note):
+    """回读校验：recur（复发问题固化）提案是否**真的固化了**。返回 (state, detail)。
+
+    ★★ T34/P061：本函数是从 `_gate_moves` 里**抽出来**的，不是新写的逻辑。
+      抽的理由：原来 recur 的判据只活在闸门内联分支里，`_move_landed` 完全不知道有 recur 这种提案，
+      于是任何"按招式代号查落地"的调用（`evolve patch`、补丁文件里教人自查的那行命令、
+      以及将来任何新加的调用点）遇到 recur 一律返回 `unknown`。
+      实测 8 条 done 的 recur 提案全被误报 unknown——它们既不是 landed 也不是 none，
+      **是"查不了"**。M-R60 明令不许把"没查成"折叠成"没做"，这里折叠成"查不了"，同族病。
+      两套口径必须归一：谁被问了"这提案落地没"，就都走同一把尺子。
+
+    判据（T24 立，本函数沿用，一个字没改）：
+      · 无 resolved_note        → none（无固化说明=未固化）
+      · note 里有规则号且能找到  → landed
+      · note 里有文件名且技能目录里真有 → landed
+      · 有说明但指不出落点      → doc（只说了做法）
+    """
+    note = str(note or '')
+    d = os.path.join(SKILLS, skill or '')
+    if not note.strip():
+        return 'none', 'recur 提案无 resolved_note（无固化说明=未固化）'
+    # ① 规则号（M-Rxx / M-Lxx / 规则57…）
+    for m in re.finditer(r'(M-[RL]\d{2,3}|规则\s*\d{2,3})', note):
+        return 'landed', f'recur 固化证据核实通过：规则号 {m.group(1)}'
+    # ② 文件名（xxx.py / xxx.json），技能目录里必须真有
+    for m in re.finditer(r'([A-Za-z_][\w\-]*\.(?:py|sh|json|md))', note):
+        base = m.group(1)
+        for root, _dd, files in os.walk(d):
+            if base in files:
+                return 'landed', f'recur 固化证据核实通过：文件 {os.path.join(root, base)}'
+    return 'doc', f'recur 的 resolved_note 无可核实落点（{note[:40]}…）——只说了做法'
+
+
 def _gate_moves(ps):
     """对一批 move 提案做回读闸门。返回 (ok_list, fail_list)。
 
@@ -1468,10 +1788,28 @@ def _gate_moves(ps):
     ok, bad = [], []
     for p in ps:
         tid = p.get('ref')
-        if p.get('type') != 'move' or not tid:
-            ok.append(p)          # 非招式提案（recur 等）不受本闸门管辖
+        if p.get('type') == 'recur':
+            # ★★ T34/P061：判据本体已抽成 `_recur_landed`（单一事实源 M-R38），
+            #   本处只负责把结果落回提案字段并分流。抽出去的理由见该函数 docstring：
+            #   `_move_landed` 原来对 recur 一无所知，直接调用必返回 unknown。
+            p['landed'], p['landed_detail'] = _recur_landed(
+                p.get('skill') or '', p.get('resolved_note'))
+            # ★★ T34 两次自伤，都记在这里，因为这行的语义被我来回改过两次：
+            #   第一次：写成 `landed == 'landed'` 才放行 —— 我以为是"改窄了"。
+            #   第二次：改成 `landed in ('landed','doc')` —— 我以为是"恢复原语义"。
+            #   **两次都是猜的。** 证据只有一条：`selftest_fake_done.py` 第 2 条用例
+            #     `recur 指空文件→doc`，断言是 `bool(b) and b[0]['landed']=='doc'`
+            #     —— 它要求**判 doc 的同时落在 bad 里**。
+            #   而 T33 复盘（今天实测）写着该自测 3/3 通过。
+            #   两条一对：原语义就是 **doc 也退回**，只有 landed 才放行。
+            #   这也符合事实：recur 的 doc = "说了要固化但指不出落点"，那不就是没固化吗？
+            #   让 doc 放行等于把"只说了做法"记成"已固化"，正是 T24 立这道闸要防的东西。
+            (ok if p['landed'] == 'landed' else bad).append(p)
             continue
-        state, detail = _move_landed(p.get('skill'), tid)
+        if p.get('type') != 'move' or not tid:
+            ok.append(p)          # 其它类型（非招式、非复发）不受本闸门管辖
+            continue
+        state, detail = _move_landed(p.get('skill'), tid, p.get('resolved_note'))
         p['landed'] = state
         p['landed_detail'] = detail
         if state in ('landed', 'doc', 'na'):
@@ -1539,7 +1877,7 @@ def cmd_patch(a):
     targets = []
     seen = set()
     for p in items:
-        st, det = _move_landed(p.get('skill'), p.get('ref'))
+        st, det = _move_landed(p.get('skill'), p.get('ref'), p.get('resolved_note'))
         if st == 'doc':
             targets.append((p, det))
             seen.add((p.get('skill'), p.get('ref')))
@@ -1698,6 +2036,28 @@ def cmd_apply(a):
     return rc
 
 
+def _ledger_intake(sk, ok_ps, bad_ps):
+    """★ P089 根治：进化收口（cmd_commit 判定后）必落池④库+③台账。
+    失败只告警不阻断主流程（守M-R136第三关：落池卡死代价>>漏一次入池）。
+    结构化记录本次进化判定结论（na/landed/doc/pending 分类），供④库反哺其他技能。"""
+    if not ok_ps and not bad_ps:
+        return
+    na = [p.get('ref') for p in ok_ps if p.get('landed') == 'na']
+    landed = [p.get('ref') for p in ok_ps if p.get('landed') == 'landed']
+    doc = [p.get('ref') for p in ok_ps if p.get('landed') == 'doc']
+    bad = [p.get('ref') for p in bad_ps]
+    fix = (f"技能{sk} 进化判定收口：na={na or '无'}; landed={landed or '无'}; "
+           f"doc={doc or '无'}; 退回pending={bad or '无'}；依据=回读闸门_gate_moves"
+           f"（landed=真实落地/doc=仅文档/na=评估不适用/pending=未落地）")
+    try:
+        subprocess.run([sys.executable, LEDGER, 'intake', '--scene', f'进化_{sk}_commit',
+                        '--type', '记录读写', '--fix', fix,
+                        '--reuse', '进化收口必落池', '--sev', '轻微'],
+                       capture_output=True, timeout=30)
+    except Exception as e:
+        print(f'  ⚠️ 进化收口落池失败（{e}），请手动 ledger_closure intake', file=sys.stderr)
+
+
 def cmd_commit(a):
     """★ M-R111 第③④步：用户授权后执行升级（升级版本+写 CHANGELOG+清提案）。
 
@@ -1779,6 +2139,7 @@ def cmd_commit(a):
         if _doc_ps:
             print(f'    ℹ️ {len(_doc_ps)} 条仅在文档出现（脚本无实现），标记 landed=doc')
         done+=len(_ok_ps)
+        _ledger_intake(sk, _ok_ps, _bad_ps)
         print(f'  ✅ {sk} 已升级，吸收 {len(_ok_ps)} 条提案'
               + (f'（{len(_bad_ps)} 条未落地已退回）' if _bad_ps else ''))
     # ★ 只把**本次处理过**的提案标 done 并清出待办；其余技能/未处理的 pending 原样保留。

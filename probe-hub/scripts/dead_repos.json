@@ -1,0 +1,21 @@
+{
+ "_note": "探源司·不可用仓库册（实测判死，禁再入候选册；去重闸数据源之一）",
+ "repos": [
+  {
+   "url": "https://github.com/Stevenjhshi/Steven-TVBox-Base",
+   "full_name": "Stevenjhshi/Steven-TVBox-Base",
+   "score": 75.0,
+   "判定": "已封禁/删除（API 404）",
+   "证据": "存活：已封禁/删除（API 404）",
+   "判死时间": "2026-10-22"
+  },
+  {
+   "url": "https://github.com/reard3n/tvbox_research",
+   "full_name": "reard3n/tvbox_research",
+   "score": 75.0,
+   "判定": "已封禁/删除（API 404）",
+   "证据": "存活：已封禁/删除（API 404）",
+   "判死时间": "2026-10-22"
+  }
+ ]
+}

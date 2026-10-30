@@ -1,256 +1,286 @@
 [
- {
-  "date": "2026-10-16",
-  "suggestions": [
-   {
-    "skill": "legacy-watchdog",
-    "type": "backlog兑现",
-    "evidence": "[扩展点] 后续成长方向：检查器时效回归（检查器口径变更时回放历史确认不误报） / 延迟归因下钻（哪类风险面发现慢、为什么） / 扩面决策留痕（雷达候选→人工评"
-   },
-   {
-    "skill": "tvbox-source-blacklist",
-    "type": "backlog兑现",
-    "evidence": "[扩展点] SKILL.md §5 四项持续演进：拦截后自动快照 / probe_src 联合复测 / 失效原因枚举化 / 复活自动回流（非遗留，逐版推进）"
-   },
-   {
-    "skill": "ecosys-conductor",
-    "type": "backlog兑现",
-    "evidence": "[扩展点] 后续成长方向：conflict（写冲突仲裁）/ handoff（交接契约检查）/ expand-eco（生态空白识别）/ retro（会话复盘沉淀）"
-   },
-   {
-    "skill": "tvbox-source-hub",
-    "type": "契约漂移",
-    "evidence": "SKILL=1.0.18 但 CHANGELOG 最新=127.0.0（追加式取最大值）",
-    "retracted": "S052 检测器误报：127.0.0.1 IP 被全文匹配"
-   },
-   {
-    "skill": "tvbox-interface",
-    "type": "契约漂移",
-    "evidence": "SKILL=1.0.0 但 CHANGELOG 最新=1.0.12（追加式取最大值）",
-    "retracted": "S052 检测器误报：正文引用版本号被全文匹配"
-   },
-   {
-    "skill": "skill-evolution",
-    "type": "契约漂移",
-    "evidence": "SKILL=1.0.5 但 CHANGELOG 最新=1.1.0（追加式取最大值）",
-    "retracted": "S052 真实漂移，已兑现修复（SKILL 1.0.5→1.1.0）"
-   },
-   {
-    "skill": "ecosys-conductor",
-    "type": "backlog兑现",
-    "evidence": "zzprobeunique 扩展点未兑现",
-    "retracted": "S059 并行竞态污染：signal-check 探针写窗口内被 direction 读到并留痕的假证据"
-   },
-   {
-    "skill": "ecosys-conductor",
-    "type": "信号源自检",
-    "evidence": "信号源6 文档-实现漂移 依赖丢失（1/1 不可达）→ 该检测器静默失效"
-   },
-   {
-    "skill": "ecosys-conductor",
-    "type": "backlog兑现",
-    "evidence": "[扩展点] assess 内部 6 次 subprocess 串行调用（evolve scan/watchdog scan/snapshot/health/ga"
-   },
-   {
-    "skill": "ecosys-conductor",
-    "type": "契约漂移",
-    "evidence": "SKILL=1.17.0 但 CHANGELOG 最新=1.16.0（追加式取最大值）",
-    "retracted": "陈旧建议：契约漂移当时已修，现行 SKILL=1.41.0 = CHANGELOG=v1.41.0，无漂移（S108 清理过期留痕）"
-   },
-   {
-    "skill": "ecosys-conductor",
-    "type": "信号源自检",
-    "evidence": "信号源10 入口内联命令 已在注册表但 _sig_health 未自检（覆盖缺口）"
-   },
-   {
-    "skill": "tvbox-source-hub",
-    "type": "入口内联命令",
-    "evidence": "入口内联命令 chain 未登记进 manifest.json——用户话术无法路由到它"
-   },
-   {
-    "skill": "tvbox-source-hub",
-    "type": "入口内联命令",
-    "evidence": "入口内联命令 manifest 未登记进 manifest.json——用户话术无法路由到它"
-   },
-   {
-    "skill": "tvbox-source-hub",
-    "type": "入口内联命令",
-    "evidence": "入口内联命令 run 未登记进 manifest.json——用户话术无法路由到它"
-   },
-   {
-    "skill": "tvbox-source-hub",
-    "type": "契约漂移",
-    "evidence": "SKILL=1.0.28 但 CHANGELOG 最新=1.0.27（追加式取最大值）",
-    "retracted": "陈旧建议：契约漂移当时已修，现行 hub SKILL=1.0.35 = CHANGELOG=v1.0.35，无漂移（S108 清理过期留痕）"
-   },
-   {
-    "skill": "ecosys-conductor",
-    "type": "基座折叠扫描",
-    "evidence": "未登记的折叠候选 probe-hub/scripts/probe.py:515dc0e04e（原 probe-hub/scripts/probe.py:1313）：_IFACE_PIPE = None——except 后 return/赋值 空态（M-R60：读失败被折叠成空态），请审计：真缺陷须修，合理折叠须登记白名单"
-   },
-   {
-    "skill": "ecosys-conductor",
-    "type": "基座折叠扫描",
-    "evidence": "未登记的折叠候选 probe-hub/scripts/probe.py:8f7b17b662（原 probe-hub/scripts/probe.py:784）：code = 0                       # 取不到状态码 → 走语义兜底判定——except 后 return/赋值 空态（M-R60：读失败被折叠成空态），请审计：真缺陷须修，合理折叠须登记白名单"
-   },
-   {
-    "skill": "ecosys-conductor",
-    "type": "基座折叠扫描",
-    "evidence": "未登记的折叠候选 probe-hub/scripts/probe.py:46dcf75dfa（原 probe-hub/scripts/probe.py:1410）：old = []                   # 旧文件损坏 → 本次结果为准（不因此丢弃）——except 后 return/赋值 空态（M-R60：读失败被折叠成空态），请审计：真缺陷须修，合理折叠须登记白名单"
-   }
-  ]
- },
- {
-  "date": "2026-10-16",
-  "topic": "hub路由负载12条过载",
-  "verdict": "暂不",
-  "note": "hub 是数据中枢，12条路由对应12个高频意图，拆分会破坏 manifest 单一入口；观察即可"
- },
- {
-  "date": "2026-10-16",
-  "topic": "conductor路由11条过载",
-  "verdict": "暂不",
-  "note": "12命令分三层各自内聚，路由条目数≠复杂度；若超20条再考虑按层拆分"
- },
- {
-  "date": "2026-10-17",
-  "suggestions": []
- },
- {
-  "date": "2026-10-20",
-  "suggestions": [
-   {
-    "skill": "automation-task-manager",
-    "type": "backlog兑现",
-    "evidence": "[扩展点] 长期方向：MCP automation_update 完全替代脚本后，本技能的脚本通道可降级为兜底",
-    "retracted": "S183 裁决[keep]：S183 判定：真实长期方向，但当前 MCP automation_update 能力未就绪，脚本通道仍是唯一可用路径——转 P035 欠账跟踪，不当作待办催办。"
-   },
-   {
-    "skill": "automation-task-manager",
-    "type": "路由盲区",
-    "evidence": "manifest.json 与技能级路由表(_SKILL_INTENTS)均无该技能路由条目（双重盲区）",
-    "retracted": "S183 裁决[reject]：S183 实测不成立：manifest.json commands[109/110] 已登记「tvbox jobs」「tvbox jobs <id>」两条，skill=automation-task-manager；whoami「自动化任务」命中技能级相关度11。提案与实况不符。"
-   },
-   {
-    "skill": "learn-hub",
-    "type": "路由盲区",
-    "evidence": "真实话术抽查失败 1/8：「这堆 PDF 太乱了」实际路由到 无匹配（应到本技能）——用户这么问会找错技能",
-    "retracted": "S183 裁决[reject]：S183 实测不成立：whoami「这堆 PDF 太乱了」→ 命中 learn-hub 触发词「太乱了」（技能级相关度8）。原抽查用的应是旧版触发词表。"
-   },
-   {
-    "skill": "legacy-watchdog",
-    "type": "快照时效",
-    "evidence": "监测报告上云快照已 2 天未刷新（2026-10-18）",
-    "retracted": "S183 裁决[done]：S183 已处置：tvbox watchdog trend-upload 已上云（30 期），node_id=tHmr5meQ44y34ksSCD3Gfe。"
-   },
-   {
-    "skill": "ecosys-conductor",
-    "type": "文档-实现漂移",
-    "evidence": "已实现 drift-fix 但设计文档命令表未登记"
-   },
-   {
-    "skill": "ecosys-conductor",
-    "type": "文档-实现漂移",
-    "evidence": "已实现 eco-sync 但设计文档命令表未登记"
-   },
-   {
-    "skill": "ecosys-conductor",
-    "type": "文档-实现漂移",
-    "evidence": "已实现 inventory 但设计文档命令表未登记"
-   },
-   {
-    "skill": "ecosys-conductor",
-    "type": "文档-实现漂移",
-    "evidence": "已实现 rules-probe 但设计文档命令表未登记"
-   },
-   {
-    "skill": "ecosys-conductor",
-    "type": "信号源自检",
-    "evidence": "信号源43 台账回写防错行 已在注册表但 _sig_health 未自检（覆盖缺口）"
-   },
-   {
-    "skill": "ecosys-conductor",
-    "type": "信号源自检",
-    "evidence": "信号源44 回读防缓存欺骗 已在注册表但 _sig_health 未自检（覆盖缺口）"
-   },
-   {
-    "skill": "ecosys-conductor",
-    "type": "信号源自检",
-    "evidence": "信号源45 漂移修闭环不谎报 已在注册表但 _sig_health 未自检（覆盖缺口）"
-   },
-   {
-    "skill": "ecosys-conductor",
-    "type": "信号源自检",
-    "evidence": "话术两源缺口：learn-hub 的 description 声明了 2 个触发词，_SKILL_INTENTS 未登记 资料体检、覆盖率怎么样——改真源忘同步"
-   },
-   {
-    "skill": "tvbox-source-hub",
-    "type": "入口内联命令",
-    "evidence": "入口内联命令 connectors 未登记进 manifest.json——用户话术无法路由到它"
-   },
-   {
-    "skill": "tvbox-source-hub",
-    "type": "入口内联命令",
-    "evidence": "入口内联命令 discover 未登记进 manifest.json——用户话术无法路由到它"
-   },
-   {
-    "skill": "tvbox-source-hub",
-    "type": "入口内联命令",
-    "evidence": "入口内联命令 jobs 未登记进 manifest.json——用户话术无法路由到它"
-   },
-   {
-    "skill": "tvbox-source-hub",
-    "type": "入口内联命令",
-    "evidence": "入口内联命令 library 未登记进 manifest.json——用户话术无法路由到它"
-   },
-   {
-    "skill": "tvbox-source-hub",
-    "type": "入口内联命令",
-    "evidence": "入口内联命令 skills 未登记进 manifest.json——用户话术无法路由到它"
-   },
-   {
-    "skill": "ecosys-conductor",
-    "type": "会话经验留痕缺口",
-    "evidence": "③会话台账有 **2 条**记录缺「时间」字段——已沉淀但无法参与时效判定（空时间 ≠ 及时，M-R60）",
-    "retracted": "S183 裁决[done]：S183 已回填：q49vQ2BdB8m38sJpuOqLZO(S108)→2026-10-17、lBwsmkoGltVnvdSqpomX3Z(S109)→2026-10-18，两笔 success:true，回读缺时间=0。"
-   },
-   {
-    "skill": "ecosys-conductor",
-    "type": "会话经验留痕缺口",
-    "evidence": "④资料库经验库有 **2 条**记录缺「时间」字段——已沉淀但无法参与时效判定（空时间 ≠ 及时，M-R60）",
-    "retracted": "S183 裁决[done]：S183 已回填：tmK9x1ef3lawk0KI5FpYbG→2026-10-17、T5cTeOqmeADBEuq2DPdeiZ→2026-10-18，两笔 success:true，回读缺时间=0。"
-   },
-   {
-    "skill": "ecosys-conductor",
-    "type": "会话经验留痕缺口",
-    "evidence": "③会话台账最新条目（2026-10-19 12:05）落后最近工作锚点（2026-10-19 16:41）**4.6 小时**（阈值 4h）——规则58：每次会话须沉淀，疑似本轮工作未进池（漏项=遗留）"
-   },
-   {
-    "skill": "ecosys-conductor",
-    "type": "会话经验留痕缺口",
-    "evidence": "④资料库经验库最新条目（2026-10-19 01:30）落后最近工作锚点（2026-10-19 16:41）**15.2 小时**（阈值 4h）——规则58：每次会话须沉淀，疑似本轮工作未进池（漏项=遗留）"
-   },
-   {
-    "skill": "legacy-watchdog",
-    "type": "backlog兑现",
-    "evidence": "[清账司派单 2026-10-27] [扩展点] 长期方向：MCP automation_update 完全替代脚本后，本技能的脚本通道可降级为兜底 ｜ sid",
-    "retracted": "S183 裁决[reject]：S183 判定：与 automation-task-manager 那条扩展点同源，属派单重复投影，不是独立事项。已在那边转 P035。"
-   },
-   {
-    "skill": "ecosys-conductor",
-    "type": "文档-实现漂移",
-    "evidence": "已实现 registry 但设计文档命令表未登记"
-   },
-   {
-    "skill": "ecosys-conductor",
-    "type": "基座折叠扫描",
-    "evidence": "未登记的折叠候选 ecosys-conductor/scripts/conductor.py:1e24dfd695（原 ecosys-conductor/scripts/conductor.py:539）：_man_ok = False——except 后 return/赋值 空态（M-R60：读失败被折叠成空态），请审计：真缺陷须修，合理折叠须登记白名单"
-   },
-   {
-    "skill": "ecosys-conductor",
-    "type": "基座折叠扫描",
-    "evidence": "未登记的折叠候选 ecosys-conductor/scripts/conductor.py:1e24dfd695（原 ecosys-conductor/scripts/conductor.py:564）：_man_ok = False——except 后 return/赋值 空态（M-R60：读失败被折叠成空态），请审计：真缺陷须修，合理折叠须登记白名单"
-   }
-  ]
- }
+  {
+    "date": "2026-10-16",
+    "suggestions": [
+      {
+        "skill": "legacy-watchdog",
+        "type": "backlog兑现",
+        "evidence": "[扩展点] 后续成长方向：检查器时效回归（检查器口径变更时回放历史确认不误报） / 延迟归因下钻（哪类风险面发现慢、为什么） / 扩面决策留痕（雷达候选→人工评"
+      },
+      {
+        "skill": "tvbox-source-blacklist",
+        "type": "backlog兑现",
+        "evidence": "[扩展点] SKILL.md §5 四项持续演进：拦截后自动快照 / probe_src 联合复测 / 失效原因枚举化 / 复活自动回流（非遗留，逐版推进）"
+      },
+      {
+        "skill": "ecosys-conductor",
+        "type": "backlog兑现",
+        "evidence": "[扩展点] 后续成长方向：conflict（写冲突仲裁）/ handoff（交接契约检查）/ expand-eco（生态空白识别）/ retro（会话复盘沉淀）"
+      },
+      {
+        "skill": "tvbox-source-hub",
+        "type": "契约漂移",
+        "evidence": "SKILL=1.0.18 但 CHANGELOG 最新=127.0.0（追加式取最大值）",
+        "retracted": "S052 检测器误报：127.0.0.1 IP 被全文匹配"
+      },
+      {
+        "skill": "tvbox-interface",
+        "type": "契约漂移",
+        "evidence": "SKILL=1.0.0 但 CHANGELOG 最新=1.0.12（追加式取最大值）",
+        "retracted": "S052 检测器误报：正文引用版本号被全文匹配"
+      },
+      {
+        "skill": "skill-evolution",
+        "type": "契约漂移",
+        "evidence": "SKILL=1.0.5 但 CHANGELOG 最新=1.1.0（追加式取最大值）",
+        "retracted": "S052 真实漂移，已兑现修复（SKILL 1.0.5→1.1.0）"
+      },
+      {
+        "skill": "ecosys-conductor",
+        "type": "backlog兑现",
+        "evidence": "zzprobeunique 扩展点未兑现",
+        "retracted": "S059 并行竞态污染：signal-check 探针写窗口内被 direction 读到并留痕的假证据"
+      },
+      {
+        "skill": "ecosys-conductor",
+        "type": "信号源自检",
+        "evidence": "信号源6 文档-实现漂移 依赖丢失（1/1 不可达）→ 该检测器静默失效"
+      },
+      {
+        "skill": "ecosys-conductor",
+        "type": "backlog兑现",
+        "evidence": "[扩展点] assess 内部 6 次 subprocess 串行调用（evolve scan/watchdog scan/snapshot/health/ga"
+      },
+      {
+        "skill": "ecosys-conductor",
+        "type": "契约漂移",
+        "evidence": "SKILL=1.17.0 但 CHANGELOG 最新=1.16.0（追加式取最大值）",
+        "retracted": "陈旧建议：契约漂移当时已修，现行 SKILL=1.41.0 = CHANGELOG=v1.41.0，无漂移（S108 清理过期留痕）"
+      },
+      {
+        "skill": "ecosys-conductor",
+        "type": "信号源自检",
+        "evidence": "信号源10 入口内联命令 已在注册表但 _sig_health 未自检（覆盖缺口）"
+      },
+      {
+        "skill": "tvbox-source-hub",
+        "type": "入口内联命令",
+        "evidence": "入口内联命令 chain 未登记进 manifest.json——用户话术无法路由到它"
+      },
+      {
+        "skill": "tvbox-source-hub",
+        "type": "入口内联命令",
+        "evidence": "入口内联命令 manifest 未登记进 manifest.json——用户话术无法路由到它"
+      },
+      {
+        "skill": "tvbox-source-hub",
+        "type": "入口内联命令",
+        "evidence": "入口内联命令 run 未登记进 manifest.json——用户话术无法路由到它"
+      },
+      {
+        "skill": "tvbox-source-hub",
+        "type": "契约漂移",
+        "evidence": "SKILL=1.0.28 但 CHANGELOG 最新=1.0.27（追加式取最大值）",
+        "retracted": "陈旧建议：契约漂移当时已修，现行 hub SKILL=1.0.35 = CHANGELOG=v1.0.35，无漂移（S108 清理过期留痕）"
+      },
+      {
+        "skill": "ecosys-conductor",
+        "type": "基座折叠扫描",
+        "evidence": "未登记的折叠候选 probe-hub/scripts/probe.py:515dc0e04e（原 probe-hub/scripts/probe.py:1313）：_IFACE_PIPE = None——except 后 return/赋值 空态（M-R60：读失败被折叠成空态），请审计：真缺陷须修，合理折叠须登记白名单"
+      },
+      {
+        "skill": "ecosys-conductor",
+        "type": "基座折叠扫描",
+        "evidence": "未登记的折叠候选 probe-hub/scripts/probe.py:8f7b17b662（原 probe-hub/scripts/probe.py:784）：code = 0                       # 取不到状态码 → 走语义兜底判定——except 后 return/赋值 空态（M-R60：读失败被折叠成空态），请审计：真缺陷须修，合理折叠须登记白名单"
+      },
+      {
+        "skill": "ecosys-conductor",
+        "type": "基座折叠扫描",
+        "evidence": "未登记的折叠候选 probe-hub/scripts/probe.py:46dcf75dfa（原 probe-hub/scripts/probe.py:1410）：old = []                   # 旧文件损坏 → 本次结果为准（不因此丢弃）——except 后 return/赋值 空态（M-R60：读失败被折叠成空态），请审计：真缺陷须修，合理折叠须登记白名单"
+      }
+    ]
+  },
+  {
+    "date": "2026-10-16",
+    "topic": "hub路由负载12条过载",
+    "verdict": "暂不",
+    "note": "hub 是数据中枢，12条路由对应12个高频意图，拆分会破坏 manifest 单一入口；观察即可"
+  },
+  {
+    "date": "2026-10-16",
+    "topic": "conductor路由11条过载",
+    "verdict": "暂不",
+    "note": "12命令分三层各自内聚，路由条目数≠复杂度；若超20条再考虑按层拆分"
+  },
+  {
+    "date": "2026-10-17",
+    "suggestions": []
+  },
+  {
+    "date": "2026-10-20",
+    "suggestions": [
+      {
+        "skill": "automation-task-manager",
+        "type": "backlog兑现",
+        "evidence": "[扩展点] 长期方向：MCP automation_update 完全替代脚本后，本技能的脚本通道可降级为兜底",
+        "retracted": "S183 裁决[keep]：S183 判定：真实长期方向，但当前 MCP automation_update 能力未就绪，脚本通道仍是唯一可用路径——转 P035 欠账跟踪，不当作待办催办。"
+      },
+      {
+        "skill": "automation-task-manager",
+        "type": "路由盲区",
+        "evidence": "manifest.json 与技能级路由表(_SKILL_INTENTS)均无该技能路由条目（双重盲区）",
+        "retracted": "S183 裁决[reject]：S183 实测不成立：manifest.json commands[109/110] 已登记「tvbox jobs」「tvbox jobs <id>」两条，skill=automation-task-manager；whoami「自动化任务」命中技能级相关度11。提案与实况不符。"
+      },
+      {
+        "skill": "learn-hub",
+        "type": "路由盲区",
+        "evidence": "真实话术抽查失败 1/8：「这堆 PDF 太乱了」实际路由到 无匹配（应到本技能）——用户这么问会找错技能",
+        "retracted": "S183 裁决[reject]：S183 实测不成立：whoami「这堆 PDF 太乱了」→ 命中 learn-hub 触发词「太乱了」（技能级相关度8）。原抽查用的应是旧版触发词表。"
+      },
+      {
+        "skill": "legacy-watchdog",
+        "type": "快照时效",
+        "evidence": "监测报告上云快照已 2 天未刷新（2026-10-18）",
+        "retracted": "S183 裁决[done]：S183 已处置：tvbox watchdog trend-upload 已上云（30 期），node_id=tHmr5meQ44y34ksSCD3Gfe。"
+      },
+      {
+        "skill": "ecosys-conductor",
+        "type": "文档-实现漂移",
+        "evidence": "已实现 drift-fix 但设计文档命令表未登记"
+      },
+      {
+        "skill": "ecosys-conductor",
+        "type": "文档-实现漂移",
+        "evidence": "已实现 eco-sync 但设计文档命令表未登记"
+      },
+      {
+        "skill": "ecosys-conductor",
+        "type": "文档-实现漂移",
+        "evidence": "已实现 inventory 但设计文档命令表未登记"
+      },
+      {
+        "skill": "ecosys-conductor",
+        "type": "文档-实现漂移",
+        "evidence": "已实现 rules-probe 但设计文档命令表未登记"
+      },
+      {
+        "skill": "ecosys-conductor",
+        "type": "信号源自检",
+        "evidence": "信号源43 台账回写防错行 已在注册表但 _sig_health 未自检（覆盖缺口）"
+      },
+      {
+        "skill": "ecosys-conductor",
+        "type": "信号源自检",
+        "evidence": "信号源44 回读防缓存欺骗 已在注册表但 _sig_health 未自检（覆盖缺口）"
+      },
+      {
+        "skill": "ecosys-conductor",
+        "type": "信号源自检",
+        "evidence": "信号源45 漂移修闭环不谎报 已在注册表但 _sig_health 未自检（覆盖缺口）"
+      },
+      {
+        "skill": "ecosys-conductor",
+        "type": "信号源自检",
+        "evidence": "话术两源缺口：learn-hub 的 description 声明了 2 个触发词，_SKILL_INTENTS 未登记 资料体检、覆盖率怎么样——改真源忘同步"
+      },
+      {
+        "skill": "tvbox-source-hub",
+        "type": "入口内联命令",
+        "evidence": "入口内联命令 connectors 未登记进 manifest.json——用户话术无法路由到它"
+      },
+      {
+        "skill": "tvbox-source-hub",
+        "type": "入口内联命令",
+        "evidence": "入口内联命令 discover 未登记进 manifest.json——用户话术无法路由到它"
+      },
+      {
+        "skill": "tvbox-source-hub",
+        "type": "入口内联命令",
+        "evidence": "入口内联命令 jobs 未登记进 manifest.json——用户话术无法路由到它"
+      },
+      {
+        "skill": "tvbox-source-hub",
+        "type": "入口内联命令",
+        "evidence": "入口内联命令 library 未登记进 manifest.json——用户话术无法路由到它"
+      },
+      {
+        "skill": "tvbox-source-hub",
+        "type": "入口内联命令",
+        "evidence": "入口内联命令 skills 未登记进 manifest.json——用户话术无法路由到它"
+      },
+      {
+        "skill": "ecosys-conductor",
+        "type": "会话经验留痕缺口",
+        "evidence": "③会话台账有 **2 条**记录缺「时间」字段——已沉淀但无法参与时效判定（空时间 ≠ 及时，M-R60）",
+        "retracted": "S183 裁决[done]：S183 已回填：q49vQ2BdB8m38sJpuOqLZO(S108)→2026-10-17、lBwsmkoGltVnvdSqpomX3Z(S109)→2026-10-18，两笔 success:true，回读缺时间=0。"
+      },
+      {
+        "skill": "ecosys-conductor",
+        "type": "会话经验留痕缺口",
+        "evidence": "④资料库经验库有 **2 条**记录缺「时间」字段——已沉淀但无法参与时效判定（空时间 ≠ 及时，M-R60）",
+        "retracted": "S183 裁决[done]：S183 已回填：tmK9x1ef3lawk0KI5FpYbG→2026-10-17、T5cTeOqmeADBEuq2DPdeiZ→2026-10-18，两笔 success:true，回读缺时间=0。"
+      },
+      {
+        "skill": "ecosys-conductor",
+        "type": "会话经验留痕缺口",
+        "evidence": "③会话台账最新条目（2026-10-19 12:05）落后最近工作锚点（2026-10-19 16:41）**4.6 小时**（阈值 4h）——规则58：每次会话须沉淀，疑似本轮工作未进池（漏项=遗留）"
+      },
+      {
+        "skill": "ecosys-conductor",
+        "type": "会话经验留痕缺口",
+        "evidence": "④资料库经验库最新条目（2026-10-19 01:30）落后最近工作锚点（2026-10-19 16:41）**15.2 小时**（阈值 4h）——规则58：每次会话须沉淀，疑似本轮工作未进池（漏项=遗留）"
+      },
+      {
+        "skill": "legacy-watchdog",
+        "type": "backlog兑现",
+        "evidence": "[清账司派单 2026-10-27] [扩展点] 长期方向：MCP automation_update 完全替代脚本后，本技能的脚本通道可降级为兜底 ｜ sid",
+        "retracted": "S183 裁决[reject]：S183 判定：与 automation-task-manager 那条扩展点同源，属派单重复投影，不是独立事项。已在那边转 P035。"
+      },
+      {
+        "skill": "ecosys-conductor",
+        "type": "文档-实现漂移",
+        "evidence": "已实现 registry 但设计文档命令表未登记"
+      },
+      {
+        "skill": "ecosys-conductor",
+        "type": "基座折叠扫描",
+        "evidence": "未登记的折叠候选 ecosys-conductor/scripts/conductor.py:1e24dfd695（原 ecosys-conductor/scripts/conductor.py:539）：_man_ok = False——except 后 return/赋值 空态（M-R60：读失败被折叠成空态），请审计：真缺陷须修，合理折叠须登记白名单"
+      },
+      {
+        "skill": "ecosys-conductor",
+        "type": "基座折叠扫描",
+        "evidence": "未登记的折叠候选 ecosys-conductor/scripts/conductor.py:1e24dfd695（原 ecosys-conductor/scripts/conductor.py:564）：_man_ok = False——except 后 return/赋值 空态（M-R60：读失败被折叠成空态），请审计：真缺陷须修，合理折叠须登记白名单"
+      }
+    ]
+  },
+  {
+    "date": "2026-10-25",
+    "suggestions": [
+      {
+        "skill": "ecosys-conductor",
+        "type": "治理回溯",
+        "evidence": "S215 过程坑根源闭环：biz_gate IN-02 改状态文件时间戳+30分钟窗口+标志文件应急口；rules_cmd 联动 evolution_log 使 M04 计时与整理动作同源"
+      },
+      {
+        "skill": "ecosys-conductor",
+        "type": "治理回溯",
+        "evidence": "S216 治「总是手动」：signal-check 信号源6/7 死路径崩溃修复（恢复信号源22双池落痕守护）；stop_drift 第⑤问内联化去除不存在的 transcript_reader 依赖"
+      },
+      {
+        "skill": "ecosys-conductor",
+        "type": "治理回溯",
+        "evidence": "S217 onboard_guard 内联 transcript_reader：恢复 S199 按用户轮次记账真实生效（原因模块不存在退化回按文件名只拦一次）"
+      },
+      {
+        "skill": "library",
+        "type": "文档缺陷修复",
+        "evidence": "SKILL.md description 补显式触发词句式，消除信号源32 的58个孤儿词（真源用自然语言未用触发词句式，属真阳性）"
+      },
+      {
+        "skill": "ecosys-conductor",
+        "type": "真缺陷修复",
+        "evidence": "信号源12：evolution_plan 停更5天告警闭环——补登 10-22~10-25 治理活动"
+      }
+    ]
+  }
 ]

@@ -95,7 +95,8 @@
  ],
  "snapshot_refresh_rule": "凡拦截归档/复活标注等失效库写操作，收工必须 tvbox snapshot",
  "backlog": [
-  "[已清零 S046] 四项持续演进兑现：①guard 拦截自动快照归档 ②review --deep 联合复测 ③失效原因枚举化 ④review --apply 复活自动回流（回流后人工验源确认才出清）"
+  "[已清零 S046] 四项持续演进兑现：①guard 拦截自动快照归档 ②review --deep 联合复测 ③失效原因枚举化 ④review --apply 复活自动回流（回流后人工验源确认才出清）",
+  "[清账司派单 2026-11-01] [M19] tvbox-source-blacklist 平衡性 83.3｜最弱=进化停滞(33.323780644160735) ｜ sid=c1dbe54249cf ｜ 下一步 tvbox conductor issues ／ 先看 tvbox-source-blacklist 名下这条为何是红的，再决定修监测项还是修技能"
  ],
  "sop_binding": {
   "authority": "本技能 SKILL.md §1-§5（SSOT）+ blk.py",

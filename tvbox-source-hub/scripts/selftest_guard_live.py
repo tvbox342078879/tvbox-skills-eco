@@ -30,15 +30,12 @@ URLS = [
 
 
 def probe(url):
-    import urllib.request
+    import core                                   # ECO 对齐：走共享核心 http_get
     t0 = time.time()
-    try:
-        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req, timeout=10) as r:
-            n = len(r.read(4096))
-        return {'url': url, 'ok': True, 'bytes': n, 'sec': time.time() - t0}
-    except Exception as e:
-        return {'url': url, 'ok': False, 'err': repr(e)[:60], 'sec': time.time() - t0}
+    st, pl, rs = core.http_get(url, timeout=10, max_bytes=4096, as_text=False)
+    if st == 'ok':
+        return {'url': url, 'ok': True, 'bytes': len(pl or b''), 'sec': time.time() - t0}
+    return {'url': url, 'ok': False, 'err': rs or 'unknown', 'sec': time.time() - t0}
 
 
 def main():

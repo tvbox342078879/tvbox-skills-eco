@@ -4,7 +4,7 @@
      settle 结账 ｜ finalcheck 终验卡口 ｜ writeoff 平账 ｜ db create/retire 库操作
 顺序纪律：settle → post → close（凭证必须在闸门关闭前落账）。
 """
-import argparse, hashlib, json, re, subprocess, sys, time, os
+import argparse, json, re, subprocess, sys, time, os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import core_ledger as L
 
@@ -513,6 +513,64 @@ def cmd_writeoff(a):
         print('   提醒：暂记·无主变动余额上升——账龄 3 轮未认领升级高危（§1.2 纪律）')
     sys.exit(0 if ok else 1)
 
+# ---------- enroll 补户（★ S196：消除"改科目表靠手改源码"的手动环节） ----------
+def cmd_enroll(a):
+    """一条命令完成补户三步，替代此前全手动的流程：
+      ① core_ledger.INITIAL_ACCOUNTS 源码插入（科目表是两处声明之一）
+      ② 账户库 batch_add 补行（另一处声明）
+      ③ 双回读验证（源码 grep + 账户库 _acct_row，缺一处即判失败）
+    背景：S196 补登「播放页壳库」时发现科目表两处声明缺一即成"幽灵户"，
+    而当时补登全程是 AI 手改源码 + 手拼 batch_add——可复现性为零。
+    """
+    if not a.voucher:
+        print('❌ 补户是账务动作，必须留痕：加 --voucher 凭证号'); sys.exit(1)
+    # 前置：两处都查重，防双登
+    src = open(L.__file__, encoding='utf-8').read()
+    if re.search(rf"^    \('{re.escape(a.name)}',", src, re.M):
+        print(f'❌ {a.name} 已在科目表源码中，拒绝重复补登'); sys.exit(1)
+    if _acct_row(a.name):
+        print(f'❌ {a.name} 已在账户库中，拒绝重复补登'); sys.exit(1)
+    # ① 源码插入：插在 INITIAL_ACCOUNTS 列表收尾 ']' 之前的最后一个元组后
+    ins = (f"    ('{a.name}', '{a.cls}', '{a.currency}', "
+           f"{repr(a.object) if a.object else 'None'}),   # S196 enroll 补登\n]\n")
+    new_src, n = re.subn(r"\n\]\n", '\n' + ins, src, count=1)
+    if n != 1:
+        print('❌ 未找到 INITIAL_ACCOUNTS 列表收尾——源码结构变了，停止补登'); sys.exit(1)
+    open(L.__file__, 'w', encoding='utf-8').write(new_src)
+    # ② 账户库补行
+    rec = {'账户名': {'text': a.name}, '科目类': {'select': a.cls},
+           '币种': {'select': a.currency}, '关联对象': {'text': a.object or ''},
+           '账户状态': {'select': '正常'}}
+    ok, out = L.add_entries(L.DB_ACCT, [rec])
+    if not ok:
+        print('❌ 账户库补行失败（源码已插入，请检查后回滚或补齐）：' + out[:200]); sys.exit(1)
+    # ③ 双回读
+    src2 = open(L.__file__, encoding='utf-8').read()
+    in_src = bool(re.search(rf"^    \('{re.escape(a.name)}',", src2, re.M))
+    row = _acct_row(a.name)
+    if not (in_src and row):
+        print(f'❌ 回读失败（源码:{in_src} 账户库:{bool(row)}）——幽灵户风险，立即处理'); sys.exit(1)
+    print(f'✅ 补户三步完成：{a.name}（{a.cls}·{a.currency}·{a.object or "无对象"}）')
+    # 可选期初余额：借 新户 / 贷 期初·建账基准（多币种锚点户）
+    if a.balance:
+        if a.cls != '资产·数据':
+            print('⚠️ 非资产·数据户不自动记期初（币种锚点请手动 post）')
+        else:
+            live, g = _live_count(a.object)
+            if not g:
+                print('⚠️ 关联库实数读取失败，期初余额未记——请手动 post')
+            else:
+                e = L.make_entry(a.voucher, a.name, '期初·建账基准', live, a.currency,
+                                 '建库', agent='eco-ledger', finalcheck=True,
+                                 note=f'enroll 补户期初：实读 {live} 条')
+                ok2, msg = L.post(e)
+                print(('✅ ' if ok2 else '❌ ') + f'期初分录：{msg}')
+    # 补登后立即对账一次，当场验证不是幽灵户
+    rc = subprocess.run([sys.executable, __file__, 'reconcile'], capture_output=True, text=True)
+    tail = [x for x in rc.stdout.splitlines() if x.strip()][-2:]
+    print('reconcile 抽验: ' + ' | '.join(tail))
+    sys.exit(0 if rc.returncode == 0 else 1)
+
 # ---------- aging：暂记账龄自动升级 ----------
 def cmd_aging(a):
     """★ S156 backlog 清账②：暂记账龄**自动**升级（原只在 writeoff 后打一句"提醒"）。
@@ -963,8 +1021,17 @@ def main():
     ag = sub.add_parser('aging', help='暂记账龄自动升级（≥21 天高危，退出码 1）')
     ag.set_defaults(f=cmd_aging)
     wp = sub.add_parser('writeoff')
-    wp.add_argument('--account', required=True); wp.add_argument('--voucher', required=True)
+    wp.add_argument('--account', required=True);     wp.add_argument('--voucher', required=True)
     wp.set_defaults(f=cmd_writeoff)
+    en = sub.add_parser('enroll', help='★补户：科目表源码+账户库双登+回读验证（S196）')
+    en.add_argument('--name', required=True)
+    en.add_argument('--class', dest='cls', required=True,
+                    choices=['资产·数据', '暂记', '期初', '负债·欠账', '权益·指标', '损益·产能', '资产·调用', '资产·版本'])
+    en.add_argument('--currency', required=True, choices=sorted(L.CURRENCIES))
+    en.add_argument('--object', default=None, help='资产·数据户的关联库 id')
+    en.add_argument('--balance', type=float, default=0, help='可选：实读期初余额')
+    en.add_argument('--voucher', required=True)
+    en.set_defaults(f=cmd_enroll)
     pp = sub.add_parser('post')
     pp.add_argument('--voucher', required=True); pp.add_argument('--debit', required=True)
     pp.add_argument('--credit', required=True); pp.add_argument('--amount', type=float, required=True)

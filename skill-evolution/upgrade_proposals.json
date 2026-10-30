@@ -9,7 +9,9 @@
       "why": "跨9技能复用；适用条件：读外部数据基座/DB/文件时",
       "source": "招式库(lend)",
       "created": "2026-10-18 11:08",
-      "status": "done"
+      "status": "done",
+      "landed": "landed",
+      "landed_detail": "脚本命中 5 个关键词"
     },
     {
       "skill": "tvbox-janitor",
@@ -19,7 +21,9 @@
       "why": "跨8技能复用；适用条件：维护白名单/豁免表时",
       "source": "招式库(lend)",
       "created": "2026-10-18 11:08",
-      "status": "done"
+      "status": "done",
+      "landed": "na",
+      "landed_detail": "脚本 0 命中、文档明确给出结论（判定不适用 1 处）——完成态"
     },
     {
       "skill": "tvbox-janitor",
@@ -29,7 +33,9 @@
       "why": "跨8技能复用；适用条件：新增/修改检测器时",
       "source": "招式库(lend)",
       "created": "2026-10-18 11:08",
-      "status": "done"
+      "status": "done",
+      "landed": "doc",
+      "landed_detail": "脚本 0 命中；1 处在讲做法且附近无结论（另有 0 处被结论覆盖）——以叙述为准，可能有未做部分"
     },
     {
       "skill": "tvbox-janitor",
@@ -39,7 +45,9 @@
       "why": "跨8技能复用；适用条件：评估/体检类指标时",
       "source": "招式库(lend)",
       "created": "2026-10-18 11:08",
-      "status": "done"
+      "status": "done",
+      "landed": "na",
+      "landed_detail": "脚本 0 命中、文档明确给出结论（判定不适用 3 处）——完成态"
     },
     {
       "skill": "tvbox-janitor",
@@ -49,7 +57,9 @@
       "why": "跨8技能复用；适用条件：自检检测器有效性时",
       "source": "招式库(lend)",
       "created": "2026-10-18 11:08",
-      "status": "done"
+      "status": "done",
+      "landed": "landed",
+      "landed_detail": "脚本命中 1 个关键词"
     },
     {
       "skill": "tvbox-janitor",
@@ -59,7 +69,9 @@
       "why": "跨6技能复用；适用条件：跨技能共享逻辑时",
       "source": "招式库(lend)",
       "created": "2026-10-18 11:08",
-      "status": "done"
+      "status": "done",
+      "landed": "na",
+      "landed_detail": "脚本 0 命中、文档明确给出结论（判定不适用 1 处）——完成态"
     },
     {
       "skill": "tvbox-janitor",
@@ -69,7 +81,9 @@
       "why": "跨5技能复用；适用条件：目标无删除能力时",
       "source": "招式库(lend)",
       "created": "2026-10-18 11:08",
-      "status": "done"
+      "status": "done",
+      "landed": "landed",
+      "landed_detail": "脚本命中 2 个关键词"
     },
     {
       "skill": "tvbox-janitor",
@@ -79,7 +93,9 @@
       "why": "跨4技能复用；适用条件：任何写库/写文件/写云端后",
       "source": "招式库(lend)",
       "created": "2026-10-18 11:08",
-      "status": "done"
+      "status": "done",
+      "landed": "landed",
+      "landed_detail": "脚本命中 2 个关键词"
     },
     {
       "skill": "tvbox-janitor",
@@ -89,7 +105,13 @@
       "why": "④台账/经验库该类型累计 3 次（阈值≥3），解法应沉淀为规则或工具",
       "source": "recurring 聚类",
       "created": "2026-10-18 11:08",
-      "status": "done"
+      "status": "done",
+      "landed": "none",
+      "landed_detail": "recur 提案无 resolved_note（无固化说明=未固化）",
+      "landed_blocked": "recur 提案无 resolved_note（无固化说明=未固化）",
+      "reopened_at": "2026-10-22",
+      "reopen_reason": "T24 根治：原判据把「已借鉴/已声明」当完成态，按可核实落点重判未落地",
+      "resolved_note": "已落地：tvbox-janitor/scripts/janitor.py 新增 move / rename 两个子命令（v1.2.0）。move 移前校验节点与目标父均存在且目标为 folder，移后回读目标文件夹枚举确认落地，pending（跨空间异步）与回读不符均返回 3 不假装成功；rename 改后回读标题比对。SKILL.md §2 命令清单已同步两行。负向自测：move/rename 各 1 条不存在的节点均被拒（M-R148 指针：janitor.py cmd_move/cmd_rename）"
     },
     {
       "skill": "ecosys-conductor",
@@ -101,7 +123,9 @@
       "created": "2026-10-18 11:10",
       "status": "done",
       "resolved_note": "已实现：conductor 本身即薄壳调度（各技能物理独立+CLI 转发），无需再改",
-      "resolved": "2026-10-18 处理批次"
+      "resolved": "2026-10-18 处理批次",
+      "landed": "landed",
+      "landed_detail": "CHANGELOG 声明实现位置，指针核实通过（references/eco_layers.md、references/rules_铁律长条外置.md、references/rules_铁律坐标明细.md）"
     },
     {
       "skill": "ecosys-conductor",
@@ -113,7 +137,9 @@
       "created": "2026-10-18 11:10",
       "status": "done",
       "resolved_note": "已实现：生态登记/规则更新全部走更新+备份留痕，无裸删除",
-      "resolved": "2026-10-18 处理批次"
+      "resolved": "2026-10-18 处理批次",
+      "landed": "na",
+      "landed_detail": "脚本 0 命中、文档明确给出结论（判定不适用 1 处）——完成态"
     },
     {
       "skill": "legacy-watchdog",
@@ -125,7 +151,9 @@
       "created": "2026-10-18 11:10",
       "status": "done",
       "resolved_note": "已实现：处置动作即\"移入待删收件箱\"（移动替代删除的落地形态）",
-      "resolved": "2026-10-18 处理批次"
+      "resolved": "2026-10-18 处理批次",
+      "landed": "na",
+      "landed_detail": "脚本 0 命中；文档 1 处叙述均紧贴结论（已借鉴 0、不适用 2）——完成态"
     },
     {
       "skill": "legacy-watchdog",
@@ -137,7 +165,9 @@
       "created": "2026-10-18 11:10",
       "status": "done",
       "resolved_note": "借鉴留痕：本技能写路径少，回读验证统一收口在 eco-ledger post（写后回读+核销）",
-      "resolved": "2026-10-18 处理批次"
+      "resolved": "2026-10-18 处理批次",
+      "landed": "landed",
+      "landed_detail": "脚本命中 6 个关键词"
     },
     {
       "skill": "skill-evolution",
@@ -245,7 +275,9 @@
       "created": "2026-10-18 11:10",
       "status": "done",
       "resolved_note": "借鉴留痕：升级写路径（commit）已带提案档案回读与 CHANGELOG 置顶验证",
-      "resolved": "2026-10-18 处理批次"
+      "resolved": "2026-10-18 处理批次",
+      "landed": "landed",
+      "landed_detail": "脚本命中 14 个关键词"
     },
     {
       "skill": "tvbox-inspect",
@@ -257,7 +289,9 @@
       "created": "2026-10-18 11:10",
       "status": "done",
       "resolved_note": "已实现：inspect_engine 读引擎数据均带 ok 三态判断，读失败不落空结论",
-      "resolved": "2026-10-18 处理批次"
+      "resolved": "2026-10-18 处理批次",
+      "landed": "landed",
+      "landed_detail": "脚本命中 8 个关键词"
     },
     {
       "skill": "tvbox-inspect",
@@ -269,7 +303,9 @@
       "created": "2026-10-18 11:10",
       "status": "done",
       "resolved_note": "不吸收：白名单按名称键运行稳定，改指纹键收益<改动风险，暂缓",
-      "resolved": "2026-10-18 处理批次"
+      "resolved": "2026-10-18 处理批次",
+      "landed": "landed",
+      "landed_detail": "脚本命中 3 个关键词"
     },
     {
       "skill": "tvbox-inspect",
@@ -281,7 +317,9 @@
       "created": "2026-10-18 11:10",
       "status": "done",
       "resolved_note": "已实现：signal-check 39 项/assess 评分均为机械量化，无人工估算",
-      "resolved": "2026-10-18 处理批次"
+      "resolved": "2026-10-18 处理批次",
+      "landed": "landed",
+      "landed_detail": "脚本命中 5 个关键词"
     },
     {
       "skill": "tvbox-inspect",
@@ -293,7 +331,9 @@
       "created": "2026-10-18 11:10",
       "status": "done",
       "resolved_note": "已实现：signal-check 基线自检+全绿校验即哑巴检测形态（39/39 假阳性防护）",
-      "resolved": "2026-10-18 处理批次"
+      "resolved": "2026-10-18 处理批次",
+      "landed": "landed",
+      "landed_detail": "脚本命中 5 个关键词"
     },
     {
       "skill": "tvbox-inspect",
@@ -305,7 +345,9 @@
       "created": "2026-10-18 11:10",
       "status": "done",
       "resolved_note": "不适用：inspect 无跨目录搬迁场景",
-      "resolved": "2026-10-18 处理批次"
+      "resolved": "2026-10-18 处理批次",
+      "landed": "landed",
+      "landed_detail": "脚本命中 3 个关键词"
     },
     {
       "skill": "tvbox-inspect",
@@ -317,7 +359,9 @@
       "created": "2026-10-18 11:10",
       "status": "done",
       "resolved_note": "不适用：inspect 只读监测，无删除动作",
-      "resolved": "2026-10-18 处理批次"
+      "resolved": "2026-10-18 处理批次",
+      "landed": "na",
+      "landed_detail": "脚本 0 命中、文档明确给出结论（判定不适用 1 处）——完成态"
     },
     {
       "skill": "tvbox-interface",
@@ -327,7 +371,9 @@
       "why": "跨4技能复用；适用条件：任何写库/写文件/写云端后",
       "source": "招式库(lend)",
       "created": "2026-10-18 11:10",
-      "status": "done"
+      "status": "done",
+      "landed": "landed",
+      "landed_detail": "脚本命中 3 个关键词"
     },
     {
       "skill": "unfinished-audit",
@@ -339,7 +385,9 @@
       "created": "2026-10-18 11:10",
       "status": "done",
       "resolved_note": "已实现：dispatch.py 即薄壳分发（collect/link_* 物理独立）",
-      "resolved": "2026-10-18 处理批次"
+      "resolved": "2026-10-18 处理批次",
+      "landed": "na",
+      "landed_detail": "脚本 0 命中、文档明确给出结论（判定不适用 2 处）——完成态"
     },
     {
       "skill": "unfinished-audit",
@@ -351,7 +399,9 @@
       "created": "2026-10-18 11:10",
       "status": "done",
       "resolved_note": "不适用：清账司只采集不删除",
-      "resolved": "2026-10-18 处理批次"
+      "resolved": "2026-10-18 处理批次",
+      "landed": "na",
+      "landed_detail": "脚本 0 命中、文档明确给出结论（判定不适用 1 处）——完成态"
     },
     {
       "skill": "tvbox-source-hub",
@@ -363,7 +413,9 @@
       "created": "2026-10-18 11:10",
       "status": "done",
       "resolved_note": "已固化：core.py rows_of 三态+分页+SSOT（M-R38/M-R60），87 次复发源头已收口",
-      "resolved": "2026-10-18 处理批次"
+      "resolved": "2026-10-18 处理批次",
+      "landed": "landed",
+      "landed_detail": "recur 固化证据核实通过：规则号 M-R38"
     },
     {
       "skill": "ecosys-conductor",
@@ -375,7 +427,9 @@
       "created": "2026-10-18 11:10",
       "status": "done",
       "resolved_note": "已固化：rules_cmd.py 统一规则增删查改+版本化，复发源头已收口",
-      "resolved": "2026-10-18 处理批次"
+      "resolved": "2026-10-18 处理批次",
+      "landed": "landed",
+      "landed_detail": "recur 固化证据核实通过：文件 /root/.codebuddy/skills/ecosys-conductor/scripts/rules_cmd.py"
     },
     {
       "skill": "workbuddy-sheetagent",
@@ -399,7 +453,9 @@
       "created": "2026-10-18 11:10",
       "status": "done",
       "resolved_note": "已固化：core.py _wrap 字段规范+schema 校验，S161-S164 实证",
-      "resolved": "2026-10-18 处理批次"
+      "resolved": "2026-10-18 处理批次",
+      "landed": "landed",
+      "landed_detail": "recur 固化证据核实通过：文件 /root/.codebuddy/skills/tvbox-source-hub/scripts/core.py"
     },
     {
       "skill": "ecosys-conductor",
@@ -411,7 +467,9 @@
       "created": "2026-10-18 11:10",
       "status": "done",
       "resolved_note": "已固化：brake.py 产能比熔断+复盘留痕（S161-S164 实证）",
-      "resolved": "2026-10-18 处理批次"
+      "resolved": "2026-10-18 处理批次",
+      "landed": "landed",
+      "landed_detail": "recur 固化证据核实通过：文件 /root/.codebuddy/skills/ecosys-conductor/scripts/brake.py"
     },
     {
       "skill": "tvbox-interface",
@@ -421,7 +479,13 @@
       "why": "③台账/经验库该类型累计 5 次（阈值≥3），解法应沉淀为规则或工具",
       "source": "recurring 聚类",
       "created": "2026-10-18 11:10",
-      "status": "done"
+      "status": "done",
+      "landed": "none",
+      "landed_detail": "recur 提案无 resolved_note（无固化说明=未固化）",
+      "landed_blocked": "recur 提案无 resolved_note（无固化说明=未固化）",
+      "reopened_at": "2026-10-22",
+      "reopen_reason": "T24 根治：原判据把「已借鉴/已声明」当完成态，按可核实落点重判未落地",
+      "resolved_note": "已落地：tvbox-interface/scripts/pipeline.py 新增 newapi 子命令（v1.2.0），固化 §2→§6 六步链（fetch/health/split/dedup/probe/ingest），任一步失败即停并明说停在哪步；落库门面不可达时报错退出不降级。SKILL.md §1.3 命令表已补行 + 三态纪律块。端到端自测：file:// 迷你包跑到 6/6（--dry），预演写入线路源库 3 条"
     },
     {
       "skill": "tvbox-source-hub",
@@ -432,8 +496,13 @@
       "source": "recurring 聚类",
       "created": "2026-10-18 11:10",
       "status": "done",
-      "resolved_note": "已固化：create_database properties 正确格式+改名回读验证均已进 core/CHANGELOG",
-      "resolved": "2026-10-18 处理批次"
+      "resolved_note": "已落地：tvbox-source-hub/scripts/newlib.py 的 mk_folder / mk_db / mk_doc 三入口＋ build 幂等（newlib_ids.json 命中即复用，损坏 SystemExit(2) 不当首期）。本次核验确认该能力真实存在并被 premium.py init 复用（premium.py 第 6 行注释写明「建库走 newlib 正本（mk_folder/mk_db），不自造通道」）；另补：link.py lib-log 的 --type choices 含「建库建夹」，经验可归档。M-R148 指针：newlib.py mk_folder/mk_db（第 96/107 行调用 create_folder.py / create_database.py）",
+      "resolved": "2026-10-18 处理批次",
+      "landed": "doc",
+      "landed_detail": "recur 的 resolved_note 无可核实落点（已固化：create_database properties 正确格式+改名回读…）——只说了做法",
+      "landed_blocked": "recur 的 resolved_note 无可核实落点（已固化：create_database properties 正确格式+改名回读…）——只说了做法",
+      "reopened_at": "2026-10-22",
+      "reopen_reason": "T24 根治：原判据把「已借鉴/已声明」当完成态，按可核实落点重判未落地"
     },
     {
       "skill": "tvbox-interface",
@@ -443,7 +512,13 @@
       "why": "③台账/经验库该类型累计 3 次（阈值≥3），解法应沉淀为规则或工具",
       "source": "recurring 聚类",
       "created": "2026-10-18 11:10",
-      "status": "done"
+      "status": "done",
+      "landed": "none",
+      "landed_detail": "recur 提案无 resolved_note（无固化说明=未固化）",
+      "landed_blocked": "recur 提案无 resolved_note（无固化说明=未固化）",
+      "reopened_at": "2026-10-22",
+      "reopen_reason": "T24 根治：原判据把「已借鉴/已声明」当完成态，按可核实落点重判未落地",
+      "resolved_note": "已落地：tvbox-interface/scripts/pipeline.py 新增 packin 子命令（v1.2.0），zip 解包取全部 json 成员 / 单 json 直取，逐个按体系归位（_detect_system）后入线路源库；成员失败逐条列出且 fail>0 退出码即 1。自测：迷你包 --dry → 体系 C、3 条、落点 pNwZ9uBOTz6FzRuvu8nryI"
     },
     {
       "skill": "legacy-watchdog",
@@ -501,7 +576,9 @@
       "created": "2026-10-18 14:51",
       "status": "done",
       "resolved_note": "已实现（rows_of 三态）",
-      "resolved_at": "2026-10-18 15:12"
+      "resolved_at": "2026-10-18 15:12",
+      "landed": "landed",
+      "landed_detail": "脚本命中 4 个关键词"
     },
     {
       "skill": "eco-ledger",
@@ -513,7 +590,9 @@
       "created": "2026-10-18 14:51",
       "status": "done",
       "resolved_note": "已实现（SSOT core_ledger）",
-      "resolved_at": "2026-10-18 15:12"
+      "resolved_at": "2026-10-18 15:12",
+      "landed": "landed",
+      "landed_detail": "脚本命中 2 个关键词"
     },
     {
       "skill": "eco-ledger",
@@ -525,7 +604,9 @@
       "created": "2026-10-18 14:51",
       "status": "done",
       "resolved_note": "已实现（分录指纹幂等键）",
-      "resolved_at": "2026-10-18 15:12"
+      "resolved_at": "2026-10-18 15:12",
+      "landed": "landed",
+      "landed_detail": "脚本命中 1 个关键词"
     },
     {
       "skill": "eco-ledger",
@@ -537,7 +618,9 @@
       "created": "2026-10-18 14:51",
       "status": "done",
       "resolved_note": "已吸收 → selftest 活体探针",
-      "resolved_at": "2026-10-18 15:12"
+      "resolved_at": "2026-10-18 15:12",
+      "landed": "landed",
+      "landed_detail": "脚本命中 2 个关键词"
     },
     {
       "skill": "eco-ledger",
@@ -549,7 +632,9 @@
       "created": "2026-10-18 14:51",
       "status": "done",
       "resolved_note": "已实现（试算平衡量化）",
-      "resolved_at": "2026-10-18 15:12"
+      "resolved_at": "2026-10-18 15:12",
+      "landed": "landed",
+      "landed_detail": "脚本命中 1 个关键词"
     },
     {
       "skill": "eco-ledger",
@@ -561,7 +646,9 @@
       "created": "2026-10-18 14:51",
       "status": "done",
       "resolved_note": "已吸收 → selftest 哑巴检测",
-      "resolved_at": "2026-10-18 15:12"
+      "resolved_at": "2026-10-18 15:12",
+      "landed": "landed",
+      "landed_detail": "脚本命中 5 个关键词"
     },
     {
       "skill": "eco-ledger",
@@ -597,7 +684,9 @@
       "created": "2026-10-18 14:51",
       "status": "done",
       "resolved_note": "已实现（post 回读验证+自动已平）",
-      "resolved_at": "2026-10-18 15:12"
+      "resolved_at": "2026-10-18 15:12",
+      "landed": "landed",
+      "landed_detail": "脚本命中 6 个关键词"
     },
     {
       "skill": "automation-task-manager",
@@ -607,7 +696,9 @@
       "why": "跨9技能复用；适用条件：读外部数据基座/DB/文件时",
       "source": "招式库(lend)",
       "created": "2026-10-19 20:45",
-      "status": "pending"
+      "status": "done",
+      "landed": "landed",
+      "landed_detail": "脚本命中 3 个关键词"
     },
     {
       "skill": "automation-task-manager",
@@ -617,7 +708,9 @@
       "why": "跨9技能复用；适用条件：同一常量被多处引用时",
       "source": "招式库(lend)",
       "created": "2026-10-19 20:45",
-      "status": "pending"
+      "status": "done",
+      "landed": "na",
+      "landed_detail": "脚本 0 命中、文档明确给出结论（判定不适用 2 处）——完成态"
     },
     {
       "skill": "automation-task-manager",
@@ -627,7 +720,9 @@
       "why": "跨8技能复用；适用条件：维护白名单/豁免表时",
       "source": "招式库(lend)",
       "created": "2026-10-19 20:45",
-      "status": "pending"
+      "status": "done",
+      "landed": "na",
+      "landed_detail": "脚本 0 命中、文档明确给出结论（判定不适用 2 处）——完成态"
     },
     {
       "skill": "automation-task-manager",
@@ -637,7 +732,9 @@
       "why": "跨8技能复用；适用条件：新增/修改检测器时",
       "source": "招式库(lend)",
       "created": "2026-10-19 20:45",
-      "status": "pending"
+      "status": "done",
+      "landed": "landed",
+      "landed_detail": "脚本命中 1 个关键词"
     },
     {
       "skill": "automation-task-manager",
@@ -647,7 +744,9 @@
       "why": "跨8技能复用；适用条件：评估/体检类指标时",
       "source": "招式库(lend)",
       "created": "2026-10-19 20:45",
-      "status": "pending"
+      "status": "done",
+      "landed": "na",
+      "landed_detail": "脚本 0 命中；文档 1 处叙述均紧贴结论（已借鉴 0、不适用 1）——完成态"
     },
     {
       "skill": "automation-task-manager",
@@ -657,7 +756,9 @@
       "why": "跨8技能复用；适用条件：自检检测器有效性时",
       "source": "招式库(lend)",
       "created": "2026-10-19 20:45",
-      "status": "pending"
+      "status": "done",
+      "landed": "na",
+      "landed_detail": "脚本 0 命中、文档明确给出结论（判定不适用 1 处）——完成态"
     },
     {
       "skill": "automation-task-manager",
@@ -667,7 +768,9 @@
       "why": "跨6技能复用；适用条件：跨技能共享逻辑时",
       "source": "招式库(lend)",
       "created": "2026-10-19 20:45",
-      "status": "pending"
+      "status": "done",
+      "landed": "na",
+      "landed_detail": "脚本 0 命中、文档明确给出结论（判定不适用 1 处）——完成态"
     },
     {
       "skill": "automation-task-manager",
@@ -677,7 +780,9 @@
       "why": "跨5技能复用；适用条件：目标无删除能力时",
       "source": "招式库(lend)",
       "created": "2026-10-19 20:45",
-      "status": "pending"
+      "status": "done",
+      "landed": "na",
+      "landed_detail": "脚本 0 命中、文档明确给出结论（判定不适用 2 处）——完成态"
     },
     {
       "skill": "learn-hub",
@@ -687,7 +792,9 @@
       "why": "跨8技能复用；适用条件：维护白名单/豁免表时",
       "source": "招式库(lend)",
       "created": "2026-10-19 20:45",
-      "status": "pending"
+      "status": "done",
+      "landed": "landed",
+      "landed_detail": "脚本命中 1 个关键词"
     },
     {
       "skill": "learn-hub",
@@ -697,7 +804,9 @@
       "why": "跨8技能复用；适用条件：评估/体检类指标时",
       "source": "招式库(lend)",
       "created": "2026-10-19 20:45",
-      "status": "pending"
+      "status": "done",
+      "landed": "doc",
+      "landed_detail": "脚本 0 命中；1 处在讲做法且附近无结论（另有 0 处被结论覆盖）——以叙述为准，可能有未做部分"
     },
     {
       "skill": "learn-hub",
@@ -707,7 +816,9 @@
       "why": "跨8技能复用；适用条件：自检检测器有效性时",
       "source": "招式库(lend)",
       "created": "2026-10-19 20:45",
-      "status": "pending"
+      "status": "done",
+      "landed": "landed",
+      "landed_detail": "CHANGELOG 声明实现位置，指针核实通过（scripts/learn.py）"
     },
     {
       "skill": "learn-hub",
@@ -717,7 +828,9 @@
       "why": "跨6技能复用；适用条件：跨技能共享逻辑时",
       "source": "招式库(lend)",
       "created": "2026-10-19 20:45",
-      "status": "pending"
+      "status": "done",
+      "landed": "na",
+      "landed_detail": "脚本 0 命中、文档明确给出结论（判定不适用 1 处）——完成态"
     },
     {
       "skill": "learn-hub",
@@ -727,7 +840,9 @@
       "why": "跨5技能复用；适用条件：目标无删除能力时",
       "source": "招式库(lend)",
       "created": "2026-10-19 20:45",
-      "status": "pending"
+      "status": "done",
+      "landed": "na",
+      "landed_detail": "脚本 0 命中、文档明确给出结论（判定不适用 2 处）——完成态"
     },
     {
       "skill": "learn-hub",
@@ -737,7 +852,473 @@
       "why": "跨4技能复用；适用条件：任何写库/写文件/写云端后",
       "source": "招式库(lend)",
       "created": "2026-10-19 20:45",
-      "status": "pending"
+      "status": "done",
+      "landed": "landed",
+      "landed_detail": "脚本命中 5 个关键词"
+    },
+    {
+      "skill": "ecosys-conductor",
+      "type": "recur",
+      "ref": "生态治理",
+      "what": "复发问题「生态治理」13 次 → 需固化进技能",
+      "why": "③台账/经验库该类型累计 13 次（阈值≥3），解法应沉淀为规则或工具",
+      "source": "recurring 聚类",
+      "created": "2026-10-20 19:01",
+      "status": "done",
+      "resolved_note": "解法已固化：治理闭环规则 M-R128（八段交付闭环）+ M-R147（欠账全程闭环）+ M-R144（新规则三关）入册 rules_registry.json 并注入 user_habit_brief.md，break 熔断与欠账扫描在 SKILL.md 流程内强制执行",
+      "landed": "landed",
+      "landed_detail": "recur 固化证据核实通过：规则号 M-R128",
+      "landed_blocked": "none：recur 提案无 resolved_note（无固化说明=未固化）",
+      "reject_note": ""
+    },
+    {
+      "skill": "ecosys-conductor",
+      "type": "recur",
+      "ref": "查询答疑",
+      "what": "复发问题「查询答疑」7 次 → 需固化进技能",
+      "why": "③台账/经验库该类型累计 7 次（阈值≥3），解法应沉淀为规则或工具",
+      "source": "recurring 聚类",
+      "created": "2026-10-20 19:01",
+      "status": "done",
+      "resolved_note": "解法已固化：答疑口径统一走 user_habit_brief.md（M-R109 短代号/M-R110 语言铁律等交互规则）+ rules_registry.json 规则册单查，先读习惯快照再答复，规则号在册可查",
+      "landed": "landed",
+      "landed_detail": "recur 固化证据核实通过：规则号 M-R109",
+      "landed_blocked": "none：recur 提案无 resolved_note（无固化说明=未固化）",
+      "reject_note": ""
+    },
+    {
+      "skill": "library",
+      "type": "move",
+      "ref": "T-I",
+      "what": "吸收通用招式 [T-I] 写路径「写后回读验证」（写了≠写成了）",
+      "why": "跨11技能复用；适用条件：任何写库/写文件/写云端后",
+      "source": "招式库(lend)",
+      "created": "2026-10-25 16:22",
+      "status": "done",
+      "landed": "landed",
+      "landed_detail": "脚本命中 4 个关键词"
+    },
+    {
+      "skill": "library",
+      "type": "move",
+      "ref": "T-F",
+      "what": "吸收通用招式 [T-F] 机械量化替代人工估算",
+      "why": "跨10技能复用；适用条件：评估/体检类指标时",
+      "source": "招式库(lend)",
+      "created": "2026-10-25 16:22",
+      "status": "done",
+      "landed": "landed",
+      "landed_detail": "脚本命中 1 个关键词"
+    },
+    {
+      "skill": "tvbox-source-hub",
+      "type": "recur",
+      "ref": "上传入库",
+      "what": "复发问题「上传入库」4 次 → 需固化进技能",
+      "why": "④台账/经验库该类型累计 4 次（阈值≥3），解法应沉淀为规则或工具",
+      "source": "recurring 聚类",
+      "created": "2026-10-25 17:12",
+      "status": "done",
+      "resolved_note": "解法已固化：建库/入库统一走 scripts/newlib.py（mk_folder/mk_db 能力），上传入库操作收敛到该模块并在 SKILL.md 流程引用",
+      "landed": "landed",
+      "landed_detail": "recur 固化证据核实通过：文件 /root/.codebuddy/skills/tvbox-source-hub/scripts/newlib.py",
+      "landed_blocked": "none：recur 提案无 resolved_note（无固化说明=未固化）"
+    },
+    {
+      "skill": "tvbox-source-hub",
+      "type": "recur",
+      "ref": "分页查询",
+      "what": "复发问题「分页查询」3 次 → 需固化进技能",
+      "why": "④台账/经验库该类型累计 3 次（阈值≥3），解法应沉淀为规则或工具",
+      "source": "recurring 聚类",
+      "created": "2026-10-25 17:12",
+      "status": "done",
+      "resolved_note": "解法已固化：分页查询属「记录读写」固化的子集，统一走 scripts/core.py rows_of（三态契约+分页+SSOT，M-R38 单一事实源），禁止各处自写分页循环",
+      "landed": "landed",
+      "landed_detail": "recur 固化证据核实通过：规则号 M-R38",
+      "landed_blocked": "none：recur 提案无 resolved_note（无固化说明=未固化）"
+    },
+    {
+      "skill": "automation-task-manager",
+      "type": "cross",
+      "ref": "T-J",
+      "what": "跨技能学习：借鉴 [T-J] 高危schema变更先在测试库演练",
+      "why": "跨技能学习：字段级 schema 变更（枚举增删/改类型/重建字段）前 场景可借鉴",
+      "source": "cross-learn 队列",
+      "created": "2026-10-25 17:12",
+      "status": "done"
+    },
+    {
+      "skill": "eco-ledger",
+      "type": "cross",
+      "ref": "T-J",
+      "what": "跨技能学习：借鉴 [T-J] 高危schema变更先在测试库演练",
+      "why": "跨技能学习：字段级 schema 变更（枚举增删/改类型/重建字段）前 场景可借鉴",
+      "source": "cross-learn 队列",
+      "created": "2026-10-25 17:12",
+      "status": "done"
+    },
+    {
+      "skill": "ecosys-conductor",
+      "type": "cross",
+      "ref": "T-J",
+      "what": "跨技能学习：借鉴 [T-J] 高危schema变更先在测试库演练",
+      "why": "跨技能学习：字段级 schema 变更（枚举增删/改类型/重建字段）前 场景可借鉴",
+      "source": "cross-learn 队列",
+      "created": "2026-10-25 17:12",
+      "status": "done"
+    },
+    {
+      "skill": "learn-hub",
+      "type": "cross",
+      "ref": "T-J",
+      "what": "跨技能学习：借鉴 [T-J] 高危schema变更先在测试库演练",
+      "why": "跨技能学习：字段级 schema 变更（枚举增删/改类型/重建字段）前 场景可借鉴",
+      "source": "cross-learn 队列",
+      "created": "2026-10-25 17:12",
+      "status": "done"
+    },
+    {
+      "skill": "legacy-watchdog",
+      "type": "cross",
+      "ref": "T-J",
+      "what": "跨技能学习：借鉴 [T-J] 高危schema变更先在测试库演练",
+      "why": "跨技能学习：字段级 schema 变更（枚举增删/改类型/重建字段）前 场景可借鉴",
+      "source": "cross-learn 队列",
+      "created": "2026-10-25 17:12",
+      "status": "done"
+    },
+    {
+      "skill": "library",
+      "type": "cross",
+      "ref": "T-J",
+      "what": "跨技能学习：借鉴 [T-J] 高危schema变更先在测试库演练",
+      "why": "跨技能学习：字段级 schema 变更（枚举增删/改类型/重建字段）前 场景可借鉴",
+      "source": "cross-learn 队列",
+      "created": "2026-10-25 17:12",
+      "status": "done"
+    },
+    {
+      "skill": "skill-evolution",
+      "type": "cross",
+      "ref": "T-J",
+      "what": "跨技能学习：借鉴 [T-J] 高危schema变更先在测试库演练",
+      "why": "跨技能学习：字段级 schema 变更（枚举增删/改类型/重建字段）前 场景可借鉴",
+      "source": "cross-learn 队列",
+      "created": "2026-10-25 17:12",
+      "status": "done"
+    },
+    {
+      "skill": "tvbox-inspect",
+      "type": "cross",
+      "ref": "T-J",
+      "what": "跨技能学习：借鉴 [T-J] 高危schema变更先在测试库演练",
+      "why": "跨技能学习：字段级 schema 变更（枚举增删/改类型/重建字段）前 场景可借鉴",
+      "source": "cross-learn 队列",
+      "created": "2026-10-25 17:12",
+      "status": "done"
+    },
+    {
+      "skill": "tvbox-interface",
+      "type": "cross",
+      "ref": "T-J",
+      "what": "跨技能学习：借鉴 [T-J] 高危schema变更先在测试库演练",
+      "why": "跨技能学习：字段级 schema 变更（枚举增删/改类型/重建字段）前 场景可借鉴",
+      "source": "cross-learn 队列",
+      "created": "2026-10-25 17:12",
+      "status": "done"
+    },
+    {
+      "skill": "tvbox-janitor",
+      "type": "cross",
+      "ref": "T-J",
+      "what": "跨技能学习：借鉴 [T-J] 高危schema变更先在测试库演练",
+      "why": "跨技能学习：字段级 schema 变更（枚举增删/改类型/重建字段）前 场景可借鉴",
+      "source": "cross-learn 队列",
+      "created": "2026-10-25 17:12",
+      "status": "done"
+    },
+    {
+      "skill": "tvbox-source-blacklist",
+      "type": "cross",
+      "ref": "T-J",
+      "what": "跨技能学习：借鉴 [T-J] 高危schema变更先在测试库演练",
+      "why": "跨技能学习：字段级 schema 变更（枚举增删/改类型/重建字段）前 场景可借鉴",
+      "source": "cross-learn 队列",
+      "created": "2026-10-25 17:12",
+      "status": "done"
+    },
+    {
+      "skill": "tvbox-source-hub",
+      "type": "cross",
+      "ref": "T-J",
+      "what": "跨技能学习：借鉴 [T-J] 高危schema变更先在测试库演练",
+      "why": "跨技能学习：字段级 schema 变更（枚举增删/改类型/重建字段）前 场景可借鉴",
+      "source": "cross-learn 队列",
+      "created": "2026-10-25 17:12",
+      "status": "done"
+    },
+    {
+      "skill": "unfinished-audit",
+      "type": "cross",
+      "ref": "T-J",
+      "what": "跨技能学习：借鉴 [T-J] 高危schema变更先在测试库演练",
+      "why": "跨技能学习：字段级 schema 变更（枚举增删/改类型/重建字段）前 场景可借鉴",
+      "source": "cross-learn 队列",
+      "created": "2026-10-25 17:12",
+      "status": "done"
+    },
+    {
+      "skill": "automation-task-manager",
+      "type": "cross",
+      "ref": "T-K",
+      "what": "跨技能学习：借鉴 [T-K] 批量写入大payload必分块（25条为界）",
+      "why": "跨技能学习：批量写库 >25 条时 场景可借鉴",
+      "source": "cross-learn 队列",
+      "created": "2026-10-25 17:12",
+      "status": "done"
+    },
+    {
+      "skill": "eco-ledger",
+      "type": "cross",
+      "ref": "T-K",
+      "what": "跨技能学习：借鉴 [T-K] 批量写入大payload必分块（25条为界）",
+      "why": "跨技能学习：批量写库 >25 条时 场景可借鉴",
+      "source": "cross-learn 队列",
+      "created": "2026-10-25 17:12",
+      "status": "done"
+    },
+    {
+      "skill": "ecosys-conductor",
+      "type": "cross",
+      "ref": "T-K",
+      "what": "跨技能学习：借鉴 [T-K] 批量写入大payload必分块（25条为界）",
+      "why": "跨技能学习：批量写库 >25 条时 场景可借鉴",
+      "source": "cross-learn 队列",
+      "created": "2026-10-25 17:12",
+      "status": "done"
+    },
+    {
+      "skill": "learn-hub",
+      "type": "cross",
+      "ref": "T-K",
+      "what": "跨技能学习：借鉴 [T-K] 批量写入大payload必分块（25条为界）",
+      "why": "跨技能学习：批量写库 >25 条时 场景可借鉴",
+      "source": "cross-learn 队列",
+      "created": "2026-10-25 17:12",
+      "status": "done"
+    },
+    {
+      "skill": "legacy-watchdog",
+      "type": "cross",
+      "ref": "T-K",
+      "what": "跨技能学习：借鉴 [T-K] 批量写入大payload必分块（25条为界）",
+      "why": "跨技能学习：批量写库 >25 条时 场景可借鉴",
+      "source": "cross-learn 队列",
+      "created": "2026-10-25 17:12",
+      "status": "done"
+    },
+    {
+      "skill": "library",
+      "type": "cross",
+      "ref": "T-K",
+      "what": "跨技能学习：借鉴 [T-K] 批量写入大payload必分块（25条为界）",
+      "why": "跨技能学习：批量写库 >25 条时 场景可借鉴",
+      "source": "cross-learn 队列",
+      "created": "2026-10-25 17:12",
+      "status": "done"
+    },
+    {
+      "skill": "skill-evolution",
+      "type": "cross",
+      "ref": "T-K",
+      "what": "跨技能学习：借鉴 [T-K] 批量写入大payload必分块（25条为界）",
+      "why": "跨技能学习：批量写库 >25 条时 场景可借鉴",
+      "source": "cross-learn 队列",
+      "created": "2026-10-25 17:12",
+      "status": "done"
+    },
+    {
+      "skill": "tvbox-inspect",
+      "type": "cross",
+      "ref": "T-K",
+      "what": "跨技能学习：借鉴 [T-K] 批量写入大payload必分块（25条为界）",
+      "why": "跨技能学习：批量写库 >25 条时 场景可借鉴",
+      "source": "cross-learn 队列",
+      "created": "2026-10-25 17:12",
+      "status": "done"
+    },
+    {
+      "skill": "tvbox-interface",
+      "type": "cross",
+      "ref": "T-K",
+      "what": "跨技能学习：借鉴 [T-K] 批量写入大payload必分块（25条为界）",
+      "why": "跨技能学习：批量写库 >25 条时 场景可借鉴",
+      "source": "cross-learn 队列",
+      "created": "2026-10-25 17:12",
+      "status": "done"
+    },
+    {
+      "skill": "tvbox-janitor",
+      "type": "cross",
+      "ref": "T-K",
+      "what": "跨技能学习：借鉴 [T-K] 批量写入大payload必分块（25条为界）",
+      "why": "跨技能学习：批量写库 >25 条时 场景可借鉴",
+      "source": "cross-learn 队列",
+      "created": "2026-10-25 17:12",
+      "status": "done"
+    },
+    {
+      "skill": "tvbox-source-hub",
+      "type": "cross",
+      "ref": "T-K",
+      "what": "跨技能学习：借鉴 [T-K] 批量写入大payload必分块（25条为界）",
+      "why": "跨技能学习：批量写库 >25 条时 场景可借鉴",
+      "source": "cross-learn 队列",
+      "created": "2026-10-25 17:12",
+      "status": "done"
+    },
+    {
+      "skill": "unfinished-audit",
+      "type": "cross",
+      "ref": "T-K",
+      "what": "跨技能学习：借鉴 [T-K] 批量写入大payload必分块（25条为界）",
+      "why": "跨技能学习：批量写库 >25 条时 场景可借鉴",
+      "source": "cross-learn 队列",
+      "created": "2026-10-25 17:12",
+      "status": "done"
+    },
+    {
+      "skill": "automation-task-manager",
+      "type": "cross",
+      "ref": "T-L",
+      "what": "跨技能学习：借鉴 [T-L] 「等外部恢复」欠账必配判愈探针",
+      "why": "跨技能学习：欠账属于「等待外部环境恢复」类时 场景可借鉴",
+      "source": "cross-learn 队列",
+      "created": "2026-10-25 17:12",
+      "status": "done"
+    },
+    {
+      "skill": "eco-ledger",
+      "type": "cross",
+      "ref": "T-L",
+      "what": "跨技能学习：借鉴 [T-L] 「等外部恢复」欠账必配判愈探针",
+      "why": "跨技能学习：欠账属于「等待外部环境恢复」类时 场景可借鉴",
+      "source": "cross-learn 队列",
+      "created": "2026-10-25 17:12",
+      "status": "done"
+    },
+    {
+      "skill": "learn-hub",
+      "type": "cross",
+      "ref": "T-L",
+      "what": "跨技能学习：借鉴 [T-L] 「等外部恢复」欠账必配判愈探针",
+      "why": "跨技能学习：欠账属于「等待外部环境恢复」类时 场景可借鉴",
+      "source": "cross-learn 队列",
+      "created": "2026-10-25 17:12",
+      "status": "done"
+    },
+    {
+      "skill": "legacy-watchdog",
+      "type": "cross",
+      "ref": "T-L",
+      "what": "跨技能学习：借鉴 [T-L] 「等外部恢复」欠账必配判愈探针",
+      "why": "跨技能学习：欠账属于「等待外部环境恢复」类时 场景可借鉴",
+      "source": "cross-learn 队列",
+      "created": "2026-10-25 17:12",
+      "status": "done"
+    },
+    {
+      "skill": "skill-evolution",
+      "type": "cross",
+      "ref": "T-L",
+      "what": "跨技能学习：借鉴 [T-L] 「等外部恢复」欠账必配判愈探针",
+      "why": "跨技能学习：欠账属于「等待外部环境恢复」类时 场景可借鉴",
+      "source": "cross-learn 队列",
+      "created": "2026-10-25 17:12",
+      "status": "done"
+    },
+    {
+      "skill": "tvbox-interface",
+      "type": "cross",
+      "ref": "T-L",
+      "what": "跨技能学习：借鉴 [T-L] 「等外部恢复」欠账必配判愈探针",
+      "why": "跨技能学习：欠账属于「等待外部环境恢复」类时 场景可借鉴",
+      "source": "cross-learn 队列",
+      "created": "2026-10-25 17:12",
+      "status": "done"
+    },
+    {
+      "skill": "tvbox-janitor",
+      "type": "cross",
+      "ref": "T-L",
+      "what": "跨技能学习：借鉴 [T-L] 「等外部恢复」欠账必配判愈探针",
+      "why": "跨技能学习：欠账属于「等待外部环境恢复」类时 场景可借鉴",
+      "source": "cross-learn 队列",
+      "created": "2026-10-25 17:12",
+      "status": "done"
+    },
+    {
+      "skill": "tvbox-source-blacklist",
+      "type": "cross",
+      "ref": "T-L",
+      "what": "跨技能学习：借鉴 [T-L] 「等外部恢复」欠账必配判愈探针",
+      "why": "跨技能学习：欠账属于「等待外部环境恢复」类时 场景可借鉴",
+      "source": "cross-learn 队列",
+      "created": "2026-10-25 17:12",
+      "status": "done"
+    },
+    {
+      "skill": "unfinished-audit",
+      "type": "cross",
+      "ref": "T-L",
+      "what": "跨技能学习：借鉴 [T-L] 「等外部恢复」欠账必配判愈探针",
+      "why": "跨技能学习：欠账属于「等待外部环境恢复」类时 场景可借鉴",
+      "source": "cross-learn 队列",
+      "created": "2026-10-25 17:12",
+      "status": "done"
+    },
+    {
+      "skill": "library",
+      "type": "move",
+      "ref": "T-C",
+      "what": "吸收通用招式 [T-C] 白名单用「文件:内容指纹(sha1前10)」做键",
+      "why": "跨10技能复用；适用条件：维护白名单/豁免表时",
+      "source": "招式库(lend)",
+      "created": "2026-10-29 21:02",
+      "status": "done",
+      "resolved_note": "不适用：library 的「白名单」仅见于 page/lint 与 doc 内容校验的内部配置，并非业务豁免表维护场景；改用指纹键收益<改动风险，判 na 完成态",
+      "resolved": "2026-10-29 方案二声明不适用批次",
+      "landed": "na",
+      "landed_detail": "脚本 0 命中、无落地痕迹；用户拍板方案二声明不适用（na 完成态）——完成态"
+    },
+    {
+      "skill": "library",
+      "type": "move",
+      "ref": "T-B",
+      "what": "吸收通用招式 [T-B] 物理搬迁+薄壳import（替代复制）",
+      "why": "跨9技能复用；适用条件：跨技能共享逻辑时",
+      "source": "招式库(lend)",
+      "created": "2026-10-29 21:02",
+      "status": "done",
+      "resolved_note": "不适用：library 各功能模块（attachment/database/doc/drive/export/link/manage/page 等）物理独立，无跨技能共享逻辑搬迁需求，判 na 完成态",
+      "resolved": "2026-10-29 方案二声明不适用批次",
+      "landed": "na",
+      "landed_detail": "脚本 0 命中、无落地痕迹；用户拍板方案二声明不适用（na 完成态）——完成态"
+    },
+    {
+      "skill": "library",
+      "type": "move",
+      "ref": "T-D",
+      "what": "吸收通用招式 [T-D] 移动替代删除（无删除API时降维）",
+      "why": "跨8技能复用；适用条件：目标无删除能力时",
+      "source": "招式库(lend)",
+      "created": "2026-10-29 21:02",
+      "status": "done",
+      "resolved_note": "不适用：library 提供完整删除 API（database/batch_delete_database_records.py、delete_database_field.py 已查实），删除能力缺失前提不成立，移动替代删除降维无意义，判 na 完成态",
+      "resolved": "2026-10-29 方案二声明不适用批次",
+      "landed": "na",
+      "landed_detail": "脚本 0 命中、无落地痕迹；用户拍板方案二声明不适用（na 完成态）——完成态"
     }
   ],
   "cross_queue": [
@@ -768,6 +1349,244 @@
       "name": "写路径「写后回读验证」（写了≠写成了）",
       "why": "跨技能学习：任何写库/写文件/写云端后 场景可借鉴",
       "created": "2026-10-18 11:08"
+    },
+    {
+      "to": "automation-task-manager",
+      "move": "T-J",
+      "name": "高危schema变更先在测试库演练",
+      "why": "跨技能学习：字段级 schema 变更（枚举增删/改类型/重建字段）前 场景可借鉴",
+      "created": "2026-10-25 16:30"
+    },
+    {
+      "to": "eco-ledger",
+      "move": "T-J",
+      "name": "高危schema变更先在测试库演练",
+      "why": "跨技能学习：字段级 schema 变更（枚举增删/改类型/重建字段）前 场景可借鉴",
+      "created": "2026-10-25 16:30"
+    },
+    {
+      "to": "ecosys-conductor",
+      "move": "T-J",
+      "name": "高危schema变更先在测试库演练",
+      "why": "跨技能学习：字段级 schema 变更（枚举增删/改类型/重建字段）前 场景可借鉴",
+      "created": "2026-10-25 16:30"
+    },
+    {
+      "to": "learn-hub",
+      "move": "T-J",
+      "name": "高危schema变更先在测试库演练",
+      "why": "跨技能学习：字段级 schema 变更（枚举增删/改类型/重建字段）前 场景可借鉴",
+      "created": "2026-10-25 16:30"
+    },
+    {
+      "to": "legacy-watchdog",
+      "move": "T-J",
+      "name": "高危schema变更先在测试库演练",
+      "why": "跨技能学习：字段级 schema 变更（枚举增删/改类型/重建字段）前 场景可借鉴",
+      "created": "2026-10-25 16:30"
+    },
+    {
+      "to": "library",
+      "move": "T-J",
+      "name": "高危schema变更先在测试库演练",
+      "why": "跨技能学习：字段级 schema 变更（枚举增删/改类型/重建字段）前 场景可借鉴",
+      "created": "2026-10-25 16:30"
+    },
+    {
+      "to": "skill-evolution",
+      "move": "T-J",
+      "name": "高危schema变更先在测试库演练",
+      "why": "跨技能学习：字段级 schema 变更（枚举增删/改类型/重建字段）前 场景可借鉴",
+      "created": "2026-10-25 16:30"
+    },
+    {
+      "to": "tvbox-inspect",
+      "move": "T-J",
+      "name": "高危schema变更先在测试库演练",
+      "why": "跨技能学习：字段级 schema 变更（枚举增删/改类型/重建字段）前 场景可借鉴",
+      "created": "2026-10-25 16:30"
+    },
+    {
+      "to": "tvbox-interface",
+      "move": "T-J",
+      "name": "高危schema变更先在测试库演练",
+      "why": "跨技能学习：字段级 schema 变更（枚举增删/改类型/重建字段）前 场景可借鉴",
+      "created": "2026-10-25 16:30"
+    },
+    {
+      "to": "tvbox-janitor",
+      "move": "T-J",
+      "name": "高危schema变更先在测试库演练",
+      "why": "跨技能学习：字段级 schema 变更（枚举增删/改类型/重建字段）前 场景可借鉴",
+      "created": "2026-10-25 16:30"
+    },
+    {
+      "to": "tvbox-source-blacklist",
+      "move": "T-J",
+      "name": "高危schema变更先在测试库演练",
+      "why": "跨技能学习：字段级 schema 变更（枚举增删/改类型/重建字段）前 场景可借鉴",
+      "created": "2026-10-25 16:30"
+    },
+    {
+      "to": "tvbox-source-hub",
+      "move": "T-J",
+      "name": "高危schema变更先在测试库演练",
+      "why": "跨技能学习：字段级 schema 变更（枚举增删/改类型/重建字段）前 场景可借鉴",
+      "created": "2026-10-25 16:30"
+    },
+    {
+      "to": "unfinished-audit",
+      "move": "T-J",
+      "name": "高危schema变更先在测试库演练",
+      "why": "跨技能学习：字段级 schema 变更（枚举增删/改类型/重建字段）前 场景可借鉴",
+      "created": "2026-10-25 16:30"
+    },
+    {
+      "to": "automation-task-manager",
+      "move": "T-K",
+      "name": "批量写入大payload必分块（25条为界）",
+      "why": "跨技能学习：批量写库 >25 条时 场景可借鉴",
+      "created": "2026-10-25 16:30"
+    },
+    {
+      "to": "eco-ledger",
+      "move": "T-K",
+      "name": "批量写入大payload必分块（25条为界）",
+      "why": "跨技能学习：批量写库 >25 条时 场景可借鉴",
+      "created": "2026-10-25 16:30"
+    },
+    {
+      "to": "ecosys-conductor",
+      "move": "T-K",
+      "name": "批量写入大payload必分块（25条为界）",
+      "why": "跨技能学习：批量写库 >25 条时 场景可借鉴",
+      "created": "2026-10-25 16:30"
+    },
+    {
+      "to": "learn-hub",
+      "move": "T-K",
+      "name": "批量写入大payload必分块（25条为界）",
+      "why": "跨技能学习：批量写库 >25 条时 场景可借鉴",
+      "created": "2026-10-25 16:30"
+    },
+    {
+      "to": "legacy-watchdog",
+      "move": "T-K",
+      "name": "批量写入大payload必分块（25条为界）",
+      "why": "跨技能学习：批量写库 >25 条时 场景可借鉴",
+      "created": "2026-10-25 16:30"
+    },
+    {
+      "to": "library",
+      "move": "T-K",
+      "name": "批量写入大payload必分块（25条为界）",
+      "why": "跨技能学习：批量写库 >25 条时 场景可借鉴",
+      "created": "2026-10-25 16:30"
+    },
+    {
+      "to": "skill-evolution",
+      "move": "T-K",
+      "name": "批量写入大payload必分块（25条为界）",
+      "why": "跨技能学习：批量写库 >25 条时 场景可借鉴",
+      "created": "2026-10-25 16:30"
+    },
+    {
+      "to": "tvbox-inspect",
+      "move": "T-K",
+      "name": "批量写入大payload必分块（25条为界）",
+      "why": "跨技能学习：批量写库 >25 条时 场景可借鉴",
+      "created": "2026-10-25 16:30"
+    },
+    {
+      "to": "tvbox-interface",
+      "move": "T-K",
+      "name": "批量写入大payload必分块（25条为界）",
+      "why": "跨技能学习：批量写库 >25 条时 场景可借鉴",
+      "created": "2026-10-25 16:30"
+    },
+    {
+      "to": "tvbox-janitor",
+      "move": "T-K",
+      "name": "批量写入大payload必分块（25条为界）",
+      "why": "跨技能学习：批量写库 >25 条时 场景可借鉴",
+      "created": "2026-10-25 16:30"
+    },
+    {
+      "to": "tvbox-source-hub",
+      "move": "T-K",
+      "name": "批量写入大payload必分块（25条为界）",
+      "why": "跨技能学习：批量写库 >25 条时 场景可借鉴",
+      "created": "2026-10-25 16:30"
+    },
+    {
+      "to": "unfinished-audit",
+      "move": "T-K",
+      "name": "批量写入大payload必分块（25条为界）",
+      "why": "跨技能学习：批量写库 >25 条时 场景可借鉴",
+      "created": "2026-10-25 16:30"
+    },
+    {
+      "to": "automation-task-manager",
+      "move": "T-L",
+      "name": "「等外部恢复」欠账必配判愈探针",
+      "why": "跨技能学习：欠账属于「等待外部环境恢复」类时 场景可借鉴",
+      "created": "2026-10-25 16:30"
+    },
+    {
+      "to": "eco-ledger",
+      "move": "T-L",
+      "name": "「等外部恢复」欠账必配判愈探针",
+      "why": "跨技能学习：欠账属于「等待外部环境恢复」类时 场景可借鉴",
+      "created": "2026-10-25 16:30"
+    },
+    {
+      "to": "learn-hub",
+      "move": "T-L",
+      "name": "「等外部恢复」欠账必配判愈探针",
+      "why": "跨技能学习：欠账属于「等待外部环境恢复」类时 场景可借鉴",
+      "created": "2026-10-25 16:30"
+    },
+    {
+      "to": "legacy-watchdog",
+      "move": "T-L",
+      "name": "「等外部恢复」欠账必配判愈探针",
+      "why": "跨技能学习：欠账属于「等待外部环境恢复」类时 场景可借鉴",
+      "created": "2026-10-25 16:30"
+    },
+    {
+      "to": "skill-evolution",
+      "move": "T-L",
+      "name": "「等外部恢复」欠账必配判愈探针",
+      "why": "跨技能学习：欠账属于「等待外部环境恢复」类时 场景可借鉴",
+      "created": "2026-10-25 16:30"
+    },
+    {
+      "to": "tvbox-interface",
+      "move": "T-L",
+      "name": "「等外部恢复」欠账必配判愈探针",
+      "why": "跨技能学习：欠账属于「等待外部环境恢复」类时 场景可借鉴",
+      "created": "2026-10-25 16:30"
+    },
+    {
+      "to": "tvbox-janitor",
+      "move": "T-L",
+      "name": "「等外部恢复」欠账必配判愈探针",
+      "why": "跨技能学习：欠账属于「等待外部环境恢复」类时 场景可借鉴",
+      "created": "2026-10-25 16:30"
+    },
+    {
+      "to": "tvbox-source-blacklist",
+      "move": "T-L",
+      "name": "「等外部恢复」欠账必配判愈探针",
+      "why": "跨技能学习：欠账属于「等待外部环境恢复」类时 场景可借鉴",
+      "created": "2026-10-25 16:30"
+    },
+    {
+      "to": "unfinished-audit",
+      "move": "T-L",
+      "name": "「等外部恢复」欠账必配判愈探针",
+      "why": "跨技能学习：欠账属于「等待外部环境恢复」类时 场景可借鉴",
+      "created": "2026-10-25 16:30"
     }
   ]
 }

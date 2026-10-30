@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 """把语料组装成带书签、可点击目录的 Word 归档文档。"""
-import json, os, re, sys, time
+import json, os, time
 from docx import Document
 from docx.shared import Pt, RGBColor, Cm
-from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_BREAK
-from docx.enum.section import WD_SECTION
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
 

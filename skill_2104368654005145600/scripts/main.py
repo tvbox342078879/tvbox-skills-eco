@@ -1,14 +1,10 @@
 import argparse
 import json
-import os
 import sys
-import tempfile
 import re
 import html
-import time
-import random
 from datetime import datetime, timezone
-from typing import Dict, List, Optional, Any
+from typing import Dict, Any
 
 # --- 主题模板定义 ---
 THEMES = {

@@ -13,7 +13,7 @@
 
 原则: 一个命令完成一件事, 不逐步确认, 减少中间环节。
 """
-import os,sys,json,glob,time,argparse,subprocess,csv,io,re
+import os, sys, json, time, argparse, subprocess, re
 from collections import Counter
 
 LIB='/root/.codebuddy/skills/library'
@@ -267,6 +267,12 @@ def cmd_liblog(a):
          '坑':{'text':a.pit or ''},'解法':{'text':a.fix or ''},
          '可复用点':{'text':a.reuse or ''},'涉及API':{'text':a.api or ''},
          '关联空间':{'text':a.space or ''},'严重度':{'select':a.sev}}
+    # ★ T29 / P052：结构门禁——类型、场景、严重度必须非空，否则拒写
+    if not _guard_required_struct(
+            {'时间': rec['时间']['date'], '操作类型': a.type,
+             '场景': a.scene, '严重度': a.sev},
+            '经验库', ('时间', '操作类型', '场景', '严重度')):
+        return 1
     # S158 收敛：改走 core.add_records_diag —— 统一三态 + properties 结构检测 + 失败原因回传。
     # 原实现（自造 subprocess + `except: pass` 留 ok=False）把「解析不出」折叠成
     # 「写入被拒」，两者都表现为 ok=False，下游分不清是数据问题还是通路问题。
@@ -293,6 +299,9 @@ def cmd_liblog(a):
                 break
             time.sleep(0.6)
         print(f'✅ 资料库经验已写入 {nxt}（{a.scene[:36]}）| 读回验证 {"通过" if v else "⚠️未查到(3次重试后仍无，请独立读回复核)"} | 累计 {len(after)} 条')
+        # ★ S196 补（P019 缺口④）：经验池写入同笔投待过账——此前只有③台账投（LOG-），
+        #   ④经验池每次都靠 reconcile 报差额再人工 writeoff，同一件事两套待遇（M-R38）。
+        _enqueue_post(nxt, len(after), v, account='经验池', prefix='L')
     else:
         print(f'❌ 写入失败：{_why or "（未取得原因）"}')
 
@@ -395,6 +404,25 @@ def _next_seq(rows, field, prefix):
     return f'{prefix}{mx + 1:03d}'
 
 
+def _guard_required_struct(rec, label, fields):
+    """写前结构门禁（T29 / P052）：关键字段不得为空。
+
+    ★ 为什么加这一步：T29 实测台账里有 15 条「类型空 + 时间空 + 严重度空」的记录，
+      而 cmd_log/cmd_liblog 的 argparse 明明有 default 和 choices，命令行产生不了空值。
+      查证结果是那些条目**不是走这两个命令写的**——是手工批量补录，内容抄对了、
+      结构字段全漏。所以缺陷不在"参数缺省"，在"**写入路径可绕过**"。
+
+      本门禁拦的是"结构性空白"：只要走到 cmd_log/cmd_liblog，这三项必须非空。
+      真出现空，宁可不写也不落一条半成品——半成品进了库，事后靠人筛查不出来
+      （15 条里 2 条连编号都没有，只能靠逐条读内容猜）。
+    """
+    bad = [k for k in fields if not str(rec.get(k) or '').strip()]
+    if bad:
+        print(f'❌ 拒绝写入{label}：字段为空 {bad}——结构不完整，宁可不写也不落半成品')
+        return False
+    return True
+
+
 def cmd_log(a):
     sess=rows_of(DB_SESS)
     nxt=_next_seq(sess,'会话编号','S')
@@ -414,6 +442,11 @@ def cmd_log(a):
          '联动包':{'text':a.pkg or ''},
          '新增源数':{'number':a.nsrc},
          '反哺状态':{'select':a.status}}
+    # ★ T29 / P052：结构门禁——类型与摘要必须非空，否则拒写
+    if not _guard_required_struct(
+            {'时间': rec['时间']['date'], '触发类型': a.type, '任务摘要': a.summary},
+            '会话台账', ('时间', '触发类型', '任务摘要')):
+        return 1
     # S158 收敛：同上，走 core.add_records_diag（统一三态 + 失败原因回传）。
     # ★ 同 cmd_liblog：改成走 core 后必须清掉旧局部变量 `out`，否则 else 分支 NameError。
     ok=False
@@ -445,8 +478,8 @@ def cmd_log(a):
         print(f'❌ 写入失败：{_why or "（未取得原因）"}')
 
 
-def _enqueue_post(sid, total, verified):
-    """把「台账 +1」这件事投进账房的待过账队列（P019 缺口③的正解）。
+def _enqueue_post(sid, total, verified, account='会话台账', prefix='LOG'):
+    """把「台账/经验池 +1」这件事投进账房的待过账队列（P019 缺口③的正解）。
 
     ## 为什么是投递而不是直调
     本命令（源枢库）与账房（eco-ledger）是两个技能。直接 `import ledger` 会让
@@ -462,6 +495,9 @@ def _enqueue_post(sid, total, verified):
     **不影响台账写入的结果**。台账已经落库且回读通过，那是既成事实；队列写失败只意味着
     「这笔还没人过账」，账房 `reconcile` 仍会报账实不符——即降级回修复前的行为，
     不会比现在更坏。故此处只告警不抛错。
+
+    ★ S196 补：参数化 account/prefix——此前只给③台账投（LOG-），④经验库（lib-log）
+      没投，每次都要 reconcile 报差额再人工 writeoff。同一机制两库共用（M-R38）。
     """
     try:
         _q = '/root/.codebuddy/skills/eco-ledger/scripts/pending_post.json'
@@ -476,20 +512,20 @@ def _enqueue_post(sid, total, verified):
             print(f'   ⚠️ 待过账队列读取失败（{type(_e).__name__}）——本次未投递，账房将报账实不符（可人工 ledger post 补）')
             return
         _items = _d.setdefault('items', [])
-        _vid = f'LOG-{sid}'
+        _vid = f'{prefix}-{sid}'
         if any(str(it.get('voucher')) == _vid for it in _items):
-            return                    # 幂等：同一会话号不重复投
+            return                    # 幂等：同一编号不重复投
         _items.append({
             'voucher': _vid,
-            'debit': '会话台账',
+            'debit': account,
             'credit': '暂记·无主变动',
             'amount': 1,
             'currency': '记录数',
             'action': '入库',
-            'agent': 'tvbox log',
+            'agent': 'tvbox log' if prefix == 'LOG' else 'tvbox lib-log',
             'at': time.strftime('%Y-%m-%dT%H:%M:00Z', time.gmtime()),
-            'note': f'台账 +1 = {sid}（读回验证{"通过" if verified else "未确认"}，累计{total}）；'
-                    f'来源 P019 缺口③：tvbox log 落台账时同笔自动投递过账',
+            'note': f'{account} +1 = {sid}（读回验证{"通过" if verified else "未确认"}，累计{total}）；'
+                    f'来源 P019 缺口③+S196 补④：写入器落库时同笔自动投递过账',
         })
         tmp = _q + '.tmp'
         with open(tmp, 'w', encoding='utf-8') as _f:
@@ -823,7 +859,6 @@ def cmd_audit(a):
     print('\n【真值】')
     for k,v in truth.items(): print(f'   {k}: {v}')
     # 检查协作约定里的陈旧数字
-    import re,glob,os
     print('\n【文档记载扫描】')
     issues=[]
     # S072：3 篇文档独立，网络拉取并行（M-R41 独立即并行）——原串行 1.15s→并行 ~0.4s

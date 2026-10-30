@@ -29,7 +29,6 @@
 门面失败**不阻断主流程**：打印告警并返回非 0，调用方按需忽略。
 """
 import sys
-import os
 
 CORE_DIR = '/root/.codebuddy/skills/tvbox-source-hub/scripts'
 if CORE_DIR not in sys.path:

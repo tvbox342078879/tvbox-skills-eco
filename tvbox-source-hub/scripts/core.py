@@ -16,12 +16,14 @@ TVBox 联动效率核心（技能↔脚本联动 + 并行加速 的运行时落�
   invalidate(db)         写后让缓存失效，防读到旧值
 """
 import os, sys, json, csv, io, time, subprocess, threading
-from concurrent.futures import ThreadPoolExecutor
 
 sys.path.insert(0, '/root/.codebuddy/skills/tvbox-source-hub/scripts')
 from concurrency import run_bounded as _run_bounded  # noqa: E402  M-R114 统一入口
 
 LIB = '/root/.codebuddy/skills/library'
+# B3：原仓库目录（env 可覆）。替代探源司脚本里硬编码的 /workspace/原仓库库/（T7），
+# 统一收口到共享核心，避免再写死旧路径。
+ORIG_DIR = os.environ.get('TVBOX_ORIG_DIR', '/workspace/原仓库库')
 # S153 会话闸门状态落点：写在技能目录（可被 verify/探针检查），不写 /tmp（重启即失忆）
 GATE_FILE = '/root/.codebuddy/skills/tvbox-source-hub/.session_gate.json'
 GATE_TTL_SEC = 6 * 3600      # 开工登记有效期 6 小时：防「一次开工、无限放行」
@@ -358,12 +360,101 @@ def _read_json(p, default=None):
 
 
 def _write_json(p, obj):
+    """原子写：先写临时文件再 os.replace 替换，避免写途中进程被杀导致半截 JSON（T3）。"""
+    tmp = p + '.tmp_core'
     try:
-        with open(p, 'w', encoding='utf-8') as f:
+        with open(tmp, 'w', encoding='utf-8') as f:
             json.dump(obj, f, ensure_ascii=False, indent=1)
+        os.replace(tmp, p)
         return True
     except Exception:
+        try:
+            if os.path.exists(tmp):
+                os.remove(tmp)
+        except Exception:
+            pass
         return False
+
+
+def http_get(url, timeout=15, ua=None, max_bytes=None, as_text=True,
+             headers=None, method='GET', data=None, ssl_verify=True,
+             return_status=False, err_body=False):
+    """统一 HTTP 取数入口（M-R38 单一事实源 / M-R213 共享核心）。
+
+    带 SSRF 防护（拦截私有/环回/链路本地/保留/组播地址，含 169.254.169.254 元数据）、
+    超时、三态返回。纯新增函数，零影响现有调用（core 原无 http 能力）。
+    返回 (status, payload, reason)：
+      ok      -> ('ok', bytes/str 或 (status, payload), None)
+      blocked -> ('blocked', None, 'ssrf')   # 命中内网/元数据
+      error   -> ('error', None, 'dns'|'scheme'|'timeout'|'conn'|'http_<code>'|'unknown')
+    新增参数（向后兼容，不传=与原行为一致）：
+      headers       追加/覆盖请求头（如 Referer），与默认 UA 合并
+      method/data   支持非 GET 请求
+      ssl_verify    False 时跳过证书校验（spider_verify 等内网自签场景）
+      return_status True 时 payload 改为 (http_status, payload) 元组
+      err_body      True 时 HTTP 错误（非 2xx）payload 改为 (code, 错误正文)，
+                    供调用方保留服务端排障信息（默认不读错误体，行为不变）
+    """
+    import ipaddress
+    import socket
+    import ssl as _ssl
+    import urllib.request
+    import urllib.error
+    import urllib.parse
+    try:
+        parsed = urllib.parse.urlparse(url)
+        if parsed.scheme not in ('http', 'https'):
+            return ('error', None, 'scheme')
+        host = parsed.hostname
+        port = parsed.port or (443 if parsed.scheme == 'https' else 80)
+        try:
+            infos = socket.getaddrinfo(host, port)
+        except Exception:
+            return ('error', None, 'dns')
+        for info in infos:
+            ip = info[4][0]
+            try:
+                addr = ipaddress.ip_address(ip)
+            except ValueError:
+                continue
+            if (addr.is_private or addr.is_loopback or addr.is_link_local
+                    or addr.is_reserved or addr.is_multicast or addr.is_unspecified):
+                return ('blocked', None, 'ssrf')
+        hdrs = {'User-Agent': ua or 'Mozilla/5.0 (TVBox-core)'}
+        if headers:
+            hdrs.update(headers)
+        ctx = None
+        if parsed.scheme == 'https' and not ssl_verify:
+            ctx = _ssl.create_default_context()
+            ctx.check_hostname = False
+            ctx.verify_mode = _ssl.CERT_NONE
+        req = urllib.request.Request(url, data=data, headers=hdrs, method=method)
+        with urllib.request.urlopen(req, timeout=timeout, context=ctx) as resp:
+            status = getattr(resp, 'status', 200)
+            data = resp.read() if max_bytes is None else resp.read(max_bytes)
+        if as_text:
+            try:
+                data = data.decode('utf-8', 'replace')
+            except Exception:
+                pass
+        payload = (status, data) if return_status else data
+        return ('ok', payload, None)
+    except urllib.error.HTTPError as e:
+        if err_body:
+            try:
+                _b = e.read()
+                if as_text:
+                    _b = _b.decode('utf-8', 'replace')
+            except Exception:
+                _b = None
+            return ('error', (e.code, _b), 'http_%d' % e.code)
+        return ('error', None, 'http_%d' % e.code)
+    except urllib.error.URLError as e:
+        if isinstance(getattr(e, 'reason', None), socket.timeout):
+            return ('error', None, 'timeout')
+        return ('error', None, 'conn')
+    except Exception:
+        return ('error', None, 'unknown')
 
 
 def session_open(intent='', _file=None):

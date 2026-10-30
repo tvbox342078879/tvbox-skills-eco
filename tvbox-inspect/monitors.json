@@ -444,7 +444,8 @@
       "cadence": "每次改 probe-hub 前必查",
       "severity": "耗时",
       "action": "先外置一节（M-R77⑥），再改内容；压缩后逐条验证信息没丢（M-R92）",
-      "_archived_reason": "S166 已闭环：§3.11 质量评测（49 行/3207B，论证型、下游零依赖）外置到 references/S110_质量评测.md（3493B，真实存在），SKILL.md 保留脚本表/命令/回填字段/v3 基准分/三条限制结论/四坑名。M-R92 逐条验证 37 个语义单元缺失 0，表格 15 行与代码块 1 个逐行对齐。体积 35605B→34597B，余量 235B→1243B，tvbox size all 11/11 达标。版本升 1.12.1 并 sync-eco 三处对齐"
+      "_archived_reason": "S166 已闭环：§3.11 质量评测（49 行/3207B，论证型、下游零依赖）外置到 references/S110_质量评测.md（3493B，真实存在），SKILL.md 保留脚本表/命令/回填字段/v3 基准分/三条限制结论/四坑名。M-R92 逐条验证 37 个语义单元缺失 0，表格 15 行与代码块 1 个逐行对齐。体积 35605B→34597B，余量 235B→1243B，tvbox size all 11/11 达标。版本升 1.12.1 并 sync-eco 三处对齐",
+      "proven": "S186 实证：tvbox size all 实测 probe-hub/SKILL.md 34346B、余量 1494B，已高于 512B 预警线（原记录 235B 已破线）。判定器直接读 size 同一函数，非恒报。"
     },
     {
       "id": "M38",
@@ -455,7 +456,8 @@
       "cadence": "按需",
       "severity": "轻微",
       "action": "bash automation-task-manager/scripts/scheduler-api.sh delete --id <id>（删除前 get 确认名称含 S165）",
-      "_archived_reason": "S165 已闭环：12851253、12854523 两个一次性探针任务均已 delete，任务列表复查 4 个任务全为 status=1 正式任务，该风险面已不存在"
+      "_archived_reason": "S165 已闭环：12851253、12854523 两个一次性探针任务均已 delete，任务列表复查 4 个任务全为 status=1 正式任务，该风险面已不存在",
+      "proven": "S186 实证：tvbox jobs 实测「共 4 个：启用 4｜停用 0」，两个一次性任务 12851253/12854523 已不在列表（原记录称仍残留）。"
     },
     {
       "id": "M39",
@@ -478,7 +480,8 @@
       "cadence": "按需（下次做平台对接时复查）",
       "severity": "轻微",
       "action": "重测：curl auth.proxy/v2/as/expert/list 看是否仍 403；通了则给 tvbox experts/projects 建真数据面，并把本项归档",
-      "waiting_for": "等 auth.proxy 放开 expert/project 读接口；可重测 curl auth.proxy/v2/as/expert/list"
+      "waiting_for": "等 auth.proxy 放开 expert/project 读接口；可重测 curl auth.proxy/v2/as/expert/list",
+      "proven": "S186 重测确认仍未开通：用 library 官方 http_request 通道实测，对照组 /space/api/agent/v1/query-database 返回 11607「databaseId 必填」（已过白名单、进业务层），而 /v2/as/expert/list、/v2/as/project/list、/space/api/agent/v1/expert/list、/v2/as/agent/v1/as/expert/list 四个候选路径全部 17017「SpaceEngine path is not allowed」——卡在白名单层。属平台侧限制，本地不可修；tvbox discover 已如实标注「⚠️ 无数据 API」。"
     },
     {
       "id": "M41",
@@ -489,7 +492,8 @@
       "cadence": "每次新增技能后",
       "severity": "耗时",
       "action": "接进入口（如本轮给 tvbox 加 jobs 子命令），或在 SKILL.md 里说明它是被外部系统调用、不经 tvbox",
-      "_archived_reason": "S176b 复核闭环：自建技能代码引用已非零——automation-task-manager 在 tvbox 入口×5 + conductor.py×1 共 6 处；learn-hub 13 处。S165 当时的\"零引用\"已由 jobs 子命令接通而消解。"
+      "_archived_reason": "S176b 复核闭环：自建技能代码引用已非零——automation-task-manager 在 tvbox 入口×5 + conductor.py×1 共 6 处；learn-hub 13 处。S165 当时的\"零引用\"已由 jobs 子命令接通而消解。",
+      "proven": "S186 实证：automation-task-manager 在 conductor.py 现有 5 处引用（tvbox jobs 子命令即由其接出），代码层零引用状态已解除，孤岛问题消失。"
     },
     {
       "id": "M42",
@@ -503,10 +507,21 @@
       "proven": "S167 受控实证：注入 references/不存在的探针文件.md → docsync 报 1/27 断链、drift=1、rc=1；撤掉探针 → 26 处全绿、drift=0。抓得到也放得行，不是装健康的哑巴"
     },
     {
+      "id": "M54",
+      "name": "活代码/配置引用陈旧路径或断链（指向 .bak/已归档/不存在的文件，M-R153）",
+      "check": "code_stale_ref",
+      "desc": "比 M42 文档断链更底层：M42 只查 SKILL.md 的 Markdown 链接，本项查活代码/.json/.md 里的绝对路径与相对路径引用是否真实存在、是否指向 .bak/已归档/旧路径。用户 2026-10-25 质问「生态重构后技能面和规则面仍指向旧文件旧路径」的直接应对。判据：绝对路径 /root/.codebuddy/... 不存在或命中 .bak*/__archive__/旧路径即遗留；相对引用同技能内不存在即遗留。排除：平台内置 skill_NNN、通配/省略号/xxx_raw.bin 占位、#noqa、星号导入、backup_repo/share_pack_build 非活动副本。",
+      "threshold": "code_stale_ref 报任意「活代码引用不存在的文件或 .bak/已归档/旧路径」即遗留",
+      "cadence": "随 health/hygiene/coverage 自动跑（常态检查器，每次体检覆盖）",
+      "severity": "耗时",
+      "action": "把引用改指向真实最新文件；确认无回滚需求后回收 .bak；禁止活代码引用 .bak/已归档路径（M-R153）",
+      "proven": "M-R153 受控实证：注入 /root/.codebuddy/skills/X/scripts/Y.py 引用 /root/.codebuddy/nonexist_z.py → code_stale_ref 报 1 断链、rc=1；撤掉引用 → 0 遗留、rc=0。抓得到也放得行（仿 S167 M42 范式）"
+    },
+    {
       "id": "M43",
       "name": "SKILL.md 体积逼近缓冲线（interface / source-hub / probe-hub）",
       "check": "manual_track",
-      "desc": "S167 复查：tvbox-interface/SKILL.md 33467B，硬上限 40960B、缓冲线 35840B，余量仅 2373B；tvbox-source-hub 31768B 余量 4072B 同期逼近。两者都还没破线，但已没有『加一整节』的空间。M37（probe-hub）就是拖到余量 235B 才处理，这轮提前登记，不等破线再动手；另 probe-hub 处置后余量 1243B，仍低于 3072B 预警线，下一段实质内容补进来前需再外置",
+      "desc": "S167 复查：tvbox-interface/SKILL.md 33467B，硬上限 40960B、缓冲线 35840B，余量仅 2373B；tvbox-source-hub 31768B 余量 4072B 同期逼近。两者都还没破线，但已没有『加一整节』的空间。probe-hub 体积问题已随 M37 归档闭环（SKILL.md 现约 41KB/528 行，余量充足，非原误述的 235B/1243B）；本检查器当前重点盯 tvbox-interface / tvbox-source-hub 的余量预警",
       "threshold": "余量 < 3072B 即预警；tvbox size all 报🟡/❌",
       "cadence": "每次改 tvbox-interface 前必查",
       "severity": "耗时",
@@ -540,7 +555,7 @@
     {
       "id": "M46",
       "name": "automation-task-manager 招式借鉴停滞",
-      "check": "balance_weakness",
+      "check": "move_borrow_stale",
       "desc": "automation-task-manager 未采用 8 条跨技能热招（T-A/T-C/T-H…）",
       "threshold": "`tvbox evolve mine --skill automation-task-manager` 输出的『候选新招式』条目数 > 0（存在跨≥2技能却未归类的通用招式）；S179 实测基线 0 条",
       "cadence": "每周（可用上面命令复算，不再依赖人工回忆）",
@@ -551,7 +566,7 @@
     {
       "id": "M47",
       "name": "learn-hub 招式借鉴停滞",
-      "check": "balance_weakness",
+      "check": "move_borrow_stale",
       "desc": "learn-hub 未采用 6 条跨技能热招（T-I/T-C/T-H…）",
       "threshold": "`tvbox evolve mine --skill learn-hub` 输出的『候选新招式』条目数 > 0（存在跨≥2技能却未归类的通用招式）；S179 实测基线 0 条",
       "cadence": "每周（可用上面命令复算，不再依赖人工回忆）",
@@ -569,6 +584,106 @@
       "severity": "耗时",
       "action": "复跑 `tvbox watchdog regress`；红了按项回滚到上一个 commit（git log /root/.codebuddy/skills）。锚点回写补回读校验那一版若出现回读不一致告警，须人工核对锚点文件",
       "proven": "S182 升级点实测：v1.34.5 改了锚点回写路径（加回读校验），属写路径改动，按规矩登记 7 天复核窗；本项为人工跟踪，无自动判定器"
+    },
+    {
+      "id": "M49",
+      "name": "tvbox-source-hub 升级后回退风险",
+      "check": "manual_track",
+      "desc": "tvbox-source-hub 升级到 1.0.59 后若出现功能回退，升级后 7 天内人工复核",
+      "threshold": "",
+      "cadence": "按需",
+      "severity": "耗时",
+      "action": "见登记说明；检查器类型 manual_track"
+    },
+    {
+      "id": "M50",
+      "name": "ecosys-conductor 升级后回退风险",
+      "check": "manual_track",
+      "desc": "ecosys-conductor 升级到 1.79.1 后若出现功能回退，升级后 7 天内人工复核",
+      "threshold": "",
+      "cadence": "按需",
+      "severity": "耗时",
+      "action": "见登记说明；检查器类型 manual_track"
+    },
+    {
+      "id": "M51",
+      "name": "learn-hub 升级后回退风险",
+      "check": "manual_track",
+      "desc": "learn-hub 升级到 1.0.1 后若出现功能回退，升级后 7 天内人工复核",
+      "threshold": "",
+      "cadence": "按需",
+      "severity": "耗时",
+      "action": "见登记说明；检查器类型 manual_track"
+    },
+    {
+      "id": "M52",
+      "name": "规则面健康（死规则/执行面断档）",
+      "check": "rule_liveness",
+      "severity": "阻断",
+      "desc": "跑 python3 /root/.codebuddy/skills/ecosys-conductor/scripts/rule_liveness_scan.py --report，退出码非0即遗留。判据分档：GATE/PROBE须py执行落点、SCAN须py或注入摘要、DOC须文档落点、ask面须全覆。来源：T16规则面彻查2.0",
+      "action": "rule_liveness_scan --report 退出码非0即遗留；死规则>0 按级别补三层（强制面补钩子/提醒面补注入/落点面补文档）",
+      "proven": "2026-10-25 受控单测实证（注入 GATE 级假死规则 M-R9999TEST → 扫描器捕获且退出码=1；还原后 → 清零且无残留）。结论：判定器有效，历史恒零属『对象真实合规』而非判定失效。同日另修：DOC 级改为『不计入活』（防假绿）"
+    },
+    {
+      "id": "M53",
+      "name": "automation-task-manager 升级后回退风险",
+      "check": "manual_track",
+      "desc": "automation-task-manager 升级到 1.4.2 后若出现功能回退，升级后 7 天内人工复核",
+      "threshold": "",
+      "cadence": "按需",
+      "severity": "耗时",
+      "action": "见登记说明；检查器类型 manual_track"
+    },
+    {
+      "id": "M54",
+      "name": "unfinished-audit 升级后回退风险",
+      "check": "manual_track",
+      "desc": "unfinished-audit 升级到 1.4.14 后若出现功能回退，升级后 7 天内人工复核",
+      "threshold": "",
+      "cadence": "按需",
+      "severity": "耗时",
+      "action": "见登记说明；检查器类型 manual_track"
+    },
+    {
+      "id": "M55",
+      "name": "eco-ledger 升级后回退风险",
+      "check": "manual_track",
+      "desc": "eco-ledger 升级到 1.2.6 后若出现功能回退，升级后 7 天内人工复核",
+      "threshold": "",
+      "cadence": "按需",
+      "severity": "耗时",
+      "action": "见登记说明；检查器类型 manual_track"
+    },
+    {
+      "id": "M56",
+      "name": "技能脚本可编译性（link.py 类整文件语法错）",
+      "check": "compile_all",
+      "desc": "全生态技能 scripts/*.py 必须可编译（import 不报错）。2026-10-25 真实案例：tvbox-source-hub/scripts/link.py 因一行 0 缩进错位 import 致整文件 IndentationError，tvbox 整条 link 系命令（brief/status/eco/learn/audit...）集体降级失效，而既有 coverage/liveness 只查落点/检查器存在、从不查能否 import，使该错潜伏多轮。判据：py_compile 任一 .py 失败即遗留。与 M54(code_stale_ref) 互补：M54 查引用陈旧路径，本项查脚本自身能否加载（M-R210）",
+      "threshold": "compile_all 报任意编译失败即遗留",
+      "cadence": "随 health/hygiene/coverage 自动跑（常态检查器，每次体检覆盖）",
+      "severity": "阻断",
+      "action": "定位编译失败文件修正语法错误；禁止提交整文件语法错的 .py（M-R210 动作时门禁 check_compile 已拦）",
+      "proven": "M-R210 受控实证：注入语法错 .py → compile_all 报 1 失败、rc=1；撤掉 → 0 遗留、rc=0。全生态 210 个 .py 实测编译全过（link.py 修复后）。抓得到也放得行（仿 S167 M42 范式）"
+    },
+    {
+      "id": "M57",
+      "name": "library 升级后回退风险",
+      "check": "manual_track",
+      "desc": "library 升级到 0.6.5 后若出现功能回退，升级后 7 天内人工复核",
+      "threshold": "",
+      "cadence": "按需",
+      "severity": "耗时",
+      "action": "见登记说明；检查器类型 manual_track"
+    },
+    {
+      "id": "M58",
+      "name": "tvbox-inspect 升级后回退风险",
+      "check": "manual_track",
+      "desc": "tvbox-inspect 升级到 1.3.32 后若出现功能回退，升级后 7 天内人工复核",
+      "threshold": "",
+      "cadence": "按需",
+      "severity": "耗时",
+      "action": "见登记说明；检查器类型 manual_track"
     }
   ],
   "expansion_log": [
@@ -581,6 +696,7 @@
   ],
   "ws_name_waiver": [
     "工作区常用入口.md",
+    "README_产物索引.md",
     "S1",
     "S2",
     "S3",

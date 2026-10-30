@@ -45,7 +45,6 @@ manifest 读不到、调用超时、退出码语义不明 → 判 `❓无法判�
    · 折叠成成功 → 欠账被悄悄抹掉；
    · 折叠成失败 → 下游 relay 会被一个其实没跑坏的步骤掐断。
 """
-import hashlib
 import json
 import os
 import re
@@ -183,6 +182,53 @@ VERBS = {
         'desc': '调用体检：登记了却没接线、接了线却没人记账、账上记了但命令不存在',
         'io': '→ 缺口清单', 'args': '',
     },
+    # ── S184：自转面补齐（S178 ②③④ 期）────
+    # 为什么必须补这几个动词：A0 实测跑 `tvbus "帮我看看有没有红字"`，
+    # ask 给出的可跑命令是 `tvbox inspect scan` / `tvbox inspect balance`——
+    # **一条都不在总线里**，于是入口只能"看见但不能执行"，更谈不上记账。
+    # 结果就是自转的起点（发现红字）永远要人工敲，链条第一环就断。
+    #
+    # ★ 顺序有意义：`tvbus` 在"技能认得准、命令段没给命令"时，按 **VERBS 书写顺序**
+    #   取该技能第一个"无参数只读"动词。所以 `watch`（看红字）必须排在
+    #   `balance`（看短板）之前——"看红字"是自转链条的第一步，也是用户说
+    #   「生态怎么样 / 有没有问题」时真正想要的那个动作。
+    'watch': {
+        'skill': 'tvbox-inspect', 'cmd': 'inspect scan',
+        'desc': '①看红字：全生态体检，产出当期遗留（自转链条起点）',
+        'io': '→ 遗留清单 + findings_history', 'args': '',
+    },
+    'balance': {
+        'skill': 'tvbox-inspect', 'cmd': 'inspect balance',
+        'desc': '看短板：各技能六维平衡性，谁拖后腿',
+        'io': '→ 薄弱清单', 'args': '',
+    },
+    'triage': {
+        'skill': 'unfinished-audit', 'cmd': 'close',
+        'desc': '②落账派单：跑一遍八源采集→分诊→写进各位 owner 的 backlog（自转第二环）',
+        'io': '→ 新增/存续/消失 + 派单条数', 'args': '',
+    },
+    'status': {
+        'skill': 'unfinished-audit', 'cmd': 'close status',
+        'desc': '看自己名下还欠着谁：未结总账（按 owner 分组、按期限排序）',
+        'io': '→ 未结清单', 'args': '[--all]',
+    },
+    # ★ S184（`tvbus --dry "查一下 … 名下的欠账"` 实测暴露）：**清账司名下没有无参只读动词**。
+    #   它原有 4 个动词全要参数（debt 的 `--source` 虽是可选，但带方括号=不填也能跑，
+    #   而 `tvbus` 只认 `args == ''`，所以它连 debt 都不选）。
+    #   结果是生态里最常问的一句话——「还欠着什么」——**每次都被送到别处**：
+    #   带了技能名就被 ask 送给那个技能，没带就落到 `from-job`（捞定时任务）。
+    #   自转圈的第三环（接单：owner 反查自己名下）因此永远要人工敲完整参数。
+    #   补一个不带参数的只读入口，让"看欠账"这件事终于能被一句话叫到。
+    'backlog': {
+        'skill': 'unfinished-audit', 'cmd': 'close status',
+        'desc': '欠账总览：还欠着什么、谁欠的、哪条快到期（无参，看全部）',
+        'io': '→ 未结清单', 'args': '',
+    },
+    'post': {
+        'skill': 'eco-ledger', 'cmd': 'ledger finalcheck',
+        'desc': '⑤对账终验：库坐标/账实差额/版本/信号源/凭证五卡口（自转终点）',
+        'io': '→ 五门结果', 'args': '',
+    },
 }
 
 # 指标户（与 reconcile 同口径 —— 名字写死在这里，判据仍在 ledger.entry_balances 一处）
@@ -191,6 +237,13 @@ METRICS = {
     'ok': '指标·调用成功',
     'fail': '指标·调用失败',
     'unknown': '指标·调用无法判定',
+    # ★ S184（A1 实测：加 partial 判定后第一次跑就 KeyError: 'partial'）：
+    #   **判据加了、科目表没加**，同一个概念两处落地只改了一处（M-R38 第七次现形）。
+    #   为什么必须单开一户而不是并进 ok/fail：
+    #     partial = "跑成了，但结论不好"（体检有遗留）。并进 ok 会让「生态有 3 个红字」
+    #     在账面上看起来和「体检顺利」一样；并进 fail 会让自转圈下一环把它当"这步没跑成"
+    #     而不去处理红字——两头都是假账。所以它必须自己占一户，可被单独查、单独对账。
+    'partial': '指标·调用部分成功',
 }
 
 ICON = {'ok': '✅', 'fail': '❌', 'partial': '⚠️', 'unknown': '❓'}
@@ -261,50 +314,84 @@ def _sync_reg(after):
 
 
 def _book(bnd, verb, verdict, out, err, elapsed, argv, note=''):
-    """落一笔调用分录。**记账失败不掩盖调用结果**（旁路，但必须说出来）。"""
+    """落一笔调用分录。**记账失败不掩盖调用结果**（旁路，但必须说出来）。
+
+    ★★ S184（用户 2026-10-20 19:30 选定方案 B）：**一次调用只写一个事务**。
+
+    改之前的结构（两条独立通道）：
+        _book()  → 借 跨界·X    ／ 贷 期初·建账基准   （1 笔）
+        _bump('total')          → 借 指标·调用总次数   ／ 贷 期初·建账基准
+        _bump(verdict)          → 借 指标·调用的四态    ／ 贷 期初·建账基准
+    三条分录分三次 post() 提交。后果实测：跨界合计 82 / 指标 81，**差 1 笔**。
+    差的那 1 笔不是"记错"，是**某次调用只走了 _book 没走 _bump**——
+    三次独立提交之间没有任何约束，任何一次异常、任何一条代码路径漏调，
+    账上就少一腿，而且**永远看不出是哪一次**。
+
+    本函数改为 `L.add_entries(...)` **批量一次写入 3 条**（同一批 records）。
+    为什么这就够了：批量写入是**一次请求**，要么全部成功要么全部失败，
+    不再存在"记了跨界忘了指标"的中间态。
+    `_bump` 因此废弃（保留函数体只作历史说明，见其 docstring）。
+    """
     acct = BOUNDARIES[bnd]['acct']
     seq = _seq_today(acct) + 1
     v = _voucher(bnd, seq)
     vrb = VERBS.get(verb, {})
     tail = (out or '').strip().splitlines()
     summ = tail[0][:70] if tail else (err or '')[:70]
-    e = L.make_entry(
-        v, acct, '期初·建账基准', 1, '事项数', '转账',
-        agent=vrb.get('skill', 'eco-ledger'), finalcheck=False,
-        note=f'{ICON.get(verdict, "")}{verdict}｜{verb} → tvbox {" ".join(argv)}｜'
+    _agent = vrb.get('skill', 'eco-ledger')
+    _note = (f'{ICON.get(verdict, "")}{verdict}｜{verb} → tvbox {" ".join(argv)}｜'
              f'{elapsed:.1f}s｜{summ}' + (f'｜{note}' if note else ''))
-    ok, msg = L.post(e)
-    # ★ S179 修（M-R38 第四次）：**记了分录必须回写登记余额**。
-    #   实测本轮 `ledger balance` 出 4 行「⚠️账册不符」：
-    #   跨界·任务 账面 10 / 登记 1、指标·调用总次数 36/27 ……
-    #   根因同 S176 那三处（settle / sync-versions / reconcile）——**消费了分录却不更新账户库**。
-    #   这里是第四处：`_book` 由所有 `ledger call` 与清账司收口共用，
-    #   它不回写，那么每一次跨任务调用都在账本上留一道裂缝。
+
+    # ── 三笔分录一次构造 ────────────────────────────────────────────────
+    # 为什么要拆成 3 条而不是 1 条多腿：账本表结构是「一行=一借一贷」，
+    # 一条分录不能四腿；指标要看总量也要看四态分布，所以是 3 行。
+    # 但它们必须**同一事务**写入——这正是本次修复的全部意义。
+    _metric = verdict if verdict in METRICS else 'unknown'
+    group = [
+        # ① 跨界腿：借 跨界·X ／ 贷 期初·建账基准
+        L.make_entry(v, acct, '期初·建账基准', 1, '事项数', '转账',
+                     agent=_agent, finalcheck=False, note=_note),
+        # ② 总量腿：借 指标·调用总次数 ／ 贷 期初·建账基准
+        L.make_entry(v + '-T', METRICS['total'], '期初·建账基准', 1, '事项数',
+                     '指标波动', agent='eco-ledger', note=f'call total +1｜{_note[:40]}'),
+        # ③ 四态腿：借 指标·调用{ok|部分成功|失败|无法判定} ／ 贷 期初·建账基准
+        L.make_entry(v + '-S', METRICS[_metric], '期初·建账基准', 1, '事项数',
+                     '指标波动', agent='eco-ledger', note=f'call {_metric} +1｜{_note[:40]}'),
+    ]
+
+    # 幂等 + 闸门：走 post 的同一套预检，但**不逐条落库**，只借它的校验。
+    # 为什么不一上来就 add_entries：post 里有币种校验与幂等判重两个必经关卡，
+    # 批量接口没有。先逐条 `dry` 校验，任一不过就整批不写（宁可少记，不可记错）。
+    for e in group:
+        okc, whyc = L.check_acct_currency(e['借方账户']['text'],
+                                          e['贷方账户']['text'], e['币种']['select'])
+        if not okc:
+            return v, False, f'币种校验未过：{whyc}（整批未写入）'
+
+    ok, raw = L.add_entries(L.DB_TOTAL, group)
+    msg = '' if ok else f'批量写入失败：{str(raw)[:120]}'
+
+    # ★ S179 保留：**记了分录必须回写登记余额**。
+    #   消费了分录却不更新账户库，账面与登记就会分叉。
+    #   现在只有一处通道，回写点也只剩这一处（M-R38：一处实现，一处回写）。
     if ok:
         _sync_reg(after=acct)
     return v, ok, msg
 
 
 def _bump(metric, n=1):
-    """指标户 +n（与 reconcile 同口径：余额 = Σ借 − Σ贷）。
+    """★ 已废弃（S184·方案 B）——保留仅为历史说明，新代码**不得调用**。
 
-    ★ S179：`_bump` 与 `_book` 是**两条独立的记账通道**，所以 `_book` 里的回写管不到它。
-      实测：修好 `_book` 后 `跨界·场景` 对上了，但 `指标·调用总次数` 仍差 1——
-      正是 `_bump` 记了分录没回写登记值。**同一判据两处实现，就得两处都修**（M-R38）。
+    它原本是 `_book` 之外的第二条记账通道，专门补指标户。
+    存在这一通道本身就是 bug 源头：一次调用要在两处各记一次，中间无事务约束，
+    漏调一次就少一腿，且无从定位是哪一次（实测跨界 82 / 指标 81）。
+
+    现由 `_book` 用 `L.add_entries()` 一次写 3 条完成。
+    若有人重新启用本函数，`ledger call audit-call` 会立刻报"科目 vs 指标不一致"——
+    那个报警是设计意图，不是误报。
     """
-    acct = METRICS[metric]
-    e = L.make_entry(f'M-{time.strftime("%m%d%H%M%S")}-{metric}', acct,
-                     '期初·建账基准', n, '事项数', '指标波动',
-                     agent='eco-ledger', note=f'call {metric} +{n}')
-    ok = L.post(e)[0]
-    if ok:
-        try:
-            _s, _f, _err = LED.sync_registered_balances(quiet=True)
-            if _f or _err:
-                print(f'   ⚠️ 指标户登记回写未完成（{_err or _f}）——分录已记，账面为准')
-        except Exception as _ex:
-            print(f'   ⚠️ 指标户登记回写异常（{type(_ex).__name__}: {_ex}）——分录已记')
-    return ok
+    raise RuntimeError('_bump 已废弃（S184 方案 B）：指标腿由 _book 批量一次写入，'
+                       '再走独立通道会造成同一笔调用两处记账、无事务约束。')
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -420,12 +507,33 @@ def cmd_call(a):
         if r['err']:
             print(r['err'], file=sys.stderr)
 
-    verdict = 'ok' if r['ok'] is True else ('fail' if r['ok'] is False else 'unknown')
+    # ★ S184（A1 实测撞上）：**「留了痕迹」和「做成了」是两件事，别混成一个退出码。**
+    #   实测 `tvbox ledger call watch`（= tvbox inspect scan）：扫描把 3 项遗留
+    #   一条不落地打了出来、findings_history 也刷新了，但退出码是 1
+    #   （监察司的语义：**有遗留 → exit 1**，这是对的，CI 里就该红）。
+    #   而总线把这记成 `❌ fail` —— 于是「体检发现 3 个问题」被记成「体检失败」。
+    #   后果不是数字难看，是**自转圈会被自己的判定掐断**：
+    #   幂等的"命令成功"和"生态健康"变成同一个比特，下一环无法区分
+    #   "这一步没跑成" 与 "这一步跑成了，但它本来就是要报坏消息的"。
+    #
+    #   口径（不新增字段、不改底层语义）：
+    #     · 退出码 0                                  → ok（正常）
+    #     · 退出码非 0 但**产出了有效正文**且未崩溃      → partial（⚠️ 跑成了，结论不好）
+    #     · 退出码非 0 且无正文 / 超时 / 起不来          → fail / unknown（真的没跑成）
+    #   "有效正文"的判据不靠猜：有 stdout 且不是空壳。脚本崩溃时 stderr 有栈、stdout 空。
+    if r['ok'] is True:
+        verdict = 'ok'
+    elif r['ok'] is False:
+        verdict = 'partial' if (r['out'] or '').strip() else 'fail'
+    else:
+        verdict = 'unknown'
+    if verdict == 'partial':
+        r['err'] = (r['err'] + f'[退出码 {r["rc"]}，但有正文产出 → 判 partial 而非 fail]').strip()
     if not a.no_book:
+        # ★ S184 方案 B：_book 内部已一次写入「跨界腿 + 指标总量腿 + 四态腿」三条，
+        #   原来这里的两次 _bump() 已删除——指标腿不再是独立通道。
         vno, booked, msg = _book(bnd, verb, verdict, r['out'], r['err'],
                                  r['elapsed'], argv, note=a.note)
-        _bump('total')
-        _bump({'ok': 'ok', 'fail': 'fail', 'unknown': 'unknown'}[verdict])
         if not a.quiet:
             print('─' * 66)
             print(f'📒 入账 {vno} → {meta["acct"]}　'
@@ -447,7 +555,15 @@ def cmd_call(a):
             print(f'   {ln}')
     else:
         print(f'{ICON[verdict]} 判定: {verdict}　（{r["elapsed"]:.1f}s，退出码 {r["rc"]}）')
-    return 0 if verdict == 'ok' else 1
+    # ★ S184：返回码必须区分四态，否则 partial 在这一层又被压回 fail。
+    #   下游（tvbus / 定时任务）靠这个码决定"要不要接着处置红字"：
+    #     ok      → 0  没事，继续
+    #     partial → 0  跑成了；**但它是去报坏消息的**，坏消息由正文带走，不由退出码
+    #     fail    → 1  这一步没跑成，得先修这一步
+    #     unknown → 2  说不清，人来判
+    #   为什么 partial 给 0：链式调用（`a && b`）里，体检出问题不该把后续步骤掐掉——
+    #   那正是"自转圈被自己的判定掐断"的原始症状。
+    return {'ok': 0, 'partial': 0, 'fail': 1}.get(verdict, 2)
 
 
 # 关键行判据（S165）：命中即保留。宁少勿滥——quiet 的读者是定时任务与串联脚本，
@@ -706,11 +822,57 @@ def cmd_audit_call(a):
         print('❓ 总账读取失败——无法判定 ②③（不当作"没有调用"）')
         problems.append('总账读不出，②③ 无法判定')
     else:
+        # ★ S185（M-R38 第八次）：**四界余额 ≠ call 次数**。
+        #   旧口径 `n_call` 把四个界的余额全加起来，隐含假设「这四界只有 call 写入」。
+        #   这个假设今天是成立的（实测 83 笔全含 '→ tvbox' 特征），但它没有任何约束保证：
+        #   一旦有人用 `ledger post` 手工记一笔到 `跨界·任务`（writeoff / 认领 / 补账都会），
+        #   n_call 立刻虚高，审计天天报「记账不一致」——**是判据错，不是账错**。
+        #   （这与四态缺 partial 那次同型：把"恰好成立"当成"必然成立"。）
+        #
+        #   改为**结构判据**：只数备注里带 '→ tvbox <动词>' 的分录——那是 `_book` 的
+        #   固定签名（第 ③ 段本来就用同一个正则找命令）。手工记账不会写这个串，
+        #   因此不会被误算成调用。判据从"这片区域都是我的"收窄成"带我签名的才是我的"。
+        #   ★ 放宽风险自查：若 `_book` 改过备注模板导致特征串消失，此处会**少算**（报缺口）
+        #   而不是多算（报平），方向是安全的——宁可误报缺，不可误报平。
+        _rows, _good = L.rows_of(L.DB_TOTAL)
+        if not _good:
+            print('❓ 总账明细读失败——无法判定 ②（不当作记账一致）')
+            problems.append('总账明细读不出，② 无法判定')
+            _rows = None
+        _bnds = [BOUNDARIES[b]['acct'] for b in BOUNDARIES]
+        _pat = re.compile(r'→\s*tvbox\s+[\w\-]+')
         n_call = 0
-        for b in BOUNDARIES:
-            n_call += sum((bal.get(BOUNDARIES[b]['acct']) or {}).values())
+        n_bnd_all = 0          # 四界全部余额（含非 call），仅用于对照展示
+        if _rows is not None:
+            for r in _rows:
+                if (r.get('借方账户') or '') not in _bnds:
+                    continue
+                n_bnd_all += 1
+                if _pat.search(str(r.get('备注') or '')):
+                    n_call += 1
+            n_call = float(n_call); n_bnd_all = float(n_bnd_all)
+        else:
+            for b in BOUNDARIES:
+                n_call += sum((bal.get(BOUNDARIES[b]['acct']) or {}).values())
+            n_bnd_all = n_call
         tot = sum((bal.get(METRICS['total']) or {}).values())
-        print(f'② 调用记账（跨界科目合计 vs 指标户）: 科目 {int(n_call)} 笔 / 指标 {int(tot)} 笔')
+        # ★ S184：四态必须闭合。旧口径只数 ok/fail/unknown，加了 partial 之后
+        #   「ok+fail+unknown ≠ total」会天天报警——这不是账错，是判据没跟着改。
+        parts = {k: int(sum((bal.get(METRICS[k]) or {}).values()))
+                 for k in ('ok', 'partial', 'fail', 'unknown')}
+        # 展示口径：主判据是 n_call（带 → tvbox 签名的调用），四界全量仅在不等时补充说明
+        _extra = (f'　（四界全量 {int(n_bnd_all)} 笔，其中 {int(n_bnd_all - n_call)} 笔非 call 记账，不计入）'
+                  if int(n_bnd_all) != int(n_call) else '')
+        print(f'② 调用记账（call 签名分录 vs 指标户）: 科目 {int(n_call)} 笔 / 指标 {int(tot)} 笔{_extra}')
+        _sf = sum(parts.values())
+        _gap = int(tot) - _sf
+        # ★ S184：差额不是账错，**是判据上线之前的历史**。
+        #   四态细分是 S184 才有的，之前的调用只记了 total 没记是哪一态。
+        #   所以这里只报事实、不判红；判断"账错"的判据仍是上面那条
+        #   「跨界科目合计 vs 指标户」（两处独立通道互校），不是这一条。
+        print(f'   指标细分: ✅{parts["ok"]} ＋ ⚠️{parts["partial"]} ＋ ❌{parts["fail"]} '
+              f'＋ ❓{parts["unknown"]} = {_sf}'
+              + (f'　（另 {_gap} 笔为四态判据上线前的历史调用，只记了 total）' if _gap else ''))
         if int(tot) == 0:
             print('   ⚠️ 还没有任何经统一入口的调用——机制已就位，尚未被用过')
         elif abs(n_call - int(tot)) > 0.5:
@@ -758,9 +920,14 @@ def cmd_metrics(a):
         return int(sum((bal.get(acct) or {}).values()))
 
     print('📊 调用业态\n')
-    tot, ok, fail, unk = (v(METRICS[k]) for k in ('total', 'ok', 'fail', 'unknown'))
+    tot, ok, fail, unk, par = (v(METRICS[k]) for k in ('total', 'ok', 'fail', 'unknown', 'partial'))
     rate = (ok / tot * 100) if tot else 0
-    print(f'  总调用 {tot} 笔　✅{ok}　❌{fail}　❓{unk}　成功率 {rate:.0f}%')
+    print(f'  总调用 {tot} 笔　✅{ok}　⚠️{par}　❌{fail}　❓{unk}　成功率 {rate:.0f}%')
+    # ★ S184：成功率只按 ok 算。partial **不算成功也不算失败**——它是"跑成了但结论不好"，
+    #   混进成功率会让"体检天天报红字"看起来像"系统天天坏"，
+    #   从而诱导人去改判定而不是去改生态（本轮已踩过一次这个心理）。
+    if par:
+        print(f'  ⚠️ 其中 {par} 笔 partial（跑成了但结论不好，如体检有遗留）——不计入成功率，见 `call audit`')
     print()
     print(f'  {"界":<10}{"科目":<14}{"笔数":>6}')
     for b, meta in BOUNDARIES.items():

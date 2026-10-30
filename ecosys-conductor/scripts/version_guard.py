@@ -380,6 +380,32 @@ def main(argv=None):
         print(f'  ⚠️ {len(rows) - len(unreg)}/{len(rows)} 个自建技能三处一致，{len(unreg)} 个生态库未登记')
         return 1
     print(f'  ✅ 全部一致（{len(rows)} 个自建技能）')
+    # ★ P033②（S185 落地）：把「谁被排除、为什么」显式印出来。
+    #   原状：collect() 只收「有 CHANGELOG」的技能，平台技能（library 等）压根不进表——
+    #   而体检输出里**一个字都不提它们**，于是"没报错"被读成"没问题"。
+    #   这是白名单过滤器的典型失效：被筛掉的东西不会喊疼。
+    #   注意：不是要给平台技能做版本核对（它们的版本随官方发布，不归我们管），
+    #   而是要让"不核对"这件事本身是可见的、有理由的。
+    try:
+        _excluded = []
+        for _s in sorted(os.listdir(SKILLS)):
+            _sp = os.path.join(SKILLS, _s, 'SKILL.md')
+            if not os.path.isfile(_sp) or _s in {r['skill'] for r in rows}:
+                continue
+            _has_cl = os.path.isfile(os.path.join(SKILLS, _s, 'CHANGELOG.md'))
+            _excluded.append((_s, '有 SKILL.md 但无 CHANGELOG' if not _has_cl else '未纳入 collect()'))
+        if _excluded:
+            # 平台安装目录形如 skill_2100202160126345216，几十个，逐个列会把本条淹掉。
+            # 按类归并：具名的一次性列清（它们才是需要人判断的），匿名的只报个数。
+            _plat = [s for s, _ in _excluded if s.startswith('skill_')]
+            _named = [(s, w) for s, w in _excluded if not s.startswith('skill_')]
+            print(f'  ℹ️ 另 {len(_excluded)} 个目录不在本表范围（无 CHANGELOG，版本随上游发布，不归本生态核对）：')
+            for _s, _why in _named:
+                print(f'     · {_s}（{_why}）')
+            if _plat:
+                print(f'     · 其余 {len(_plat)} 个为平台安装目录（skill_<id>），同上不核对')
+    except Exception:
+        pass
     return 0
 
 

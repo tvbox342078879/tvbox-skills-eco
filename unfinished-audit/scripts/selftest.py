@@ -217,7 +217,6 @@ def t12():
     更隐蔽的是总数看起来在「变多」，像发现了新欠账，实际全是自己的回声。
     实测症状：同一 title 出现两条（原项 bc2dd17c605d + 副本 dd4ef2ea9de8）。
     """
-    import re
     import collect
     cases = [
         # (样本, 期望被当回声跳过吗, 说明)
@@ -390,6 +389,109 @@ def t16():
           it.get('owner') == 'learn-hub', f"实际 owner={it.get('owner')}")
 
 
+def t17():
+    """T17 承诺↔欠账联动（S193）。
+
+    实测事故：收 S163 token 欠账时，`promise done C006` 打印「已收口」、
+    `promise list` 从 4 条降到 3 条，但 `close mine probe-hub` **仍挂着 1 条**。
+    根因：promises.close() 只改 session_promises.json，从不碰 unfinished_ledger.json，
+    两本账各收各的 → "答应过且已做完"的事要手工收两次，漏一次就永远红着。
+
+    这条自测锁死两件事：
+      ① 收口承诺必须连带清掉**由它派生**的欠账；
+      ② 关联靠 evidence 里的 pid 反查（as_items() 写进去的），
+         且必须排除"正文碰巧含 Cxxx 字样"的无关条目——否则会误伤真欠账。
+    """
+    import dispatch
+
+    # 用假 pid 直接在账本里造两类条目：真关联 / 假关联
+    db = dispatch._load_ledger()
+    real = {'sid': 'zzLINK1', 'signature': 'zzLINK1sig', 'title': '联动测试·真关联',
+            'status': 'open', 'source': 'promise', 'skill': 'ecosys-conductor',
+            'owner': 'ecosys-conductor', 'next': 'tvbox status', 'due': '2026-11-30',
+            'evidence': '/root/.codebuddy/skills/unfinished-audit/session_promises.json C900 承诺于 2026-10-21'}
+    fake = dict(real, sid='zzLINK2', signature='zzLINK2sig', title='联动测试·假关联',
+                evidence='/x/other.json 正文里提到 C900 但不是承诺派生')
+    db['items'] = [x for x in db.get('items', [])
+                   if x.get('sid') not in ('zzLINK1', 'zzLINK2')] + [real, fake]
+    dispatch._save_ledger(db)
+
+    import unfinished_cli
+    linked = unfinished_cli._link_promise_to_ledger('C900', '联动测试证据')
+
+    after = dispatch._load_ledger()
+    ids = {x.get('sid'): x for x in after.get('items', [])}
+    cl = {x.get('sid') for x in after.get('closed', [])}
+
+    check('T17a 承诺收口连带清掉派生欠账', 'zzLINK1' in cl and 'zzLINK1' not in ids,
+          f"closed 含 zzLINK1={'zzLINK1' in cl} / items 仍含={'zzLINK1' in ids}")
+    check('T17b 不误伤正文含同字样但非承诺派生的欠账',
+          'zzLINK2' in ids and 'zzLINK2' not in cl,
+          f"items 仍含 zzLINK2={'zzLINK2' in ids}")
+    check('T17c 联动返回被收口的 sid', linked == ['zzLINK1'], f'实际 {linked}')
+
+    # 现场清理：把造的两条从账本里摘掉（含已结区），不留痕
+    db2 = dispatch._load_ledger()
+    db2['items'] = [x for x in db2.get('items', [])
+                    if x.get('sid') not in ('zzLINK1', 'zzLINK2')]
+    db2['closed'] = [x for x in db2.get('closed', [])
+                     if x.get('sid') not in ('zzLINK1', 'zzLINK2')]
+    dispatch._save_ledger(db2)
+
+
+def t18():
+    """T18 同轮去重 + 未结区查重（S193 · B1/B2）。
+
+    事故链（实测，三处叠加成一条完整假绿）：
+      ① 云端 56 个 record 的「jar地址」都写同一句 → 采集层产出 56 条同 signature；
+      ② sync() 只 `seen.add(sig)`、从不查重 → 账本真落 56 条并列重复项；
+      ③ verify_ledger() 只遍历 `closed`、**完全不查 items** → 打印「✅ 无重复」。
+    当时 `close status` 说 11 条、`verify` 说 66 条 —— 三个数对不上而自检全绿。
+
+    这两条自测锁死：
+      · 同轮同 signature 必须并成一条，且**证据不许丢**（并账不等于砍明细）；
+      · 未结区出现同 signature 多条必须判红（覆盖不到 = 这条规则等于没装）。
+    """
+    import dispatch
+
+    # ---- B1：同轮去重 ----
+    def mk(i, sig='zzDUP1'):
+        return {'sid': f'zzD{i}', 'signature': sig, 'title': '同一件事',
+                'source': 'cloud', 'skill': 'x', 'kind': 'cloud',
+                'owner': None, 'next': '', 'due': '', 'evidence': f'ev{i}'}
+
+    merged = dispatch._dedup_same_round(
+        [mk(1), mk(2), mk(3), {'sid': 'zzO', 'signature': 'zzOTHER',
+                               'title': '另一件事', 'evidence': 'evO'}])
+    check('T18a 同轮同 signature 只留一条', len(merged) == 2, f'实际 {len(merged)} 条')
+    first = [m for m in merged if m.get('signature') == 'zzDUP1'][0]
+    check('T18b 被合并的证据进 evidence_list（并账不丢明细）',
+          sorted(first.get('evidence_list', [])) == ['ev2', 'ev3'],
+          f"实际 {first.get('evidence_list')}")
+
+    # ---- B2：未结区查重 ----
+    db = dispatch._load_ledger()
+    db['items'] = [x for x in db.get('items', [])
+                   if x.get('signature') != 'zzREP']
+    rep = {'sid': 'zzR1', 'signature': 'zzREP', 'title': '重复欠账', 'status': 'open',
+           'source': 'cloud', 'skill': 'x', 'kind': 'cloud', 'owner': 'ecosys-conductor',
+           'next': 'tvbox status', 'due': '2026-12-31', 'evidence': 'e'}
+    db['items'] += [dict(rep), dict(rep, sid='zzR2')]
+    dispatch._save_ledger(db)
+
+    probs, _warns = dispatch.verify_ledger()
+    hit = [p for p in probs if '未结区重复' in p]
+    check('T18c 未结区重复必须判红', bool(hit), f'problems={probs[:2]}')
+    check('T18d 判红文案带条数（不是笼统告警）',
+          any('×2' in p for p in hit), f'实际 {hit}')
+
+    # 现场清理
+    db2 = dispatch._load_ledger()
+    db2['items'] = [x for x in db2.get('items', []) if x.get('signature') != 'zzREP']
+    db2['closed'] = [x for x in db2.get('closed', []) if x.get('signature') != 'zzREP']
+    dispatch._save_ledger(db2)
+
+
 if __name__ == '__main__':
     print('🧪 清账司受控单测（造真数据 → 跑真采集器 → 断言 → 清理）')
     print()
@@ -408,6 +510,8 @@ if __name__ == '__main__':
     t14()
     t15()
     t16()
+    t17()
+    t18()
     _sandbox_off()
     # 现场洁净自证（M-R32 镜像）：单测跑完不得在生产 flow.json 留任何派单垃圾
     _leaked = []

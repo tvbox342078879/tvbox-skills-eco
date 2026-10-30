@@ -147,12 +147,13 @@
   "[已清零 S083] 读表基座三态化（M-R60 续）：core.rows_of 被 21+ 命令共用却把读失败折叠成空表+写入 _MEM 缓存（一次失败毒化整进程）；新增 rows_of_t 三态 (ok,rows)+失败不缓存+rows_of_failed；link 快照失败库显示「—（读取失败）」不写假0；probe_src 删重复 rows_of（M-R38）且失败中止不写空结果；受控单测 6/6；conductor 信号源15 守护",
   "[已清零 S091] manifest 路由补 `tvbox probe search gitlab`（GitLab 项目检索）；search 描述改多平台；对话意图可直接路由到 GitLab 检索（commands 50→51）",
   "[已清零 S093] manifest 补 `tvbox probe monitor forecast` 路由（弃更风险预测）；commands 51→52",
-  "[已清零 S094] 伴随探源司三模块真实落地（probe 1.0.6），manifest 无新增命令（dispatch --dry 为既有命令加参数）"
+  "[已清零 S094] 伴随探源司三模块真实落地（probe 1.0.6），manifest 无新增命令（dispatch --dry 为既有命令加参数）",
+  "[清账司派单 2026-11-01] [M19] tvbox-source-hub 平衡性 82.4｜最弱=进化停滞(29.797630735928262) ｜ sid=4e6bbb13988a ｜ 下一步 tvbox conductor issues ／ 先看 tvbox-source-hub 名下这条为何是红的，再决定修监测项还是修技能"
  ],
  "sop_binding": {
   "authority": "scripts/sop_makejson.json（禁手改）",
   "sync": "scripts/sync_sop.py render（md投影）/ route（症状直达）/ check（覆盖检查）/ add-case（登记）/ promote（升级）",
-  "doc": "/workspace/标准1015_做JSON标准流程SOP.md",
+  "doc": "docs/外置_做JSON标准流程SOP.md",
   "note": "本流程各步的坑与解法/备选路径以SOP权威源为准；复发症状先 sync_sop.py route --symptom 直达已验证解法"
  },
  "iron_rules": {

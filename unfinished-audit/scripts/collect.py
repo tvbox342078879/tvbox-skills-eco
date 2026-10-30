@@ -149,8 +149,76 @@ class CollectError(Exception):
         return f'CollectError({self.source}: {self.reason})'
 
 
+# 行首标签剥离：可能叠加多层（`[M03] [清账司派单 2026-10-27] [扩展点] …`）
+_LEAD_TAG = re.compile(r'^\s*(?:\[[^\]]*\]|（[^）]*）|\([^)]*\))\s*')
+
+# 派单/复述类前缀：这些东西是**谁在什么时候报的**，不是**这件事是什么**。
+# 必须从身份里剥掉，否则同一件事每被转述一次就换一个身份。
+_NOISE_TAG = re.compile(r'\[清账司派单[^\]]*\]|\[遗留[^\]]*\]|清账司派单\s*\d{4}-\d{2}-\d{2}|'
+                        r'sid\s*[=:]\s*[0-9a-f]{6,}')
+
+
+def _clean_title(t):
+    """把标题剥成"这件事本身"，供**算身份**用（不用于展示）。
+
+    ★ S184（A5 第一圈实测撞上，这是账本自增殖的第二处根因）：
+      同一件事「MCP automation_update 就绪前脚本通道兜底」在账上是 **3 条**：
+        · 一条由 `issues_ledger` 采来，title = `[扩展点] 长期方向：MCP …`
+        · 一条由 `backlog` 采来（派单副本被写进对方 flow.json 后又被采回），
+          title = `[M03] [清账司派单 2026-10-27] [扩展点] 长期方向：MCP …`
+        · 一条由 `inspect_findings` 采来，title 又是另一种前缀组合
+      根因不是回声抑制没写（`collect_backlog` 里早就挡了 `[清账司派单]` 前缀），
+      而是**这个副本从别的路径绕回来了**，而身份算法 `_sig` 取 `title[:40]`——
+      前 40 个字里塞满 `[M03] [清账司派单 2026-10-27] [扩展点]` 这类噪声，
+      真正的内容一个字都没进哈希。于是"三个不同的哈希"其实指同一件事，
+      而"两个不同的哈希"也可能因为前缀不同而被当成两件事。
+      → 前 40 字截断 + 噪声前缀 = 身份既会**误合**也会**漏合**，两头都错。
+
+    口径：算身份前先剥行首标签与噪声词，并且**不按字数截断**（哈希不在乎长短）。
+    展示用的 title 仍保留原样——人要看到"谁派的、什么时候"，只是那不参与身份。
+    """
+    s = str(t or '')
+    s = _NOISE_TAG.sub(' ', s)
+    for _ in range(6):          # 多层叠加，逐层剥
+        n = _LEAD_TAG.sub('', s)
+        if n == s:
+            break
+        s = n
+    # ★ 派单副本的**尾注**：`｜ sid=xxxx ｜ 下一步 …`。
+    #   sid 上面已剥成空格，但 `｜ ｜ 下一步 …` 还留着两个分隔符，
+    #   于是同一件事在 backlog 源里多出" ｜ ｜ 下一步 x"这一段，哈希仍然不同。
+    #   剥尾注的理由同前缀：`下一步是什么` 是**处置建议**，不是**这件事是什么**。
+    #   处置建议会随轮次变化（今天说下一步 A，明天改成 B），让它参与身份，
+    #   等于每改一次建议就变成一件新事——账本会被"意见更新"撑爆。
+    s = re.sub(r'\s*[｜|]\s*下一步\s*.*$', '', s)
+    s = re.sub(r'\s*[｜|]\s*$', '', s)
+    s = re.sub(r'[｜|]{2,}', '|', s)
+    s = re.sub(r'\s+', ' ', s).strip(' ｜|')
+    return s
+
+
 def _sig(source, skill, title):
-    raw = f'{source}|{skill}|{title[:40]}'
+    """条目的身份。
+
+    ★ S184（A5 第一圈实测）：`source` **不参与身份**。
+
+      第一版写的是 `f'{source}|{skill}|{title}'`，理由看着很正当——
+      「源不同 = 证据不同，合并应交给分诊之后」。实测这个理由站不住：
+
+        同一件事「MCP automation_update 就绪前脚本通道兜底」在账上变成 **3 条**，
+        分别来自 issues_ledger（问题总账）、backlog（被派单写进对方 flow.json 后又采回）、
+        inspect_findings（监察司 M03 红字）。三个源，三条账，处置一次只清一条，
+        另两条下一轮原样重报——**账本永远清不干净**。
+
+      而"源不同"根本不是三件不同的证据：它是**同一件未结事项被三条通道各看见一次**。
+      把"谁看见的"写进身份，等于规定"每多一条观察通道，账目就翻一倍"。
+      这与用户要的「生态自己转一圈并留账」正好相反：转得越多，账越假。
+
+      口径：**身份 = 这件事是什么**（技能 + 剥噪后的正文）。谁看见的、什么时候看见的，
+      记在 `source` 字段里供追溯，但**不参与身份**。真正该分开的是"不同的事"，
+      不是"同一件事的不同观察"。
+    """
+    raw = f'{skill}|{_clean_title(title)}'
     return hashlib.sha1(raw.encode('utf-8')).hexdigest()[:16]
 
 
@@ -371,27 +439,75 @@ def collect_monitors():
 
 
 # ---------------- ⑤ 云端台账 / 经验库待跟进 ----------------
+# ★ S186 改造（原状见 unfinished_ledger e2437854bccb）：
+#   旧实现只扫本地快照 `core_db_rows.json`，而那个文件里**只有 count 数字和 ts**——
+#   形如 {"pNwZ...": {"count": 620, "ts": "2026-10-18T12:45:29"}}。
+#   它压根没有记录正文，所以正则永远匹配不到 → 该源**恒为 0**，且看不出是
+#   「真没有」还是「结构上不可能有」。实测印证：文件 317 字节、快照已 23.9 小时前，
+#   而直接读云端时技能生态登记库能扫出 2 行真"待跟进"——这 2 条一直被静默漏采。
+#   这正是本文件抬头 M-R80 要防的形态：源看着在跑，其实查不出任何东西。
+#
+#   改法：真读云端记录正文（走 library 官方 http_request，与生产同通道），
+#   拿不到就报 CollectError（计入"无法判定"），**不再**因为读不到而返回空。
+CLOUD_DBS = [
+    ('T4kODtANe7rSrtZTu4sIND', '技能生态登记库'),
+    ('pNwZ9uBOTz6FzRuvu8nryI', '源数据库'),
+    ('8JBrhSwsJ3pnPYtoGLo9XV', '成品源库'),
+    ('hGwE41OpJDOR8CW0sLUwRx', '第三库'),
+]
+
+
+def _cloud_rows(dbid, page_size=200):
+    """真读云端一个库的记录正文。返回 list；失败抛 CollectError（不折叠成空）。"""
+    try:
+        sys.path.insert(0, os.path.join(SKILL_ROOT, 'library'))
+        from _common import http_request, HttpError
+    except Exception as e:
+        raise CollectError('cloud', f'library http_request 不可用（{type(e).__name__}: {e}）')
+    try:
+        r = http_request('POST', '/space/api/agent/v1/query-database',
+                         body={'databaseId': dbid, 'pageSize': page_size}, timeout=25)
+    except HttpError as e:
+        raise CollectError('cloud', f'{dbid} 读取失败 code={e.error_code} {e.backend_message[:60]}')
+    except Exception as e:
+        raise CollectError('cloud', f'{dbid} 读取异常（{type(e).__name__}: {e}）')
+    data = r.get('data') if isinstance(r, dict) else None
+    rows = (data or {}).get('results') if isinstance(data, dict) else None
+    if rows is None and isinstance(r, dict):
+        rows = r.get('results')
+    if rows is None:
+        raise CollectError('cloud', f'{dbid} 返回里没有 results 字段——格式变了，不当空处理')
+    return rows
+
+
 def collect_cloud(root='/root/.codebuddy/skills/ecosys-conductor/scripts'):
-    """静态扫描本地留存的云端行缓存（core_db_rows.json）里「待跟进/待补」记录。
-    真实云端读取失败由信号源17/23 报，本采集器只做本地缓存层扫描；
-    缓存本身缺失 → 空（不是失败，另由信号源自检兜住）。"""
-    fp = os.path.join(root, 'core_db_rows.json')
-    d = _read_json(fp, 'cloud')
-    if d is None:
-        return []
-    items = []
-    stack = [('', d)]
+    """真读云端各库记录正文，扫「待跟进/待补/未闭环/待确认/暂无结论」。
+
+    旧版只扫本地 count 快照 → 恒为 0（详见上方 S186 注释）。
+    三态：读成功且零命中 = 真空（返回 []）；任一库读失败 = CollectError。
+    """
     PAT = re.compile(r'(待跟进|待补|未闭环|待确认|暂无结论)')
-    while stack:
-        path, node = stack.pop()
-        if isinstance(node, dict):
-            for k, v in node.items():
-                stack.append((f'{path}.{k}' if path else str(k), v))
-        elif isinstance(node, list):
-            for i, v in enumerate(node):
-                stack.append((f'{path}[{i}]', v))
-        elif isinstance(node, str) and PAT.search(node) and len(node) < 400:
-            items.append(_item('cloud', 'ecosys-conductor', node, 'cloud', f'{fp} {path}'))
+    items, errs = [], []
+    for dbid, name in CLOUD_DBS:
+        try:
+            rows = _cloud_rows(dbid)
+        except CollectError as e:
+            errs.append(f'{name}({dbid}): {e}')
+            continue
+        for idx, row in enumerate(rows):
+            blob = json.dumps(row, ensure_ascii=False)
+            if not PAT.search(blob):
+                continue
+            # 取最能代表该行的一句话，而不是整行 JSON
+            rid = str(row.get('record_id') or row.get('id') or idx)
+            for k, v in row.items():
+                if isinstance(v, str) and PAT.search(v) and 4 < len(v) < 300:
+                    items.append(_item('cloud', 'ecosys-conductor', v, 'cloud',
+                                       f'{name}({dbid}) record={rid} 字段={k}'))
+                    break
+    if errs and not items:
+        # 全失败才算无法判定；部分成功部分失败则保留已采到的，另由上层打印告警
+        raise CollectError('cloud', '；'.join(errs))
     return items
 
 
@@ -477,6 +593,170 @@ def collect_promises():
     return _pm.as_items()
 
 
+# ---------------- ⑦ 监察司遗留（红字 → 欠账） ----------------
+def _inspect_findings_fp():
+    """监察司遗留历史文件。按候选路径逐个探，**不做"找得到就用、找不到就当空"**。"""
+    for p in (os.path.join(SKILL_ROOT, 'tvbox-inspect', 'findings_history.json'),):
+        if os.path.exists(p):
+            return p
+    return ''
+
+
+def _strip_metric(t):
+    """从监测项文本里剥掉**观测值**，只留"在说哪件事"。
+
+    ★ S184 第四圈实测（账本每轮仍涨 1 条）：M19 的正文是
+
+        ecosys-conductor 平衡性 77.5｜最弱=质量短板(5.0)
+
+      而每跑一次扫描，这个分数都会变（77.5 → 76.5 → …）。
+      把带分数的原文当身份 ⇒ **每轮都是一件"新事"**，账本每轮涨一条，
+      而涨的那条永远是同一件事。
+
+    观测值与事件的区别：
+      · 77.5 是**这一期量出来的数**（会变，变了不代表事情变了）；
+      · 「ecosys-conductor 平衡性不足，短板是质量」是**这件事**（不变）。
+    欠账记的是后者。分数留在 `evidence` 与 `from_period` 里供追溯，
+    但**不参与身份**——否则"指标动了"会被记成"欠了新账"。
+
+    剥法：数字（含小数/百分比）、括号里的量值、以及它们前面的
+    `平衡性/得分/命中率/覆盖率…` 这类**指标名**（指标名+数值是一体的）。
+    """
+    s = str(t or '')
+    # 括号里的纯数值：`(5.0)` `（85%）`。
+    # ★ 必须限定"括号内**只有**数值"——第一版写成 `[\d.%/]+` 就够，
+    #   但顺手加的 `strip(' ｜|()（）')` 把**正常括号**也剥了半边，
+    #   实测把 `（legacy-watchdog）` 剥成 `legacy-watchdog`、两边不一致。
+    #   教训：剥噪的字符集要**逐个说明为什么在里面**，不能图省事一把梭。
+    s = re.sub(r'[（(]\s*[\d.%/]+\s*[）)]', '', s)
+    # 指标名 + 数值：`平衡性 77.5` → `平衡性`（指标名留着，数值是观测）
+    s = re.sub(r'(平衡性|得分|分数)\s*[\d.]+', r'\1', s)
+    # 裸数值（含小数/百分号）。前面必须是空格或行首，避免吃掉 `drpy2` 这类名字里的数字。
+    s = re.sub(r'(?<=[\s｜|(（])[\d]+(?:\.[\d]+)?\s*(?:%|分|条|项|个)?', '', s)
+    s = re.sub(r'\s+', ' ', s).strip(' ｜|')
+    return s
+
+
+def collect_inspect_findings():
+    """★ S184（A0 实测发现的自转断点）：把**监察司当期红字**变成可派单的欠账。
+
+    为什么必须新增这一源：
+      自转链条是「红字 → 派单 → 接单 → 处置 → 收口 → 对账」。
+      A0 实测：`tvbox inspect scan` 报了「ecosys-conductor 平衡性 85.5｜最弱=质量短板」，
+      而 `tvbox close status` 的 21 条未结里**一条都不是它**——
+      逐条核对特征串（`平衡性 85.5` / `质量短板`）命中 0 条。
+      也就是：红字只活在 `findings_history.json` 和报告文本里，
+      清账司的七源里根本没有"监察司遗留"这一路。
+
+      后果不是"少采一条"，而是**整个第三条腿断了**：
+      红字不会派单 → 不会有人接 → 不会被收口 → 下一轮扫描原样再报一遍。
+      M19 这一项已经连续多期出现在报告里，从来没进过任何人的待办。
+      S178 ③期「账驱动：每笔红字有下文」缺的就是这一环，而且缺得很安静——
+      因为 `close` 的输出看着一切正常（21 条未结、四向联动 4/4、账本健康）。
+
+    口径决定（为什么按**最新一期**而不是按累积）：
+      · findings_history 是**滚动快照**（保留最近 30 期），不是台账。
+        按累积采会把"三期前已经自己消失的遗留"重新翻出来派单，等于制造噪声。
+      · 按最新一期采，等于"**现在还在红的**都该有人管"；某一项消失（修好了 /
+        监测项被删了），下一轮它自然不在最新一期里 → 采集不到 → 由 vanished 告警
+        提示人工确认，而不是自动判绿（M-R82：不因"这次没采到"就清账）。
+      · 同一项连续多期存在时，signature 稳定（source+skill+title 不变）→ 幂等，
+        不会每轮新增一条（不会重演 S136 那个"账本自我增殖"）。
+
+    owner 归谁：`skill` 字段取**遗留指向的技能**（不是 tvbox-inspect）——
+      它是"谁该去修"，不是"谁报的"。监察司只负责发现，不负责修（它的 lanes 写得
+      很清楚：管"盯"，不管"修"）。所以 owner 按该技能分诊；
+      遗留指向的技能若在生态里不存在（如系统技能），归 ecosys-conductor 兜底。
+    """
+    fp = _inspect_findings_fp()
+    if not fp:
+        # 文件不存在 ≠ 没有遗留。但也不能因此判红——监察司可能是没跑过。
+        # 三态里这一档归"空"，由 M05 快照新鲜度负责报"从没扫过"。
+        return []
+    d = _read_json(fp, 'inspect_findings')
+    if d is None:
+        return []
+    hist = d.get('history') or []
+    if not hist:
+        return []
+    latest = hist[-1]
+    ts = latest.get('ts', '')
+    keys = latest.get('keys') or {}
+    items = []
+    for _k, v in keys.items():
+        if not isinstance(v, dict):
+            continue
+        mon = str(v.get('monitor') or '?')
+        it_txt = re.sub(r'\s+', ' ', str(v.get('item') or '')).strip()
+        if not it_txt:
+            continue
+        sev = str(v.get('sev') or '')
+        # 遗留指向哪个技能：优先取 item 文本里出现的技能名（结构证据，不猜）。
+        # ★ S184 第一版做错了，此处记录为什么改：原来遍历 `sorted(os.listdir(SKILL_ROOT),
+        #   key=len, reverse=True)` 取**第一个命中**的目录名。实测这个"最长匹配优先"
+        #   在真实数据上直接选错——`tvbox-inspect` 比 `ecosys-conductor` 短，
+        #   排序后被后遍历，于是「ecosys-conductor 平衡性 85.5」被判给了 tvbox-inspect，
+        #   欠账落在发现者名下而不是负责人名下（派单等于派给了报信的人）。
+        #   更隐蔽的是：`skill_2104…` 这类长目录名一旦命中，还会盖住真正的技能名。
+        #   正确做法：按 **item 里出现位置** 取"文本中最早出现的那个技能名"——
+        #   监测项的名字习惯是「<技能> <现象>」，技能名总在句首。
+        sk = 'ecosys-conductor'
+        try:
+            best = None
+            for cand in os.listdir(SKILL_ROOT):
+                if not os.path.isdir(os.path.join(SKILL_ROOT, cand)):
+                    continue
+                pos = it_txt.find(cand)
+                if pos < 0:
+                    continue
+                # 位置优先；同位置取更长的（避免 tvbox-inspect 盖过 tvbox-inspect-x 这类前缀重合）
+                if best is None or pos < best[0] or (pos == best[0] and len(cand) > len(best[1])):
+                    best = (pos, cand)
+            if best:
+                sk = best[1]
+        except Exception:
+            pass
+        its = _item('inspect_findings', sk,
+                    f"[{mon}] {it_txt}", 'code',
+                    f'{fp} 期次 {ts} monitor={mon} sev={sev}')
+        # ★★★ S184（A5 第四圈实测，账本还在涨，这是身份的最后一处错）：
+        #   **期次不能进身份，观测值也不能进身份。**
+        #
+        #   前几版写的是 `f"{ts}|{mon}|{it_txt}"`，理由很正当：不带期次的话，
+        #   一旦 close 过，`sync` 的 `closed_sigs` 会把以后每期都挡掉（"还红着却永远不报"）。
+        #   但带上期次之后走向了另一个极端——实测：
+        #     · M19 每跑一次扫描，平衡分都在变（77.5 → 76.5 → …），
+        #       而 `it_txt` 里写着这个分数 → 每期文本都不同；
+        #     · 期次 `ts` 更是每期都不同。
+        #   两个都进身份 ⇒ **每一期都是"一件新事"**，账本每轮涨一条，
+        #   而涨的那条永远是同一件事（conductor 平衡分低）。
+        #
+        #   正确口径要同时满足两条相反的要求：
+        #     ① 同一件事**跨期仍红** → 必须能被重新报出来（否则收口一次就永久静默）；
+        #     ② 同一件事**跨期仍红** → 必须是**同一条账**（否则账本无限增殖）。
+        #   这两条不冲突——它们说的是两件事：**身份**（是同一件事）与 **期次**
+        #   （这一期还在不在红）。身份里放"是什么"，期次放"哪一期观测的"。
+        #
+        #   所以：
+        #     · 身份 = 剥掉观测值后的项目文本（`_strip_metric`），**不含 ts**。
+        #     · 那"收口一次就永久静默"怎么办？不靠身份挡，靠 **dispatch.sync 的
+        #       `closed_sigs` 规则**挡：它只挡"本期之前就结过、且本期没有重新观测到"的，
+        #       而"本期又红了一次"会带 `from_period` 更新——这条链路由
+        #       `reopen_if_red_again` 负责（见 dispatch）。身份干净，续报由期次字段驱动。
+        its['signature'] = _sig('inspect_findings', sk, f"{mon}|{_strip_metric(it_txt)}")
+        its['sid'] = its['signature'][:12]
+        # ★ S184：把"负责人指向"传给分诊层。
+        #   不加这一步的后果（实测）：kind='code' → ROUTE_TABLE → legacy-watchdog，
+        #   而红字点名的负责人是 ecosys-conductor，监察司只是报信的。
+        #   派给报信人 = 这条永远没人修（收件人看它不关己，负责人又看不到派单）。
+        its['owner_hint'] = sk
+        # proven/阈值等细节留给监察司；这里只保证"红字一定有人管"
+        its['from_monitor'] = mon
+        its['from_period'] = ts
+        items.append(its)
+    return items
+
+
 ALL_SOURCES = [
     ('issues_ledger', collect_issues, '问题总账未结'),
     ('promise',       collect_promises, '会话承诺未收口'),
@@ -485,11 +765,14 @@ ALL_SOURCES = [
     ('monitors',      collect_monitors, '监测项未实证'),
     ('cloud',         collect_cloud, '云端台账/经验库待跟进'),
     ('skillext',      collect_skillext, '技能正文待办标记'),
+    # ★ S184：第八源。七源之外新增——红字必须落成欠账，否则"发现"与"处置"之间
+    #   永远隔着一个人肉搬运动作（S178 ③期「账驱动」的核心缺口）。
+    ('inspect_findings', collect_inspect_findings, '监察司当期红字'),
 ]
 
 
 def collect_all():
-    """跑六源。返回 (items, errors, stats)。
+    """跑全部采集源。返回 (items, errors, stats)。
     **单源失败不影响其它源**（各自独立 try），但失败必须出现在 errors 里被打印出来。"""
     items, errors, stats = [], [], []
     for src, fn, label in ALL_SOURCES:

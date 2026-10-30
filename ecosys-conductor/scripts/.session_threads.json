@@ -1,0 +1,387 @@
+{
+ "next": 40,
+ "threads": {
+  "T1": {
+   "origin": "道长那篇东西有啥值得借鉴的",
+   "parent": null,
+   "status": "完成",
+   "opened": "10-21 20:47",
+   "done_evidence": "S195 吸收材料结案：三判据入库+两份作者文档留档",
+   "closed": "10-21 20:47"
+  },
+  "T2": {
+   "origin": "顺手修 shellcrack 的 dest 名不一致 bug",
+   "parent": "T1",
+   "status": "完成",
+   "opened": "10-21 20:47",
+   "done_evidence": "根因a.op与dest='cmd'脱钩，改读a.cmd删兼容行，status/crack实弹验证过，probe-hub升",
+   "closed": "10-22 00:35",
+   "retro_report": "/workspace/复盘1022_shellcrack修dest名不一致.md",
+   "retro_node": "materials/20261022_file_复盘_T2_复盘1022_shellcrack修"
+  },
+  "T3": {
+   "origin": "学习资料技能上第一个活：资料进库全量去重+去水印，第一步就纯净，再看看还有啥可搞",
+   "parent": null,
+   "status": "完成",
+   "opened": "10-21 21:11",
+   "done_evidence": "8份真实资料全量进库(3txt+5OOXML/PDF)，净化闸16/16、OOXML抽取与reextract常驻，lea",
+   "closed": "10-22 01:31",
+   "retro_report": "/workspace/复盘1022_T3学习资料线收口.md",
+   "retro_node": "materials/20261022_file_复盘_T3_复盘1022_T3学习资料线收口_m"
+  },
+  "T4": {
+   "origin": "道长取经四改造：C嗅探铁律+A模板库+D直播双格式+B配置生成器",
+   "parent": "T3",
+   "status": "完成",
+   "opened": "10-21 22:46",
+   "done_evidence": "M-R141登记+tpl/live2vod+gen_config实测730条筛5条 ｜复盘已进库: 复盘1021_道长取",
+   "closed": "10-21 23:01",
+   "retro_report": "/workspace/复盘1021_道长取经四改造.md",
+   "retro_node": "materials/20261021_file_复盘_T4_复盘1021_道长取经四改造_md"
+  },
+  "T5": {
+   "origin": "语言闸思考面板英文复发，升级A思考块打回+B样本回灌+C全工具说明拦截",
+   "parent": null,
+   "status": "完成",
+   "opened": "10-21 23:16",
+   "done_evidence": "A思考块Stop打回(streak防死循环)+B样本回灌+C全工具拦截；三自测全过+实弹红测4句判定 ｜复盘已进库: 复",
+   "closed": "10-21 23:16",
+   "retro_report": "/workspace/复盘1021_语言闸思考面板三层升级.md",
+   "retro_node": "materials/20261021_file_复盘_T5_复盘1021_语言闸思考面板三层升级"
+  },
+  "T6": {
+   "origin": "源扫描器借鉴乙：pipeline.py 加 CMS 快照还原（code:1+li",
+   "parent": null,
+   "status": "完成",
+   "opened": "10-21 23:24",
+   "done_evidence": "pipeline.py新增cms_restore命令(v1.3.4→1.3.5)：结构判定+来源反推+生成站点过clas",
+   "closed": "10-22 01:40",
+   "retro_report": "/workspace/复盘1022_T6_CMS快照还原上线.md",
+   "retro_node": "materials/20261022_file_复盘_T6_复盘1022_T6_CMS快照还原上"
+  },
+  "T7": {
+   "origin": "源扫描器取经甲+丁：gen_config对齐实测范本六键十字段+三条实证进池",
+   "parent": null,
+   "status": "完成",
+   "opened": "10-21 23:26",
+   "done_evidence": "gen_config六键十字段对齐范本实测核对+经验池S158三条实证+T6挂待办 ｜复盘已进库: 复盘1021_源扫描",
+   "closed": "10-21 23:27",
+   "retro_report": "/workspace/复盘1021_源扫描器取经甲丁落地.md",
+   "retro_node": "materials/20261021_file_复盘_T7_复盘1021_源扫描器取经甲丁落地_"
+  },
+  "T8": {
+   "origin": "建优质实测库：用户实测优选线路专属库+premium.py常驻能力，4k021首",
+   "parent": null,
+   "status": "完成",
+   "opened": "10-22 00:01",
+   "done_evidence": "premium.py四命令入库source-hub(1.0.62)+云端表建成+4k021写入回读1条+科目补登 ｜复盘",
+   "closed": "10-22 00:02",
+   "retro_report": "/workspace/复盘1021_优质实测库建立.md",
+   "retro_node": "materials/20261022_file_复盘_T8_复盘1021_优质实测库建立_md"
+  },
+  "T9": {
+   "origin": "M-R144新规则闭环三关：回应谁的责任之问，机制侧三层设卡",
+   "parent": null,
+   "status": "完成",
+   "opened": "10-22 00:21",
+   "done_evidence": "M-R144入册157条+复盘闸黄牌_m144_flag+五项探针全绿(含注入判红)+摘要体检9项+P037欠账登记 ｜",
+   "closed": "10-22 00:22",
+   "retro_report": "/workspace/复盘1022_新规则闭环三关M-R144.md",
+   "retro_node": "materials/20261022_file_复盘_T9_复盘1022_新规则闭环三关M_R1"
+  },
+  "T10": {
+   "origin": "全量盘点157条规则落点：抓出3条明令规则未注入并补齐+盘点脚本常驻化",
+   "parent": null,
+   "status": "完成",
+   "opened": "10-22 00:25",
+   "done_evidence": "盘点脚本rule_audit_scan.py常驻化，3条明令规则M-R129/137/140补注入habit_brief",
+   "closed": "10-22 00:27",
+   "retro_report": "/workspace/复盘1022_157条规则全量盘点.md",
+   "retro_node": "materials/20261022_file_复盘_T10_复盘1022_157条规则全量盘点"
+  },
+  "T11": {
+   "origin": "其他技能应该也有这个情况，全局查看，一次性解决了（路由触发盲区全局治理）",
+   "parent": null,
+   "status": "完成",
+   "opened": "10-22 01:20",
+   "done_evidence": "623条真实话术扫出344条零命中，四技能补词28个+投影同步，命中279→316；registry补字段rules c",
+   "closed": "10-22 01:20",
+   "retro_report": "/workspace/复盘1022_路由盲区全局治理.md",
+   "retro_node": "materials/20261022_file_复盘_T11_复盘1022_路由盲区全局治理_m"
+  },
+  "T12": {
+   "origin": "T3豁免后补料收齐：用户手发8份+UC清单核账+资料库传Tailscale安装包",
+   "parent": "T3",
+   "status": "完成",
+   "opened": "10-22 02:12",
+   "done_evidence": "四批补料收齐(jc3重发0新增/jc4新增2/jc5新增7/资料库传Tailscale安装包)+UC清单核账18份无缺+",
+   "closed": "10-22 02:12",
+   "retro_report": "/workspace/复盘1022_T3补料收齐与知识树建成.md",
+   "retro_node": "materials/20261022_file_复盘_T12_复盘1022_T3补料收齐与知识树"
+  },
+  "T13": {
+   "origin": "S198根源治理：开工闸挂载+history/ask并读台账（所有新会话从根源知",
+   "parent": null,
+   "status": "完成",
+   "opened": "10-22 02:35",
+   "done_evidence": "onboard_guard注册settings.json并实弹生效(自测5/5)；history/ask并读台账229条",
+   "closed": "10-22 02:37",
+   "retro_report": "/workspace/复盘1022_S198根源治理_开工闸与双库打通.md",
+   "retro_node": "materials/20261022_file_复盘_T13_复盘1022_S198根源治理_开"
+  },
+  "T14": {
+   "origin": "问责：跨会话记忆规则早已立过为何监测不到没人提醒，全量排查死规则并根治",
+   "parent": null,
+   "status": "完成",
+   "opened": "10-22 02:43",
+   "done_evidence": "全量彻查158条：死2条补三关(M-R138/139)、挂级纠正2条(M-R106/L04)、liveness扫描器固化",
+   "closed": "10-22 02:48",
+   "retro_report": "/workspace/复盘1022_T14_死规则彻查与监测失守问责.md",
+   "retro_node": "materials/20261022_file_复盘_T14_复盘1022_T14_死规则彻查与"
+  },
+  "T15": {
+   "origin": "13张内嵌图片文字抽取：读图转写路线收尾",
+   "parent": null,
+   "status": "完成",
+   "opened": "10-22 02:49",
+   "done_evidence": "32张内嵌图读图转写6件全落盘，本轮验读通过：pg包TG10处图标记+接口解密10处+电视教程十法融入正文+vivo两件",
+   "closed": "10-22 08:26",
+   "retro_report": "/workspace/复盘1022_T15_内嵌图片读图转写收口.md",
+   "retro_node": "materials/20261022_file_复盘_T15_复盘1022_T15_内嵌图片读图"
+  },
+  "T16": {
+   "origin": "规则面彻查2.0：让全部158条规则工作起来（提醒面+执行面+落点三层全活）",
+   "parent": null,
+   "status": "完成",
+   "opened": "10-22 02:58",
+   "done_evidence": "规则健康报表v2全绿(强制34+提醒42+落点82全活,ask158/158)；M49监测项登记；执行面映射文档留档；体",
+   "closed": "10-22 03:00",
+   "retro_report": "/workspace/复盘1022_T16_规则面彻查2.0.md",
+   "retro_node": "materials/20261022_file_复盘_T16_复盘1022_T16_规则面彻查2"
+  },
+  "T17": {
+   "origin": "规则面深挖3.0：重复/冲突规则+三册漂移+钩子判据覆盖盲区",
+   "parent": null,
+   "status": "完成",
+   "opened": "10-22 03:03",
+   "done_evidence": "字面重复0；主题簇扫描抓出M-R06/07重复立法已并入退役；status口径归一5条；欠账P038~P041登记；活体",
+   "closed": "10-22 03:05",
+   "retro_report": "/workspace/复盘1022_T17_规则面深挖3.0.md",
+   "retro_node": "materials/20261022_file_复盘_T17_复盘1022_T17_规则面深挖3"
+  },
+  "T18": {
+   "origin": "规则面深挖4.0：钩子自测实跑+探针实跑+总册对账+规则引用死链+时效",
+   "parent": null,
+   "status": "完成",
+   "opened": "10-22 03:07",
+   "done_evidence": "钩子自测16/16实跑全绿；探针45/45(根因=5处版本矛盾收敛后)；引用死链定性归并补absorbs；gate_ho",
+   "closed": "10-22 03:13",
+   "retro_report": "/workspace/复盘1022_T18_规则面深挖4.0.md",
+   "retro_node": "materials/20261022_file_复盘_T18_复盘1022_T18_规则面深挖4"
+  },
+  "T19": {
+   "origin": "规则面深挖5.0：15个恒报检测器逐条复核（真缺陷vs判据恒真）",
+   "parent": null,
+   "status": "完成",
+   "opened": "10-22 03:15",
+   "done_evidence": "14信号源恒报复核：双像单测(注入缺陷→捕获,还原→清零)14/14全绿无一恒报P042关闭，P044机制侧落地p044",
+   "closed": "10-22 03:24",
+   "retro_report": "/workspace/复盘1022_T19_恒报检测器复核与P044并行闸失效治理.md",
+   "retro_node": "materials/20261022_file_复盘_T19_复盘1022_T19_恒报检测器复"
+  },
+  "T20": {
+   "origin": "T20：切不进对话根因深挖——回合收敛真空+并行闸误伤，立M-R146三关全绿，",
+   "parent": null,
+   "status": "完成",
+   "opened": "10-22 08:22",
+   "done_evidence": "实锤两根因：回合收敛真空(全册无回合长度规则,已立M-R146三关全绿,159条)并parallel_guard只数粒度",
+   "closed": "10-22 08:22",
+   "retro_report": "/workspace/复盘1022_T20_切不进对话根因深挖与M-R146回合收敛立法.md",
+   "retro_node": "materials/20261022_file_复盘_T20_复盘1022_T20_切不进对话根"
+  },
+  "T21": {
+   "origin": "T21：维护项四连清 P039明细表补行 P040检查器原生化 P043铁律补行",
+   "parent": null,
+   "status": "完成",
+   "opened": "10-22 08:33",
+   "done_evidence": "四件全验证：明细表补四行并M52切rule_liveness单测实跑全绿并铁律明细补122/123三方一致159条并并行",
+   "closed": "10-22 08:33",
+   "retro_report": "/workspace/复盘1022_T21_维护项四连清.md",
+   "retro_node": "materials/20261022_file_复盘_T21_复盘1022_T21_维护项四连清"
+  },
+  "T22": {
+   "origin": "T22：八段闭环立法——过程暴露当场入账，闸探针模板摘要规则册五处落地，自测4/",
+   "parent": null,
+   "status": "完成",
+   "opened": "10-22 08:45",
+   "done_evidence": "八段闭环五处落地并闸自测4/4并探针实跑过(当场抓出模板顺序错并修正留痕P047)并M-R144回归过并三方一致无漂移(",
+   "closed": "10-22 08:47",
+   "retro_report": "/workspace/复盘1022_T22_八段闭环立法.md",
+   "retro_node": "materials/20261022_file_复盘_T22_复盘1022_T22_八段闭环立法"
+  },
+  "T23": {
+   "origin": "T23：欠账全程闭环四关——ledger_closure执行器+存量回填19处+",
+   "parent": null,
+   "status": "完成",
+   "opened": "10-22 08:58",
+   "done_evidence": "四关自测5/5(无证据拒关/账外编号打回/在账放行/盯梢全过)并存量回填19处audit归零并M-R147入册160条体",
+   "closed": "10-22 08:58",
+   "retro_report": "/workspace/复盘1022_T23_欠账全程闭环四关立法.md",
+   "retro_node": "materials/20261022_file_复盘_T23_复盘1022_T23_欠账全程闭环"
+  },
+  "T24": {
+   "origin": "T24：假完成根治——闸门判据改「声明不是证据」，41条done重判24真落地4",
+   "parent": null,
+   "status": "完成",
+   "opened": "10-22 09:09",
+   "done_evidence": "判据根治：借鉴/采用不再算完成须可核实指针，recur须核resolved_note落点，41条重判landed24/n",
+   "closed": "10-22 09:09",
+   "retro_report": "/workspace/复盘1022_T24_完成态须凭落点假完成根治.md",
+   "retro_node": "materials/20261022_file_复盘_T24_复盘1022_T24_完成态须凭落"
+  },
+  "T25": {
+   "origin": "T25：欠账关闭证据回填9条+四条recur提案真落地",
+   "parent": null,
+   "status": "完成",
+   "opened": "10-22 09:23",
+   "done_evidence": "A线9条closed欠账evidence回填9比9（audit归零）且审计器补closed侧判据，B线janitor补m",
+   "closed": "10-22 09:23",
+   "retro_report": "/workspace/复盘1022_T25_欠账证据回填与四条提案真落地.md",
+   "retro_node": "materials/20261022_file_复盘_T25_复盘1022_T25_欠账证据回填"
+  },
+  "T26": {
+   "origin": "T26：P051提案池漏燃料修复+P044串行压段+P031next字段核验（三",
+   "parent": null,
+   "status": "完成",
+   "opened": "10-22 09:27",
+   "done_evidence": "P051关闭(TYPE2SKILL补两行+空类型显式报出,propose复跑验证)；P050关闭(4条提案已固化,nex",
+   "closed": "10-22 09:31",
+   "retro_report": "/workspace/复盘1022_T26_三线并行P051P044P031.md",
+   "retro_node": "materials/20261022_file_复盘_T26_复盘1022_T26_三线并行P0"
+  },
+  "T27": {
+   "origin": "T27：P041两条定论(M-R111固化/M-R112退役)+Q-1改立DOC",
+   "parent": null,
+   "status": "完成",
+   "opened": "10-22 09:39",
+   "done_evidence": "P041定论 M-R111固化（四步链全有执行器）与M-R112退役（by M-R120三痕齐），rules check",
+   "closed": "10-22 09:42",
+   "retro_report": "/workspace/复盘1022_T27_P041定论与Q1撤销改立.md",
+   "retro_node": "materials/20261022_file_复盘_T27_复盘1022_T27_P041定论"
+  },
+  "T28": {
+   "origin": "T28：P053第二轮DOC升档复评+rules --scope报错修复（并行）",
+   "parent": null,
+   "status": "完成",
+   "opened": "10-22 09:45",
+   "done_evidence": "P053第二轮换判据(landing.anchor分组)扫出A4/B1/C74，A档逐条核:M-R143标签过期升SCA",
+   "closed": "10-22 09:49",
+   "retro_report": "/workspace/复盘1022_T28_DOC升档复评与scope修复.md",
+   "retro_node": "materials/20261022_file_复盘_T28_复盘1022_T28_DOC升档复"
+  },
+  "T29": {
+   "origin": "T29：P054 M-R108联通判据落地+P055全生态丢码普查+P044判据",
+   "parent": null,
+   "status": "完成",
+   "opened": "10-22 09:56",
+   "done_evidence": "P054关账:新增m108_check.py(M-R108可执行判据,requested_count>=3且未solid",
+   "closed": "10-22 09:56",
+   "retro_report": "/workspace/复盘1022_T29_M108判据落地与丢码普查.md",
+   "retro_node": "materials/20261022_file_复盘_T29_复盘1022_T29_M108判据"
+  },
+  "T30": {
+   "origin": "T29b：P034过期账目核实与M53补登+P052改判取证与结构门禁",
+   "parent": "T29",
+   "status": "完成",
+   "opened": "10-22 10:01",
+   "done_evidence": "P034核实为过期账目(M45-M48早在S184补登于SKILL.md:189-192),真缺口是M53,已补行+补登",
+   "closed": "10-22 10:01",
+   "retro_report": "/workspace/复盘1022_T30_P034过期核实与P052改判结构门禁.md",
+   "retro_node": "materials/20261022_file_复盘_T30_复盘1022_T30_P034过期"
+  },
+  "T31": {
+   "origin": "T31：P045回合长度探针落地+P044判据行号口径修复",
+   "parent": "T29",
+   "status": "完成",
+   "opened": "10-22 10:08",
+   "done_evidence": "P045关账:新增turn_length_probe.py作为M-R146可执行判据(按user消息切回合,单回合>=1",
+   "closed": "10-22 10:08",
+   "retro_report": "/workspace/复盘1022_T31_回合长度探针与行号口径.md",
+   "retro_node": "materials/20261022_file_复盘_T31_复盘1022_T31_回合长度探针"
+  },
+  "T32": {
+   "origin": "T32：剩余欠账盘点并行推进 P028/P031/P033（+一次版本自伤事故并",
+   "parent": null,
+   "status": "完成",
+   "opened": "10-22 10:57",
+   "done_evidence": "三条欠账取证后处理：P028 账目对象过期（真目标 probe-hub 40037B，非 exam-generator）",
+   "closed": "10-22 10:58",
+   "retro_report": "/workspace/复盘1022_T32_三条欠账取证与一次自伤事故.md",
+   "retro_node": "materials/20261022_file_复盘_T32_复盘1022_T32_三条欠账取证"
+  },
+  "T33": {
+   "origin": "继续推进P058进化引擎落正文判据 --parent T32",
+   "parent": null,
+   "status": "完成",
+   "opened": "10-22 11:57",
+   "done_evidence": "P058取证推翻原描述：闸门本就存在（gate_moves@1614 + move_landed@1298），真问题是判",
+   "closed": "10-22 11:57",
+   "retro_report": "/workspace/复盘1022_T33_P058判据取证与三处修正.md",
+   "retro_node": "materials/20261022_file_复盘_T33_复盘1022_T33_P058判据"
+  },
+  "T34": {
+   "origin": "P061：move_landed 对 recur 类型判据结构性失效，两套口径归",
+   "parent": null,
+   "status": "完成",
+   "opened": "10-22 12:09",
+   "done_evidence": "P061 收口：recur 判据从 gate_moves 内联分支抽出成 _recur_landed（单一事实源，判据一",
+   "closed": "10-22 12:13",
+   "retro_report": "/workspace/复盘1022_T34_P061recur判据归一与两次自伤.md",
+   "retro_node": "materials/20261022_file_复盘_T34_复盘1022_T34_P061re"
+  },
+  "T35": {
+   "origin": "P044：并行闸拦了不改——拦一次清零，整轮无累计、无升级",
+   "parent": null,
+   "status": "完成",
+   "opened": "10-22 12:14",
+   "done_evidence": "P044 收口（补探针实测）：根因是闸门只惩罚不记忆（被拦即 solo 清零、state 无累计字段）。数据铁证：本会话",
+   "closed": "10-22 12:20",
+   "retro_report": "/workspace/复盘1022_T35_P044并行闸拦了不改.md",
+   "retro_node": "materials/20261022_file_复盘_T35_复盘1022_T35_P044并行"
+  },
+  "T36": {
+   "origin": "原仓库入库四条线并行：easy换代/哈基米/其余4作者/玄珠登记",
+   "parent": null,
+   "status": "完成",
+   "opened": "10-22 16:28",
+   "done_evidence": "7条入成品源库回读7/7；玄珠极狐登记修复双写；S189+L242落库回读；S188回写已解决；P062已登记 ｜复盘已",
+   "closed": "10-22 16:45",
+   "retro_report": "/root/.codebuddy/artifact/2f8a7d30-9c21-4f0b-1d49-6b5af3d3c000/复盘_T36_原仓库入库四条线并行.md",
+   "retro_node": "materials/20261022_file_复盘_T36_复盘_T36_原仓库入库四条线并行"
+  },
+  "T37": {
+   "origin": "阶段1-统一注入器N5(治规矩不进脑)",
+   "parent": null,
+   "status": "完成",
+   "opened": "10-25 01:19",
+   "done_evidence": "habit_inject.py已注册settings.json:260并端到端实测输出含开工必读加八段闭环4124字符",
+   "closed": "10-25 01:24"
+  },
+  "T38": {
+   "origin": "阶段2-破坏性门禁GATE(最小验证钩子)",
+   "parent": null,
+   "status": "完成",
+   "opened": "10-25 01:19",
+   "done_evidence": "destructive_guard.py已注册settings.json:21并双向自测通过危险命令告警普通命令静默影子",
+   "closed": "10-25 01:24"
+  },
+  "T39": {
+   "origin": "阶段3-经验池探活与激活N6",
+   "parent": null,
+   "status": "完成",
+   "opened": "10-25 01:19",
+   "done_evidence": "经验缓存60条L001-L060落盘注入器检索命中L001并留痕可查调用次数由0转1",
+   "closed": "10-25 01:27"
+  }
+ }
+}

@@ -165,7 +165,14 @@
   "[已清零 S091] M18 分级口径校准：活跃度「停滞」（90~365 天）由「轻微」改为不产遗留（值得关注≠需要处置，防噪声淹没 M-R53；停滞仍在探源司监测台可见）；monitors.json threshold 同步、信号源19 断言同步、受控单测改两档分级",
   "[已清零 2026-10-18]（sid=becf9081fdbc）并入 tvbox-interface/scripts/flow.json「[遗留 S110·正本] 采集缺包级字段」（用 ‖ 原条目：[清账司派单 2026-10-25] [jar地址结构性缺口] 全生态 4 个库均无 jar 下载地址字段：原作者包的 spider/jar 在抽取阶段即被丢弃，导致 508 条 jar系 源无法溯源到 jar 下载地址。修复需在 tvb ｜ sid=becf9081fdbc ｜ 下一步 tvbox watchdog scan",
   "[清账司派单 2026-10-27] [扩展点] 长期方向：MCP automation_update 完全替代脚本后，本技能的脚本通道可降级为兜底 ｜ sid=094c512907c0 ｜ 下一步 tvbox watchdog scan",
-  "[清账司派单 2026-10-27] [本期不处理·S176b] 需接入 wechat-article-scraper（外部技能），属跨技能对接，非本轮规则修复范围 ｜ 原条目：[待办] intake url 的正文抽取：目前是去标签 + ｜ sid=08d3ca536f43 ｜ 下一步 tvbox watchdog scan"
+  "[清账司派单 2026-10-27] [本期不处理·S176b] 需接入 wechat-article-scraper（外部技能），属跨技能对接，非本轮规则修复范围 ｜ 原条目：[待办] intake url 的正文抽取：目前是去标签 + ｜ sid=08d3ca536f43 ｜ 下一步 tvbox watchdog scan",
+  "[清账司派单 2026-10-27] automation-task-manager 脚本通道长期兜底：MCP automation_update 能力就绪前，scheduler-api.sh 仍是唯一定时任务入口，不得因 MCP 规划而 ｜ sid=bb5eabc887e2 ｜ 下一步 等 MCP automation_update 可用后，实测直连能否覆盖 建/改/删/查 四类动作，再决定脚本通道降级为兜底还是保留并行",
+  "[已清零 2026-10-20]（sid=9348be9808b6）S184 归口错误作废：本条由 collect_inspect_findings 首版分诊错（最长目录名优先 → 判给  ‖ 原条目：[清账司派单 2026-10-27] [M19] ecosys-conductor 平衡性 85.5｜最弱=质量短板(45.0) ｜ sid=9348be9808b6 ｜ 下一步 tvbox watchdog scan",
+  "[已清零 2026-10-20]（sid=1b217e8cd1f2）S184 归口错误作废：本条 owner 派给 legacy-watchdog（报信人），应为 ecosys-condu ‖ 原条目：[清账司派单 2026-10-27] [M19] ecosys-conductor 平衡性 83.5｜最弱=质量短板(35.0) ｜ sid=1b217e8cd1f2 ｜ 下一步 tvbox watchdog scan",
+  "[清账司派单 2026-10-27] [M03] [清账司派单 2026-10-27] [扩展点] 长期方向：MCP automation_update 完全替代脚本后，本技能的脚本通道可降级为兜底 ｜ sid ｜ sid=55485fbc64c5 ｜ 下一步 tvbox watchdog scan",
+  "[清账司派单 2026-11-01] S184 自转脚本缺失：daily_round.py / ledger.py reconcile 全仓不存在，自转圈无法真正写账（P074·open） ｜ sid=77b216f678ab ｜ 下一步 补全 daily_round.py（看红字→派单落账→对账终验四步）与 ledger.py reconcile（两线对账+幽灵户检测），使 S184 自转能从纯提醒升级为真实自转；补全前维持#4纯提醒",
+  "[清账司派单 2026-11-01] M-R110语言铁律第5次复发（用户2026-10-25抓到思考流英文）：已修habit_inject.py置顶强条（每轮UserPromptSubmit重砸+回合中段自检句）。如实交代边界：思考流生 ｜ sid=980bb5cdc84d ｜ 下一步 tvbox watchdog scan",
+  "[清账司派单 2026-11-05] [M19] legacy-watchdog 平衡性 80.6｜最弱=进化停滞(22.402556819993038) ｜ sid=e6afb4c52dc9 ｜ 下一步 tvbox conductor issues ／ 先看 legacy-watchdog 名下这条为何是红的，再决定修监测项还是修技能"
  ],
  "sop_binding": {
   "authority": "云 RULES 规则 47/48/52/54 + hub SKILL.md §8.15-8.17",

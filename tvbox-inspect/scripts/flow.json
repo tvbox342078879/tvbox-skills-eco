@@ -153,6 +153,17 @@
   "[已清零 2026-10-20]（sid=5162629869ac）M44 已决断：用户 2026-10-20 决定不配 GitHub token，改按需预警（余量≥10 时恒零属正常，非 ‖ 原条目：[真欠账·待用户决策 S176b] 实测无 .gh_token、无 GITHUB_TOKEN 环境变量，匿名 60/h 确不够；需用户提供 token 或授权改用其它认证。 ｜ 原条目：[清账司派单 2026-11-02] M44「GitHub token 未配置，匿名配额 60/h 撑不住巡检」未实证：检查器有效性无证明 ｜ sid=5162629869ac ｜ 下一步 tvbox inspect signal-check",
   "[已清零 2026-10-20]（sid=b990c7ef334c）M45 已补判据并实测：tvbox jobs 实测 4 个任务全部启用、停用 0 个，阈值『disabled 且创建>3 ‖ 原条目：[清账司派单 2026-11-03] M45「一次性任务停用后未清理」未实证：检查器有效性无证明 ｜ sid=b990c7ef334c ｜ 下一步 tvbox inspect signal-check",
   "[已清零 2026-10-20]（sid=4b56468d86e3）S179 证据：M46.proven=S177 复核，语义为『automation-task-manager 未采 N  ‖ 原条目：[清账司派单 2026-11-03] M46「automation-task-manager 招式借鉴停滞」未实证：检查器有效性无证明 ｜ sid=4b56468d86e3 ｜ 下一步 tvbox inspect signal-check",
-  "[已清零 2026-10-20]（sid=277e18d18dbe）S179 证据：M47.proven=S177 复核，语义为『learn-hub 未采 N 条跨技能热招』，恒零属实非失 ‖ 原条目：[清账司派单 2026-11-03] M47「learn-hub 招式借鉴停滞」未实证：检查器有效性无证明 ｜ sid=277e18d18dbe ｜ 下一步 tvbox inspect signal-check"
+  "[已清零 2026-10-20]（sid=277e18d18dbe）S179 证据：M47.proven=S177 复核，语义为『learn-hub 未采 N 条跨技能热招』，恒零属实非失 ‖ 原条目：[清账司派单 2026-11-03] M47「learn-hub 招式借鉴停滞」未实证：检查器有效性无证明 ｜ sid=277e18d18dbe ｜ 下一步 tvbox inspect signal-check",
+  "[清账司派单 2026-10-28] 清账司·未完成事项搜集官 —— TVBox 生态的「欠账总账」技能。六源全量采集（问题总账/各技能 flow backlog/CHANGELOG 敞开段/监测项未实证/云端台账经验库/技能正文待办标记 ｜ sid=15c3ffac5f47 ｜ 下一步 tvbox inspect signal-check",
+  "[清账司派单 2026-11-04] M49「tvbox-source-hub 升级后回退风险」未实证：检查器有效性无证明 ｜ sid=37483774864d ｜ 下一步 tvbox inspect signal-check",
+  "[清账司派单 2026-11-08] M50「ecosys-conductor 升级后回退风险」未实证：检查器有效性无证明 ｜ sid=cd0522c0000a ｜ 下一步 tvbox inspect signal-check",
+  "[清账司派单 2026-11-08] M51「learn-hub 升级后回退风险」未实证：检查器有效性无证明 ｜ sid=b9d4a1f61888 ｜ 下一步 tvbox inspect signal-check",
+  "[清账司派单 2026-11-08] M53「automation-task-manager 升级后回退风险」未实证：检查器有效性无证明 ｜ sid=69ae4011a462 ｜ 下一步 tvbox inspect signal-check",
+  "[清账司派单 2026-11-08] M54「unfinished-audit 升级后回退风险」未实证：检查器有效性无证明 ｜ sid=5d48d5d41593 ｜ 下一步 tvbox inspect signal-check",
+  "[清账司派单 2026-11-08] M55「eco-ledger 升级后回退风险」未实证：检查器有效性无证明 ｜ sid=8f264bf26501 ｜ 下一步 tvbox inspect signal-check",
+  "[清账司派单 2026-11-01] [M19] tvbox-inspect 平衡性 87.3｜最弱=质量短板(36.5) ｜ sid=ebeadcce639c ｜ 下一步 tvbox conductor issues ／ 先看 tvbox-inspect 名下这条为何是红的，再决定修监测项还是修技能",
+  "[清账司派单 2026-11-12] M57「library 升级后回退风险」未实证：检查器有效性无证明 ｜ sid=9e76087f54e5 ｜ 下一步 tvbox inspect signal-check",
+  "[清账司派单 2026-11-12] M58「tvbox-inspect 升级后回退风险」未实证：检查器有效性无证明 ｜ sid=81d454aa4620 ｜ 下一步 tvbox inspect signal-check",
+  "[清账司派单 2026-11-05] [M19] tvbox-inspect 平衡性 66.4｜最弱=进化停滞(22.402788301474516) ｜ sid=a5b634ab5a1f ｜ 下一步 tvbox conductor issues ／ 先看 tvbox-inspect 名下这条为何是红的，再决定修监测项还是修技能"
  ]
 }

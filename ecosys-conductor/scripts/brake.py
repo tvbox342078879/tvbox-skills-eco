@@ -162,7 +162,14 @@ def cost_gate(rule=None):
         #    比空着更坏」。故此处承认两种合法承载，但**要求可追溯**：
         #      A 工具承载型：probe.command 非空
         #      B 设计原则型：carrier 明示「设计原则型」且 verify_via 给出了验证途径
-        pr = (r.get('probe') or {})
+        #      C 声明式字符串（1028 修）：registry 里 12 条规则的 probe 是纯字符串
+        #        （如 'GATE：threads.py done --report 七段校验…'）——字符串本身就是
+        #        承载声明（工具+方式齐全），不应因数据形态漂移把整闸搞崩（AttributeError）。
+        #        按声明对待，由 audit-growth 单列复审；空白字符串才判「无守护」。
+        _pr_raw = (r.get('probe') or {})
+        if isinstance(_pr_raw, str):
+            _pr_raw = {'carrier': '声明式(字符串)', 'verify_via': _pr_raw}
+        pr = _pr_raw
         _cmd = (pr.get('command') or '').strip()
         _car = str(pr.get('carrier') or '')
         _via = str(pr.get('verify_via') or '').strip()

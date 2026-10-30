@@ -9,7 +9,7 @@ import math
 import re
 from collections import Counter
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 _SENTENCE_SPLIT = re.compile(r"[。！？；;\n!?]+")
 _CJK_SEQ = re.compile(r"[\u4e00-\u9fff]{2,}")

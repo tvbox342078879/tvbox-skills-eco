@@ -1,6 +1,6 @@
 {
  "version": "1.0.54",
- "updated": "2026-10-19",
+ "updated": "2026-10-22",
  "note": "底包双形态（S111）：底包=三包(L包lytvs/G包guard/D包DmaxPro908)+备用包(轻量可编辑态)。三坐标（S110）：技术体系/枝/业务别名正交，D包≠体系D·Amns。加归位断言防游离。",
  "commands": [
   {
@@ -578,6 +578,36 @@
    "intent": "某个定时任务的详情与健康（会不会失败）",
    "cmd": "tvbox jobs <id>",
    "skill": "automation-task-manager"
+  },
+  {
+   "intent": "存内容到资料库（文档/表格/网页/附件落地）",
+   "cmd": "library store",
+   "skill": "library"
+  },
+  {
+   "intent": "把散着的文件归到一起（建文件夹+挂进去）",
+   "cmd": "library organize",
+   "skill": "library"
+  },
+  {
+   "intent": "在资料库里找东西（语义检索+出处）",
+   "cmd": "library search",
+   "skill": "library"
+  },
+  {
+   "intent": "给个能打开看的链接（分享/交付）",
+   "cmd": "library share",
+   "skill": "library"
+  },
+  {
+   "intent": "把在线页面做好看一点（美化/排版）",
+   "cmd": "library beautify",
+   "skill": "library"
+  },
+  {
+   "intent": "导出/下载资料库里的东西",
+   "cmd": "library export",
+   "skill": "library"
   }
  ],
  "chains": [

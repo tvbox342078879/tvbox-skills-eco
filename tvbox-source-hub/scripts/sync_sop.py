@@ -3,7 +3,7 @@
 """
 sync_sop.py — 做JSON标准流程SOP 成长同步器
 权威源：scripts/sop_makejson.json（机器可读，唯一真相）
-投影文件：/workspace/标准1015_做JSON标准流程SOP.md（人读，由本脚本render生成，禁手改）
+投影文件：docs/外置_做JSON标准流程SOP.md（人读，由本脚本render生成，禁手改）
 
 用法：
   python3 sync_sop.py route --symptom "报错关键词"   # 症状路由：命中直达解法
@@ -26,7 +26,7 @@ from pathlib import Path
 
 HERE = Path(__file__).parent
 SOP_JSON = HERE / 'sop_makejson.json'
-MD_TARGET = Path('/workspace/标准1015_做JSON标准流程SOP.md')
+MD_TARGET = Path(__file__).resolve().parent.parent / 'docs' / '外置_做JSON标准流程SOP.md'
 
 STEP_NAMES = {}
 

@@ -28,7 +28,6 @@ newlib.py —— 线路总库·四档（S103）
   · 写后 invalidate，防脏缓存谎报
 """
 import os, sys, json, glob, time, argparse, subprocess
-from collections import Counter
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 LIB = '/root/.codebuddy/skills/library'

@@ -6,7 +6,7 @@ window.py - 窗口管理 Mixin
 import asyncio
 from typing import Optional
 
-from .core import ComputerToolBase, SCREENSHOT_DELAY
+from .core import ComputerToolBase
 from .registry import register_action
 
 

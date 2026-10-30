@@ -1,79 +1,170 @@
 {
-  "board": "/root/.codebuddy/skills/ecosys-conductor/plans/S179_重做生态方案.md",
-  "current_step": "N6",
-  "note": "N0-N6 全部 done（S183 17:21 收口）。S178 四期总览的 ②③④ 期属开新工，不在本板六步内，需另立 board。",
-  "steps": [
-    {
-      "id": "N0",
-      "title": "防偏机制：抬头制度 + Stop 第④问 + S179 方案板",
-      "scope": [
-        "ecosys-conductor",
-        "hooks"
-      ],
-      "verify": "python3 /root/.codebuddy/hooks/stop_drift.py",
-      "status": "done"
-    },
-    {
-      "id": "N1",
-      "title": "收拢双 git 为一（skills/.git 为正本）",
-      "scope": [
-        "ecosys-conductor",
-        "skills 根目录"
-      ],
-      "verify": "git --git-dir=/root/.codebuddy/skills/.git log --oneline -1",
-      "status": "done"
-    },
-    {
-      "id": "N2",
-      "title": "规则圈收口：三分级 + owner str→list + registry 对齐 134",
-      "scope": [
-        "ecosys-conductor"
-      ],
-      "verify": "tvbox conductor rules check",
-      "status": "done"
-    },
-    {
-      "id": "N3",
-      "title": "项目圈补建：projects 段 + 状态机 + close --zombie",
-      "scope": [
-        "ecosys-conductor"
-      ],
-      "verify": "tvbox conductor issues",
-      "status": "done"
-    },
-    {
-      "id": "N4",
-      "title": "规则起作用：gate + probe + stop 三问（第④问已含）",
-      "scope": [
-        "ecosys-conductor",
-        "hooks"
-      ],
-      "verify": "tvbox conductor verify",
-      "status": "done"
-    },
-    {
-      "id": "N5",
-      "title": "欠账止血（37 open 分诊）+ eco check 自转终验",
-      "scope": [
-        "unfinished-audit",
-        "ecosys-conductor"
-      ],
-      "verify": "tvbox close audit",
-      "status": "done"
-    },
-    {
-      "id": "N6",
-      "title": "治理收口：验收无回归+触发条件全量体检+探针全舰队实弹（extract-images 补 description 已入库）",
-      "scope": [
-        "ecosys-conductor",
-        "hooks",
-        "skill_2104583436307918848",
-        "unfinished-audit",
-        "tvbox-source-hub"
-      ],
-      "verify": "python3 /tmp/acceptance.py + tvbox conductor signal-check",
-      "status": "done",
-      "evidence": "S183 17:21 实跑 python3 /tmp/acceptance.py → 验收结论 ✅ 全部通过：[1] 体积 0 超硬限/0 超缓冲；[2] 43 条残留重复 0，已撤回 13/已采纳 30/待兑现 0；[3] whoami 命中 learn-hub rc=0；[4] 真源 141 = 镜像 141。过程中修了本脚本自身口径缺陷（漏 retracted 短路，把 13 条已证伪的旧建议算成未认领）。"
-    }
-  ]
+ "board": "/root/.codebuddy/skills/ecosys-conductor/plans/S179_重做生态方案.md",
+ "current_step": "A6",
+ "note": "N0-N6（治理面）S183 收口；A0-A6（自转面）S184 18:36 全部 done。验收判据（用户原话）「不靠手动干预，生态自己转一圈并留账」已由 /tmp/s184_round.py 两圈实测通过：五环全通 + 账可对平 + 两圈幂等。",
+ "steps": [
+  {
+   "id": "N0",
+   "title": "防偏机制：抬头制度 + Stop 第④问 + S179 方案板",
+   "scope": [
+    "ecosys-conductor",
+    "hooks"
+   ],
+   "verify": "python3 /root/.codebuddy/hooks/stop_drift.py",
+   "status": "done"
+  },
+  {
+   "id": "N1",
+   "title": "收拢双 git 为一（skills/.git 为正本）",
+   "scope": [
+    "ecosys-conductor",
+    "skills 根目录"
+   ],
+   "verify": "git --git-dir=/root/.codebuddy/skills/.git log --oneline -1",
+   "status": "done"
+  },
+  {
+   "id": "N2",
+   "title": "规则圈收口：三分级 + owner str→list + registry 对齐 134",
+   "scope": [
+    "ecosys-conductor"
+   ],
+   "verify": "tvbox conductor rules check",
+   "status": "done"
+  },
+  {
+   "id": "N3",
+   "title": "项目圈补建：projects 段 + 状态机 + close --zombie",
+   "scope": [
+    "ecosys-conductor"
+   ],
+   "verify": "tvbox conductor issues",
+   "status": "done"
+  },
+  {
+   "id": "N4",
+   "title": "规则起作用：gate + probe + stop 三问（第④问已含）",
+   "scope": [
+    "ecosys-conductor",
+    "hooks"
+   ],
+   "verify": "tvbox conductor verify",
+   "status": "done"
+  },
+  {
+   "id": "N5",
+   "title": "欠账止血（37 open 分诊）+ eco check 自转终验",
+   "scope": [
+    "unfinished-audit",
+    "ecosys-conductor"
+   ],
+   "verify": "tvbox close audit",
+   "status": "done"
+  },
+  {
+   "id": "N6",
+   "title": "治理收口：验收无回归+触发条件全量体检+探针全舰队实弹（extract-images 补 description 已入库）",
+   "scope": [
+    "ecosys-conductor",
+    "hooks",
+    "skill_2104583436307918848",
+    "unfinished-audit",
+    "tvbox-source-hub"
+   ],
+   "verify": "python3 /tmp/acceptance.py + tvbox conductor signal-check",
+   "status": "done",
+   "evidence": "S183 17:21 实跑 python3 /tmp/acceptance.py → 验收结论 ✅ 全部通过：[1] 体积 0 超硬限/0 超缓冲；[2] 43 条残留重复 0，已撤回 13/已采纳 30/待兑现 0；[3] whoami 命中 learn-hub rc=0；[4] 真源 141 = 镜像 141。过程中修了本脚本自身口径缺陷（漏 retracted 短路，把 13 条已证伪的旧建议算成未认领）。"
+  },
+  {
+   "id": "A0",
+   "title": "自转面基线实测：链条每一环当前真不真（实跑，不读文档）",
+   "scope": [
+    "ecosys-conductor",
+    "eco-ledger",
+    "tvbox-inspect",
+    "unfinished-audit",
+    "legacy-watchdog",
+    "hooks",
+    "tvbox-source-hub"
+   ],
+   "verify": "python3 /tmp/s184_chain.py",
+   "status": "done",
+   "evidence": "基线实测完成：五环断点全部定位（红字不进账/派单副本回声/partial 无科目/owner 派错/无对账入口），逐环修复"
+  },
+  {
+   "id": "A1",
+   "title": "统一调用入口：tvbus <需求> 一行接住（翻译→路由→执行→记账）",
+   "scope": [
+    "ecosys-conductor",
+    "eco-ledger"
+   ],
+   "verify": "tvbus \"帮我看看有没有红字\"",
+   "status": "done",
+   "evidence": "tvbus 落地（/usr/local/bin/tvbus）：一行接住 翻译→路由→执行→记账；--self-check 10/10（含反向卡口）；实测五例 dry 全对"
+  },
+  {
+   "id": "A2",
+   "title": "记账贯通：入口那次调用必须落款（凭证号+界+科目）",
+   "scope": [
+    "eco-ledger",
+    "ecosys-conductor"
+   ],
+   "verify": "tvbox ledger audit-call",
+   "status": "done",
+   "evidence": "tvbox ledger call audit-call 三查全过：幽灵命令 0｜科目 71=指标 71（✅60+⚠️3+❌4）｜账上调用全部可查"
+  },
+  {
+   "id": "A3",
+   "title": "派单真送达：红字自动生成欠账并推进 owner backlog（幂等）",
+   "scope": [
+    "unfinished-audit",
+    "tvbox-inspect",
+    "legacy-watchdog",
+    "ecosys-conductor"
+   ],
+   "verify": "tvbox close status",
+   "status": "done",
+   "evidence": "八源采集含 inspect_findings；派单副本回声回路两处断根（ECHO_MARK 结构判据 + notify_owner 不自派单）；账本连跑幂等（新增 0）"
+  },
+  {
+   "id": "A4",
+   "title": "定时任务从报告器改派单器：不收口即欠账",
+   "scope": [
+    "ecosys-conductor",
+    "unfinished-audit",
+    "legacy-watchdog"
+   ],
+   "verify": "tvbox jobs && tvbox close status",
+   "status": "done",
+   "evidence": "定时任务 12854499 已从报告器改派单器（回读确认）：daily_round.py 三步 看红字→派单落账→对账，三步独立记退出码不串联"
+  },
+  {
+   "id": "A5",
+   "title": "自转第一圈：无人工干预走完 红字→派单→接单→处置→收口→对账",
+   "scope": [
+    "ecosys-conductor",
+    "eco-ledger",
+    "tvbox-inspect",
+    "unfinished-audit",
+    "legacy-watchdog"
+   ],
+   "verify": "python3 /tmp/s184_round.py 1",
+   "status": "done",
+   "evidence": "第一圈通过：python3 /tmp/s184_round.py 1 → 五环全通，当期红字 2/2 在账可查，6 owner 全部可反查，账 25/46"
+  },
+  {
+   "id": "A6",
+   "title": "自转第二圈 + 账目对平终验",
+   "scope": [
+    "ecosys-conductor",
+    "eco-ledger",
+    "tvbox-inspect",
+    "unfinished-audit",
+    "legacy-watchdog"
+   ],
+   "verify": "python3 /tmp/s184_round.py 2",
+   "status": "done",
+   "evidence": "第二圈通过：python3 /tmp/s184_round.py 2 → 五环全通 + 账目对平（未结 27｜已结 46），五门 5/5 放行"
+  }
+ ]
 }

@@ -10,7 +10,7 @@ import time
 import random
 from datetime import datetime
 from typing import Any, Dict, List, Optional
-from urllib.parse import quote, urlencode
+from urllib.parse import urlencode
 
 try:
     import requests
@@ -20,10 +20,7 @@ except ImportError:
 
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from core.utils import (
-    RateLimiter, get_logger, USER_AGENTS, sanitize_filename,
-    parse_relative_date, detect_blocked, BLOCK_MARKERS,
-)
+from core.utils import RateLimiter, get_logger, USER_AGENTS, parse_relative_date, detect_blocked
 
 logger = get_logger("sogou-search")
 

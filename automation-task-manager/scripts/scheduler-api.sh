@@ -118,6 +118,51 @@ validate_retry() {
     return 0
 }
 
+# 校验 prompt 的「调度沙箱兼容性」（M-R209·S213 新增的 GATE 级闸门）
+# 调度沙箱是无本地文件访问的隔离环境（任务#6 自述「技能文件不在调度沙箱」为证）。
+# 判据（纯文本，符合 M-R136 三关：单点可观测/纯文本可判/误拦≈0）：
+#   1) prompt 含本地绝对路径（/root、/workspace）、`python3 /...`、或 `*.py` 直接调用
+#      → 必须同时是「纯提醒」模式（只提示用户在对话里跑命令），否则拦下（沙箱无此文件，运行即失败）
+#   2) prompt 含 `tvbox <子命令>` → 子命令须为已验证沙箱可达清单，未知子命令拦下待验证
+# 返回退出码（函数返回而非 exit，让主函数能传到进程，与 validate_timeout 同套路）。
+validate_prompt_env() {
+    local prompt="$1"
+    [ -z "$prompt" ] && return 0
+
+    # 1) 本地资源引用检测
+    local has_local_ref=0
+    if printf '%s' "$prompt" | grep -qE '(^|[^[:alnum:]])(/root/|/workspace/|python3 /|/[[:alnum:]_./-]+\.py)'; then
+        has_local_ref=1
+    fi
+    local is_pure_remind=0
+    if printf '%s' "$prompt" | grep -qiE '(纯提醒|不跑脚本|不执行脚本|请在对话里|请手动|提醒：|提醒用户|只提示|仅提示|勿执行)'; then
+        is_pure_remind=1
+    fi
+    if [ "$has_local_ref" -eq 1 ] && [ "$is_pure_remind" -eq 0 ]; then
+        echo "ERROR: 定时任务 prompt 引用了本地绝对路径/脚本（/root、/workspace、python3 /...、*.py），" >&2
+        echo "       但调度沙箱是无本地文件访问的隔离环境（任务#6 自述为证），运行即 FileNotFoundError。" >&2
+        echo "       按 M-R209：要么把任务改为「纯提醒」模式（只提示用户在对话里跑命令，明确不跑脚本），" >&2
+        echo "       要么先验证该资源在调度沙箱确实可达再建。" >&2
+        return 1
+    fi
+
+    # 2) tvbox 子命令可达性检测（遍历 prompt 里出现的每一个子命令，避免首个命中掩盖后续未知子命令）
+    local sub
+    while read -r sub; do
+        [ -z "$sub" ] && continue
+        case "$sub" in
+            brief|conductor|history|ask) ;;  # 已验证沙箱可达
+            *)
+                echo "ERROR: 定时任务 prompt 调用 tvbox $sub，但该子命令在调度沙箱的可用性未验证" >&2
+                echo "       （任务#1 曾因 tvbox pending 失败）。按 M-R209：请改用已验证命令" >&2
+                echo "       （tvbox brief / conductor ask / history）或先验证 $sub 可达性。" >&2
+                return 1
+                ;;
+        esac
+    done < <(printf '%s' "$prompt" | grep -oE 'tvbox[[:space:]]+[a-z-]+' | awk '{print $2}')
+    return 0
+}
+
 # 打印帮助信息
 print_help() {
     cat << 'EOF'
@@ -266,6 +311,7 @@ create_task() {
     validate_cron_seconds "$cron_expr" || exit 1
     validate_timeout "$timeout_sec" || exit 1
     validate_retry "$retry_count" || exit 1
+    validate_prompt_env "$prompt" || exit 1
 
     # 构建 JSON（source=agent 标识来源为沙箱 agent skill 创建）
     local json_body
@@ -481,6 +527,7 @@ update_task() {
     [ -n "$cron_expr" ] && { validate_cron_seconds "$cron_expr" || exit 1; }
     [ -n "$timeout_sec" ] && { validate_timeout "$timeout_sec" || exit 1; }
     [ -n "$retry_count" ] && { validate_retry "$retry_count" || exit 1; }
+    [ -n "$prompt" ] && { validate_prompt_env "$prompt" || exit 1; }
 
     # 构建 JSON（增量添加非空字段）
     local json_body="{}"

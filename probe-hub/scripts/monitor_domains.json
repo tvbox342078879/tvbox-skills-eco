@@ -1,0 +1,36 @@
+{
+  "_note": "探源司·域名型监测目标（结构字段本地真源；健康字段经 monitor_targets.json 同步云端）",
+  "domains": {
+    "dset-twitter-suffix": {
+      "kind": "domain-set",
+      "模式": "suffix-set",
+      "名称": "推特APP·动态后缀集",
+      "前缀格式": "https://test{8位随机}.{suffix}.work",
+      "种子": ["wcyfhknomg", "pdcqllfomw", "alxhzjvean", "bqeaaxzplt", "hfbtpixjso"],
+      "关联底包": "底包·推特APP",
+      "监测周期": "每周"
+    },
+    "dset-guazi-host": {
+      "kind": "domain-set",
+      "模式": "host-set",
+      "名称": "瓜子影视·主机集",
+      "种子": [
+        "https://apinew.uozvr.com",
+        "https://api.w32z7vtd.com",
+        "https://api.6a7nnf7.com",
+        "https://api.umygrx3.com",
+        "https://api.rmedphk.com"
+      ],
+      "关联底包": "底包·瓜子APP",
+      "监测周期": "每周"
+    },
+    "dset-appv2-ip": {
+      "kind": "domain-set",
+      "模式": "ip-direct",
+      "名称": "APPV2·直连IP",
+      "种子": ["http://122.228.85.203:1000"],
+      "关联底包": "底包·APPV2",
+      "监测周期": "每周"
+    }
+  }
+}

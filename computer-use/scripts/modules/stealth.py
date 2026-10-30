@@ -7,7 +7,6 @@ stealth.py - 反自动化检测模块
 
 import asyncio
 import random
-from typing import Optional
 
 from .core import ComputerToolBase, BROWSER_ACTION_TIMEOUT, MAX_TEXT_LENGTH
 from .registry import register_action

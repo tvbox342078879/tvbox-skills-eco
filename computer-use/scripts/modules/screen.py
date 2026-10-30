@@ -11,15 +11,7 @@ from typing import Optional
 from urllib.parse import urljoin
 from uuid import uuid4
 
-from .core import (
-    ComputerToolBase,
-    CoordSource,
-    OUTPUT_DIR,
-    COMMAND_TIMEOUT,
-    MAX_TEXT_LENGTH,
-    MAX_SCREENSHOT_SIZE,
-    SCREENSHOT_DELAY,
-)
+from .core import ComputerToolBase, CoordSource, OUTPUT_DIR, COMMAND_TIMEOUT, MAX_TEXT_LENGTH, MAX_SCREENSHOT_SIZE
 from .registry import register_action
 
 

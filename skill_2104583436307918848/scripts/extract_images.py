@@ -18,7 +18,7 @@ import re
 import sys
 import time
 import warnings
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urljoin
 
 import requests
 from bs4 import BeautifulSoup

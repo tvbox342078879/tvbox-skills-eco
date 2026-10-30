@@ -32,7 +32,7 @@ import argparse
 import os
 import sys
 import time
-from multiprocessing import Pool, cpu_count
+from multiprocessing import Pool
 
 OUT_EXT = ".png"
 

@@ -86,7 +86,6 @@ import time
 import urllib.request
 import urllib.error
 import urllib.parse
-from pathlib import Path
 
 # 多渠道消息推送模块（接口/配置项对齐 totorosir-push-message 技能，自包含、零依赖）
 try:

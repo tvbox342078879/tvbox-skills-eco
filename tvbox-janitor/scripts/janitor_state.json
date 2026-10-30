@@ -1,547 +1,15 @@
 {
-  "inbox": "tBlgSL4SPEFMrsyTBTg03c",
+  "inbox": "EMtAqVr56vlumwGxDiHJYp",
   "items": [
     {
-      "id": "uvzK9aZaP8c2DwWaJCERsS",
-      "title": "🗑（废弃·请删）线路总库_四档_首轮失败",
+      "id": "GCLJWbFGS1BmYbj6JCX9it",
+      "title": "探源司·底包总库",
       "kind": "folder",
-      "reason": "S103 首轮建库失败产生的废弃根（含重复表/文档），已被第二轮替代",
+      "reason": "底包总库已解散：体系夹/台账/SOP/复盘/18+全部分类并入探源司，空壳待删",
       "moved": true,
-      "added": "2026-10-16 18:16"
-    },
-    {
-      "id": "TX37QLEjkBnunsi2M3cbHx",
-      "title": "🗑（废弃·请删）测试表",
-      "kind": "database",
-      "reason": "S103 建库测试残留表",
-      "moved": true,
-      "added": "2026-10-16 18:16"
-    },
-    {
-      "id": "4tuuDfqSWSawderUWwhSmX",
-      "title": "（废弃·可删）测试文档",
-      "kind": "doc",
-      "reason": "S103 测试文档",
-      "moved": true,
-      "added": "2026-10-16 18:16"
-    },
-    {
-      "id": "1sYSnO2s8kLppMTPjTjhMi",
-      "title": "（废弃·可删）全量版·说明",
-      "kind": "doc",
-      "reason": "S103 重复的「全量版·说明」文档（保留了正确版本）",
-      "moved": true,
-      "added": "2026-10-16 18:17"
-    },
-    {
-      "id": "T5urDvXKnNccFFXU3MWb20",
-      "title": "（废弃·可删）纯净版·说明",
-      "kind": "doc",
-      "reason": "S103 重复的「纯净版·说明」文档（保留了正确版本）",
-      "moved": true,
-      "added": "2026-10-16 18:17"
-    },
-    {
-      "id": "MTHfCHTbG2fgFhTzAwBUrj",
-      "title": "（废弃·可删）18版·说明",
-      "kind": "doc",
-      "reason": "S103 重复的「18版·说明」文档（保留了正确版本）",
-      "moved": true,
-      "added": "2026-10-16 18:17"
-    },
-    {
-      "id": "xYNfS1Lfnw5O3fPptD8ntt",
-      "title": "（废弃·可删）产出json·说明",
-      "kind": "doc",
-      "reason": "S103 重复的「产出json·说明」文档（保留了正确版本）",
-      "moved": true,
-      "added": "2026-10-16 18:17"
-    },
-    {
-      "id": "uOoaFKtR9Ovy0ZI5ofCubL",
-      "title": "❌已废弃_快照_1016_1856",
-      "kind": "doc",
-      "reason": "快照刷新后的旧版（1016_1856），已被新快照取代",
-      "moved": true,
-      "added": "2026-10-16 18:56"
-    },
-    {
-      "id": "qydBsUJixvSnkMMlGqXT2x",
-      "title": "❌已废弃_快照_1016_2234",
-      "kind": "doc",
-      "reason": "快照刷新后的旧版（1016_2234），已被新快照取代",
-      "moved": true,
-      "added": "2026-10-16 22:34"
-    },
-    {
-      "id": "ssy5sZdAtBT1PCzDQnZdIo",
-      "title": "❌已废弃_快照_1016_2240",
-      "kind": "doc",
-      "reason": "快照刷新后的旧版（1016_2240），已被新快照取代",
-      "moved": true,
-      "added": "2026-10-16 22:40"
-    },
-    {
-      "id": "MVw3PFHX2tK41mF6X4VjTe",
-      "title": "❌已废弃_快照_1017_0704",
-      "kind": "doc",
-      "reason": "快照刷新后的旧版（1017_0704），已被新快照取代",
-      "moved": true,
-      "added": "2026-10-17 07:04"
-    },
-    {
-      "id": "KK5sn2oMVVMeFyoGgJjXON",
-      "title": "❌已废弃_快照_1017_0707",
-      "kind": "doc",
-      "reason": "快照刷新后的旧版（1017_0707），已被新快照取代",
-      "moved": true,
-      "added": "2026-10-17 07:07"
-    },
-    {
-      "id": "9Ficg0kq7jOh8oGIJ6Gv9X",
-      "title": "❌已废弃_快照_1017_0725",
-      "kind": "doc",
-      "reason": "快照刷新后的旧版（1017_0725），已被新快照取代",
-      "moved": true,
-      "added": "2026-10-17 07:25"
-    },
-    {
-      "id": "o4L0xwavrOqATI1MtV3ENQ",
-      "title": "❌已废弃_快照_1017_0727",
-      "kind": "doc",
-      "reason": "快照刷新后的旧版（1017_0727），已被新快照取代",
-      "moved": true,
-      "added": "2026-10-17 07:27"
-    },
-    {
-      "id": "SjL6exXLV8OgLqz96b7JHo",
-      "title": "❌已废弃_快照_1017_0728",
-      "kind": "doc",
-      "reason": "快照刷新后的旧版（1017_0728），已被新快照取代",
-      "moved": true,
-      "added": "2026-10-17 07:28"
-    },
-    {
-      "id": "QmyOzAUQeJRluwaPoeUfWV",
-      "title": "❌已废弃_快照_1017_2259",
-      "kind": "doc",
-      "reason": "快照刷新后的旧版（1017_2259），已被新快照取代",
-      "moved": true,
-      "added": "2026-10-17 22:59"
-    },
-    {
-      "id": "ANtZGTTBUtR8p36p22x61O",
-      "title": "❌已废弃_快照_1018_0014",
-      "kind": "doc",
-      "reason": "快照刷新后的旧版（1018_0014），已被新快照取代",
-      "moved": true,
-      "added": "2026-10-18 00:14"
-    },
-    {
-      "id": "ejekGIbx1oFyPb5HeiXfqI",
-      "title": "❌已废弃_快照_1018_0043",
-      "kind": "doc",
-      "reason": "快照刷新后的旧版（1018_0043），已被新快照取代",
-      "moved": true,
-      "added": "2026-10-18 00:43"
-    },
-    {
-      "id": "wW5xpbS663nA6XK8a7DNsp",
-      "title": "🗑【已废弃】源数据总库(旧·S144清空)",
-      "kind": "database",
-      "reason": "#189 底包库大迁移：源数据已并入底包库/探源司总库，冗余库已清空(801条)，无删除API，投递待人工删",
-      "moved": true,
-      "added": "2026-10-18 10:17"
-    },
-    {
-      "id": "G9B1GzfRJDoSausMmPXF8T",
-      "title": "🗑【已废弃】备用库(旧·S144清空)",
-      "kind": "database",
-      "reason": "#189 底包库大迁移：备用库(源总库同源镜像)已清空(801条)，冗余，无删除API，投递待人工删",
-      "moved": true,
-      "added": "2026-10-18 10:17"
-    },
-    {
-      "id": "92dSuG6uUbxitGuyx4Saaf",
-      "title": "🗑【已废弃】失效源库(旧·S144清空)",
-      "kind": "database",
-      "reason": "S144 阶段3清空旧三库遗留空壳·失效源库，长期无价值，无删除API，投递待人工删",
-      "moved": true,
-      "added": "2026-10-18 10:17"
-    },
-    {
-      "id": "a2A23tHK6kDPHKH4XegXVw",
-      "title": "🗑废弃·探源司成品源库(空壳·勿用)",
-      "kind": "database",
-      "reason": "探源司成品源库空壳·标注勿用，长期未承载有效数据，无删除API，投递待人工删",
-      "moved": true,
-      "added": "2026-10-18 10:17"
-    },
-    {
-      "id": "zcOL6GbEvQTM89GGKrpP2Z",
-      "title": "🔞1014_61站25lives_重复可删(被zoho纯可用包含)",
-      "kind": "drive",
-      "reason": "标题含废弃标记「重复」",
-      "moved": true,
-      "added": "2026-10-18 10:27"
-    },
-    {
-      "id": "61XXsjxA2VKs6mKEanCfLR",
-      "title": "🔞1014_61站29lives_重复可删(同母版)",
-      "kind": "drive",
-      "reason": "标题含废弃标记「重复」",
-      "moved": true,
-      "added": "2026-10-18 10:27"
-    },
-    {
-      "id": "DB2edG4f7RBLS3pjQk7Ilb",
-      "title": "🔞1014_lives_zoho25路_重复可删",
-      "kind": "drive",
-      "reason": "标题含废弃标记「重复」",
-      "moved": true,
-      "added": "2026-10-18 10:27"
-    },
-    {
-      "id": "cCZxxlzFFzOAqHlYIaUUUw",
-      "title": "❌已废弃_快照_1018_1900",
-      "kind": "doc",
-      "reason": "快照刷新后的旧版（1018_1900），已被新快照取代",
-      "moved": true,
-      "added": "2026-10-18 19:00",
-      "origin_parent": ""
-    },
-    {
-      "id": "Ee91mqDERWfxKEKnx8QKAt",
-      "title": "❌已废弃_快照_1018_1909",
-      "kind": "doc",
-      "reason": "快照刷新后的旧版（1018_1909），已被新快照取代",
-      "moved": true,
-      "added": "2026-10-18 19:09",
-      "origin_parent": ""
-    },
-    {
-      "id": "NRhVgcrcxBcm1J9TKkJ0p7",
-      "title": "❌已废弃_快照_1018_1913",
-      "kind": "doc",
-      "reason": "快照刷新后的旧版（1018_1913），已被新快照取代",
-      "moved": true,
-      "added": "2026-10-18 19:13",
-      "origin_parent": ""
-    },
-    {
-      "id": "iGVrN0We789auplImUIaJi",
-      "title": "❌已废弃_快照_1018_1921",
-      "kind": "doc",
-      "reason": "快照刷新后的旧版（1018_1921），已被新快照取代",
-      "moved": true,
-      "added": "2026-10-18 19:21",
-      "origin_parent": ""
-    },
-    {
-      "id": "2jgIs29ilgqIIFVU61cIyf",
-      "title": "🗑【已废弃】py线路源库·S160并入线路源库",
-      "kind": "database",
-      "reason": "标题含废弃标记「废弃」",
-      "moved": true,
-      "added": "2026-10-18 19:42",
-      "origin_parent": "gZ4xP6kXXeCpTlsH2CN9tJ"
-    },
-    {
-      "id": "LIksN7jSFuo4uWFaUSz2iz",
-      "title": "🗑【已废弃】csp线路源库·S160并入线路源库",
-      "kind": "database",
-      "reason": "标题含废弃标记「废弃」",
-      "moved": true,
-      "added": "2026-10-18 19:42",
-      "origin_parent": "gZ4xP6kXXeCpTlsH2CN9tJ"
-    },
-    {
-      "id": "IGz9Q1jashp1JTTastBKGM",
-      "title": "🗑【已废弃】成品源库·S160改名JSON库",
-      "kind": "database",
-      "reason": "标题含废弃标记「废弃」",
-      "moved": true,
-      "added": "2026-10-18 19:42",
-      "origin_parent": "gZ4xP6kXXeCpTlsH2CN9tJ"
-    },
-    {
-      "id": "x3axUN3EgbAAhnIfxTcYBu",
-      "title": "🗑【已废弃】演练·T1·并入T2",
-      "kind": "database",
-      "reason": "标题含废弃标记「废弃」",
-      "moved": true,
-      "added": "2026-10-18 21:17",
-      "origin_parent": ""
-    },
-    {
-      "id": "oH7p8d7j2udkk88k47YVXr",
-      "title": "🗄️ 归档·4K直链采集 lytvs（旧版）",
-      "kind": "drive",
-      "reason": "标题含废弃标记「旧版」",
-      "moved": true,
-      "added": "2026-10-18 21:18",
-      "origin_parent": ""
-    },
-    {
-      "id": "z5IE88WKo134ISIFLtgn23",
-      "title": "📄 报告·aowu 冒烟测试报告",
-      "kind": "doc",
-      "reason": "标题含废弃标记「测试」",
-      "moved": true,
-      "added": "2026-10-18 21:18",
-      "origin_parent": ""
-    },
-    {
-      "id": "kpqzYmCqTZad5fxoD74i37",
-      "title": "生成临时接口URL（gen_temp_cfg_url）",
-      "kind": "drive",
-      "reason": "标题含废弃标记「临时」",
-      "moved": true,
-      "added": "2026-10-18 21:18",
-      "origin_parent": ""
-    },
-    {
-      "id": "lTy4uZDfy4UHsMIVzGpTnA",
-      "title": "📁 运维·在线线路（临时接口）",
-      "kind": "folder",
-      "reason": "标题含废弃标记「临时」",
-      "moved": true,
-      "added": "2026-10-18 21:18",
-      "origin_parent": ""
-    },
-    {
-      "id": "j2Ygm8nsglPdJ7DPM1A0we",
-      "title": "❌已废弃_快照_1015_0232",
-      "kind": "doc",
-      "reason": "标题含废弃标记「废弃」",
-      "moved": true,
-      "added": "2026-10-18 21:19",
-      "origin_parent": ""
-    },
-    {
-      "id": "Im46R72cNkUNJmD5PSiIMZ",
-      "title": "❌已废弃_快照_1015_0243",
-      "kind": "doc",
-      "reason": "标题含废弃标记「废弃」",
-      "moved": true,
-      "added": "2026-10-18 21:19",
-      "origin_parent": ""
-    },
-    {
-      "id": "TstrWfaIYFpRVGHGtylh7o",
-      "title": "❌已废弃_快照_1015_0244",
-      "kind": "doc",
-      "reason": "标题含废弃标记「废弃」",
-      "moved": true,
-      "added": "2026-10-18 21:19",
-      "origin_parent": ""
-    },
-    {
-      "id": "xegu8q1Yrh0wTpATssPK08",
-      "title": "❌已废弃_快照_1015_0307",
-      "kind": "doc",
-      "reason": "标题含废弃标记「废弃」",
-      "moved": true,
-      "added": "2026-10-18 21:19",
-      "origin_parent": ""
-    },
-    {
-      "id": "HzgJTO7k9dGkAAEMfyihOO",
-      "title": "❌已废弃_快照_1015_0316",
-      "kind": "doc",
-      "reason": "标题含废弃标记「废弃」",
-      "moved": true,
-      "added": "2026-10-18 21:19",
-      "origin_parent": ""
-    },
-    {
-      "id": "cT7IctVfaeUjvI88yFE57S",
-      "title": "❌已废弃_快照_1015_0337",
-      "kind": "doc",
-      "reason": "标题含废弃标记「废弃」",
-      "moved": true,
-      "added": "2026-10-18 21:20",
-      "origin_parent": ""
-    },
-    {
-      "id": "TKeqIhLDkB6ifZByAHCoIm",
-      "title": "❌已废弃_快照_1015_0408",
-      "kind": "doc",
-      "reason": "标题含废弃标记「废弃」",
-      "moved": true,
-      "added": "2026-10-18 21:20",
-      "origin_parent": ""
-    },
-    {
-      "id": "OX2v5E4FvTELhEUyH9tKft",
-      "title": "❌已废弃_快照_1015_1226",
-      "kind": "doc",
-      "reason": "标题含废弃标记「废弃」",
-      "moved": true,
-      "added": "2026-10-18 21:20",
-      "origin_parent": ""
-    },
-    {
-      "id": "ZxTqdACsYCUkUA790rkQk8",
-      "title": "❌已废弃_快照_1015_1316",
-      "kind": "doc",
-      "reason": "标题含废弃标记「废弃」",
-      "moved": true,
-      "added": "2026-10-18 21:20",
-      "origin_parent": ""
-    },
-    {
-      "id": "u26Op758IBjoTB8DOo063V",
-      "title": "❌已废弃_快照_1015_1345",
-      "kind": "doc",
-      "reason": "标题含废弃标记「废弃」",
-      "moved": true,
-      "added": "2026-10-18 21:20",
-      "origin_parent": ""
-    },
-    {
-      "id": "akbLBGyPDZRCY3ji9RTRxp",
-      "title": "❌已废弃_快照_1015_1522",
-      "kind": "doc",
-      "reason": "标题含废弃标记「废弃」",
-      "moved": true,
-      "added": "2026-10-18 21:20",
-      "origin_parent": ""
-    },
-    {
-      "id": "0o1PmsICknMI87hcf4oZwe",
-      "title": "❌已废弃_快照_1015_1548",
-      "kind": "doc",
-      "reason": "标题含废弃标记「废弃」",
-      "moved": true,
-      "added": "2026-10-18 21:21",
-      "origin_parent": ""
-    },
-    {
-      "id": "ExbHYjpzqBxMBSbW2iB67B",
-      "title": "❌已废弃_快照_1015_1736",
-      "kind": "doc",
-      "reason": "标题含废弃标记「废弃」",
-      "moved": true,
-      "added": "2026-10-18 21:21",
-      "origin_parent": ""
-    },
-    {
-      "id": "noPLDVFscrNM1KlNaavVKF",
-      "title": "❌已废弃_快照_1015_1902",
-      "kind": "doc",
-      "reason": "标题含废弃标记「废弃」",
-      "moved": true,
-      "added": "2026-10-18 21:21",
-      "origin_parent": ""
-    },
-    {
-      "id": "70peu9kgPr8BO7ZconTgHz",
-      "title": "❌已废弃_快照_1015_1903",
-      "kind": "doc",
-      "reason": "标题含废弃标记「废弃」",
-      "moved": true,
-      "added": "2026-10-18 21:21",
-      "origin_parent": ""
-    },
-    {
-      "id": "xEiZLGulVg80N1jKfamb7B",
-      "title": "1017_S125_三层联动首备",
-      "kind": "folder",
-      "reason": "空文件夹（无子节点）",
-      "moved": true,
-      "added": "2026-10-19 09:18",
-      "origin_parent": ""
-    },
-    {
-      "id": "hZC5tHFvhhzDMvDk7QVNVI",
-      "title": "生态遗留趋势留档（跨设备）",
-      "kind": "doc",
-      "reason": "同目录同名重复（生态遗留趋势留档（跨设备））第 2/23 份",
-      "moved": true,
-      "added": "2026-10-19 09:20",
-      "origin_parent": ""
-    },
-    {
-      "id": "vzjK0nfAnlZhIK18kGBTRV",
-      "title": "生态遗留趋势留档（跨设备）",
-      "kind": "doc",
-      "reason": "同目录同名重复（生态遗留趋势留档（跨设备））第 3/23 份",
-      "moved": true,
-      "added": "2026-10-19 09:20",
-      "origin_parent": ""
-    },
-    {
-      "id": "M9FvJGmlf3q3USQ5EIA2iE",
-      "title": "生态遗留趋势留档（跨设备）",
-      "kind": "doc",
-      "reason": "同目录同名重复（生态遗留趋势留档（跨设备））第 4/23 份",
-      "moved": true,
-      "added": "2026-10-19 09:20",
-      "origin_parent": ""
-    },
-    {
-      "id": "3ZCYknewSqadiPHTQXEAjG",
-      "title": "生态遗留趋势留档（跨设备）",
-      "kind": "doc",
-      "reason": "同目录同名重复（生态遗留趋势留档（跨设备））第 5/23 份",
-      "moved": true,
-      "added": "2026-10-19 09:20",
-      "origin_parent": ""
-    },
-    {
-      "id": "vGTY43rTlGaGWBs03e9KpV",
-      "title": "生态遗留趋势留档（跨设备）",
-      "kind": "doc",
-      "reason": "同目录同名重复（生态遗留趋势留档（跨设备））第 6/23 份",
-      "moved": true,
-      "added": "2026-10-19 09:21",
-      "origin_parent": ""
-    },
-    {
-      "id": "JztuxaE0NeKdJDtph50ro7",
-      "title": "生态遗留趋势留档（跨设备）",
-      "kind": "doc",
-      "reason": "同目录同名重复（生态遗留趋势留档（跨设备））第 7/23 份",
-      "moved": true,
-      "added": "2026-10-19 09:21",
-      "origin_parent": ""
-    },
-    {
-      "id": "fifN5wyNGMx6NW9kE9e3WX",
-      "title": "生态遗留趋势留档（跨设备）",
-      "kind": "doc",
-      "reason": "同目录同名重复（生态遗留趋势留档（跨设备））第 8/23 份",
-      "moved": true,
-      "added": "2026-10-19 09:21",
-      "origin_parent": ""
-    },
-    {
-      "id": "45ZLgleHaXw0IxsemuCl41",
-      "title": "生态遗留趋势留档（跨设备）",
-      "kind": "doc",
-      "reason": "同目录同名重复（生态遗留趋势留档（跨设备））第 9/23 份",
-      "moved": true,
-      "added": "2026-10-19 09:21",
-      "origin_parent": ""
-    },
-    {
-      "id": "OFd1J0Falbx2VKQEwhQ8HA",
-      "title": "生态遗留趋势留档（跨设备）",
-      "kind": "doc",
-      "reason": "同目录同名重复（生态遗留趋势留档（跨设备））第 10/23 份",
-      "moved": true,
-      "added": "2026-10-19 09:21",
-      "origin_parent": ""
-    },
-    {
-      "id": "UlEyl2D2mvR5ZTUtgdRfpp",
-      "title": "生态遗留趋势留档（跨设备）",
-      "kind": "doc",
-      "reason": "同目录同名重复（生态遗留趋势留档（跨设备））第 11/23 份",
-      "moved": true,
-      "added": "2026-10-19 09:22",
-      "origin_parent": ""
+      "added": "2026-10-22 20:24",
+      "origin_parent": "gZ4xP6kXXeCpTlsH2CN9tJ",
+      "_verify": "2026-10-22 20:27 清道夫 move 移入 EMtAqVr56vlumwGxDiHJYp，移后回读目标下确有该节点"
     }
   ],
   "pruned": [
@@ -558,6 +26,65 @@
       "reason": "移出收件箱后清单未同步",
       "actual_parent": "zEYBoLq5G58Rdw7g3ADBnn",
       "at": "2026-10-18 22:15"
+    },
+    {
+      "id": "EcUOxb8SYiOdJJuWZmDSy9",
+      "title": "JS1021_anyshort_1站",
+      "reason": "移出收件箱后清单未同步",
+      "actual_parent": "bzZOu4xo88iJFXLcXI0xqs",
+      "at": "2026-10-22 19:46"
+    },
+    {
+      "id": "5GsaZYGRoKvrduj8TgfJH9",
+      "title": "JS1021_anyshort_海外短剧三源",
+      "reason": "移出收件箱后清单未同步",
+      "actual_parent": "bzZOu4xo88iJFXLcXI0xqs",
+      "at": "2026-10-22 19:46"
+    },
+    {
+      "id": "FVphEKYNwFLgCJWphbSmLI",
+      "title": "C1016_okay_轻量可编辑版",
+      "reason": "移出收件箱后清单未同步",
+      "actual_parent": "bzZOu4xo88iJFXLcXI0xqs",
+      "at": "2026-10-22 19:46"
+    },
+    {
+      "id": "rrOaiuXcyb3gYRbpWr7urU",
+      "title": "C1016_lxcjy_轻量可编辑版",
+      "reason": "移出收件箱后清单未同步",
+      "actual_parent": "bzZOu4xo88iJFXLcXI0xqs",
+      "at": "2026-10-22 19:46"
+    },
+    {
+      "id": "ggJZFXUgDoXjTqgqsHx2dt",
+      "title": "A1015_box轻量化可编辑版",
+      "reason": "移出收件箱后清单未同步",
+      "actual_parent": "bzZOu4xo88iJFXLcXI0xqs",
+      "at": "2026-10-22 19:46"
+    },
+    {
+      "id": "SLyOxv5s0KFbFi5E0NgAhE",
+      "title": "A1015_jsm轻量化可编辑版",
+      "reason": "移出收件箱后清单未同步",
+      "actual_parent": "bzZOu4xo88iJFXLcXI0xqs",
+      "at": "2026-10-22 19:46"
+    },
+    {
+      "id": "EOnEhOf1ZdKbGGIMiF0w8U",
+      "title": "A1015_easyzz_多仓配置12源",
+      "reason": "移出收件箱后清单未同步",
+      "actual_parent": "bzZOu4xo88iJFXLcXI0xqs",
+      "at": "2026-10-22 19:46"
+    },
+    {
+      "id": "bzZOu4xo88iJFXLcXI0xqs",
+      "title": "我的json（成品json库）",
+      "reason": "移出收件箱后清单未同步",
+      "actual_parent": "gZ4xP6kXXeCpTlsH2CN9tJ",
+      "at": "2026-10-22 20:26"
     }
-  ]
+  ],
+  "cleared": "2026-10-21 20:34",
+  "cleared_count": 63,
+  "cleared_summary": "S196 用户手动删除全部投递项（含生态1015归档整夹与误建空壳）。复核：逐项 node-info 11510 not found。"
 }

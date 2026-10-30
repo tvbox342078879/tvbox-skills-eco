@@ -4,7 +4,8 @@
 mount_judge.py — 挂载决定论判定器（探源司升级·S113 / S113b）
 
 正本依据：
-  《/workspace/做json决策依据_挂载决定论与相对转绝对.md》
+  《做json决策依据_挂载决定论与相对转绝对.md》（原 /workspace/ 位置已归档：
+    /root/uploads/历史产物归档_20261023_1014至1020会话.tar.gz 内 依据_1018_改名）
   tvbox-interface/docs/manual_4_2c_相对地址转绝对.md
   《标准1015_底包细分类体系.md》§2 可平移性矩阵
 
@@ -32,7 +33,6 @@ dex 解析口径（纯 stdlib，无外部工具依赖）：
 兼容探源司格式({api接口,名称,...})与标准 TVBox 格式({api,name,ext})。
 """
 import io
-import os
 import struct
 import subprocess
 import threading
@@ -44,6 +44,7 @@ from urllib.parse import quote
 import sys as _sys
 _sys.path.insert(0, '/root/.codebuddy/skills/tvbox-source-hub/scripts')
 from concurrency import run_bounded as _run_bounded, TIER_WEB  # noqa: E402
+from core import http_get  # noqa: E402  # 共享核心(C1)：统一取数入口
 
 
 CURL = '/usr/bin/curl'
@@ -211,6 +212,7 @@ def fetch_jar(url, timeout=30):
     """下载 spider jar（进程内缓存，同 URL 只下一次）。返回 bytes 或 None。
 
     自动剥离 TVBox 的 `;md5;` 后缀（pipeline.py cmd_spider 同口径）。
+    底层统一走 core.http_get（C1：收敛取数入口，as_text=False 保二进制）。
     """
     if not url:
         return None
@@ -220,15 +222,10 @@ def fetch_jar(url, timeout=30):
     with _JAR_LOCK:
         if url in _JAR_CACHE:
             return _JAR_CACHE[url]
-    try:
-        r = subprocess.run(
-            [CURL, '-s', '-L', '-m', str(timeout), '-A', UA, quote(url, safe=':/?&=%#')],
-            capture_output=True, timeout=timeout + 10)
-        data = r.stdout or b''
-        # HTML 兜底页 ≠ jar（SPA catch-all 会把不存在路径也返 200+主页）
-        out = None if (not data or data.lstrip()[:1] == b'<') else data
-    except Exception:
-        out = None
+    st, payload, _ = http_get(url, timeout=timeout, ua=UA, as_text=False)
+    data = payload if (st == 'ok' and payload) else b''
+    # HTML 兜底页 ≠ jar（SPA catch-all 会把不存在路径也返 200+主页）
+    out = None if (not data or data.lstrip()[:1] == b'<') else data
     with _JAR_LOCK:
         _JAR_CACHE[url] = out
     return out

@@ -2,7 +2,8 @@
  "folder_id_by_day": {
   "20261017": "xEiZLGulVg80N1jKfamb7B",
   "20261018": "T7Bd0ukQ4dnnTAYMy2ktLq",
-  "20261020": "tmjTFPQKkh2kQETEn3JocK"
+  "20261020": "tmjTFPQKkh2kQETEn3JocK",
+  "20261023": "YoxdqOhGnZ8HcxSPk1unWt"
  },
  "uploaded_by_day": {
   "20261017": {
@@ -249,394 +250,33 @@
    "data_DB_ECO_生态登记_14rows.json": "tmjTFPQKkh2kQETEn3JocK",
    "data_DB_DEAD_失效源库_220rows.json": "tmjTFPQKkh2kQETEn3JocK",
    "manifest.json": "tmjTFPQKkh2kQETEn3JocK"
+  },
+  "20261023": {
+   "governance_core_20261023.tar.gz": "YoxdqOhGnZ8HcxSPk1unWt",
+   "README_产物索引.md": "YoxdqOhGnZ8HcxSPk1unWt",
+   "data_DB_SESS_台账_194rows.json": "YoxdqOhGnZ8HcxSPk1unWt",
+   "data_DB_LIB_经验库_254rows.json": "YoxdqOhGnZ8HcxSPk1unWt",
+   "data_DB_ECO_生态登记_14rows.json": "YoxdqOhGnZ8HcxSPk1unWt",
+   "data_DB_DEAD_失效源库_220rows.json": "YoxdqOhGnZ8HcxSPk1unWt",
+   "manifest.json": "YoxdqOhGnZ8HcxSPk1unWt"
   }
  },
  "last": {
-  "date": "20261020",
+  "date": "20261023",
   "items": [
    {
-    "file": "governance_core_20261020.tar.gz",
-    "bytes": 359705,
-    "sha256": "df7519ed44d5a2e7"
+    "file": "governance_core_20261023.tar.gz",
+    "bytes": 428154,
+    "sha256": "66cb05f48e4e52c2"
    },
    {
-    "file": "A1014_easytv_底包规则执行报告.md",
-    "bytes": 5240,
-    "sha256": "9a2d968080c23d91"
-   },
-   {
-    "file": "A1014_easytv_轻量版说明.md",
-    "bytes": 4154,
-    "sha256": "8e253203f9c4c7e3"
-   },
-   {
-    "file": "A1015_easyzz_剩余条目深挖报告.md",
-    "bytes": 6140,
-    "sha256": "d3e0c225b29bf4d2"
-   },
-   {
-    "file": "A1015_easyzz_外部源深挖报告.md",
-    "bytes": 7450,
-    "sha256": "122d25267bc9495b"
-   },
-   {
-    "file": "A1015_easyzz_配置处理报告.md",
-    "bytes": 2366,
-    "sha256": "a4d6061325d67576"
-   },
-   {
-    "file": "M09_1018_僵尸源处置_待定项.md",
-    "bytes": 2855,
-    "sha256": "81deae45faf6e1f6"
-   },
-   {
-    "file": "S104_1017_待删清单.md",
-    "bytes": 7279,
-    "sha256": "b97712077bcccaff"
-   },
-   {
-    "file": "S104_1018_待删清单.md",
-    "bytes": 8274,
-    "sha256": "935f364bb7b6e700"
-   },
-   {
-    "file": "S104_1019_待删清单.md",
-    "bytes": 10079,
-    "sha256": "0bd817651593d4f8"
-   },
-   {
-    "file": "S107_招式库_终检报告.md",
-    "bytes": 3236,
-    "sha256": "eebc6d1c751d5408"
-   },
-   {
-    "file": "S154_用户偏好固化_M-R108落地报告.md",
-    "bytes": 5095,
-    "sha256": "d8374e1f29485cc6"
-   },
-   {
-    "file": "S155_全技能监护与元监察落地报告.md",
-    "bytes": 6349,
-    "sha256": "b1e205b4397335a9"
-   },
-   {
-    "file": "S156_开工触发生态联动固化报告.md",
-    "bytes": 3787,
-    "sha256": "8ee8e2fea5ea7c14"
-   },
-   {
-    "file": "S158_大生态盲区与治理交付报告.md",
-    "bytes": 15458,
-    "sha256": "597bcfb5dd55cfeb"
-   },
-   {
-    "file": "S158_技能与资料库_调用协议收敛交付报告.md",
-    "bytes": 8995,
-    "sha256": "95bcaee4f115db5e"
-   },
-   {
-    "file": "S159_施工清单_四项改进与巡检修复.md",
-    "bytes": 5610,
-    "sha256": "87daf7e7ccdb6129"
-   },
-   {
-    "file": "S160_源库重建_交付说明.md",
-    "bytes": 8712,
-    "sha256": "d6a206a26c1321e6"
-   },
-   {
-    "file": "S165-定时任务压测报告.md",
-    "bytes": 5410,
-    "sha256": "90b0b76024655329"
-   },
-   {
-    "file": "S176-账本自净与三处真缺陷-验收报告.md",
-    "bytes": 7589,
-    "sha256": "cb2cb632bd3bd87e"
-   },
-   {
-    "file": "S176b-规则探针可执行化-验收报告.md",
-    "bytes": 10355,
-    "sha256": "37160acca8848d1a"
-   },
-   {
-    "file": "S176b续_可对话执行层与判据修复_验收报告.md",
-    "bytes": 14289,
-    "sha256": "c19ec3154c24edde"
-   },
-   {
-    "file": "依据_1017_做JSON的判断依据.md",
-    "bytes": 8865,
-    "sha256": "384a4d59de89c602"
-   },
-   {
-    "file": "依据_1017_我判断能否做JSON的依据.md",
-    "bytes": 6909,
-    "sha256": "86d1c1fcdc9cf4a7"
-   },
-   {
-    "file": "依据_1018_做json决策依据_挂载决定论与相对转绝对.md",
-    "bytes": 9906,
-    "sha256": "6009ccadbcecf510"
-   },
-   {
-    "file": "升级1017_探源司v1.4.0_经验转判据报告.md",
-    "bytes": 11921,
-    "sha256": "15c27a0cafef7122"
-   },
-   {
-    "file": "复盘1015_box拆分入库.md",
-    "bytes": 5928,
-    "sha256": "75ccb5d24f3adac5"
-   },
-   {
-    "file": "复盘1015_jsm拆分入库.md",
-    "bytes": 8174,
-    "sha256": "ba1f2775a31b2467"
-   },
-   {
-    "file": "复盘1015_全量复盘第1轮.md",
-    "bytes": 6796,
-    "sha256": "e83f58b1311dfde2"
-   },
-   {
-    "file": "复盘1015_全量复盘第2轮.md",
-    "bytes": 4346,
-    "sha256": "98d2a4ead8d6b2bd"
-   },
-   {
-    "file": "复盘1015_规则52坑解法固化.md",
-    "bytes": 4808,
-    "sha256": "4c67fac61d9fd29c"
-   },
-   {
-    "file": "复盘1015_高频问题专项复盘.md",
-    "bytes": 4214,
-    "sha256": "3e14191eb3cc513e"
-   },
-   {
-    "file": "复盘1016_生态联动失效_病根与修复.md",
-    "bytes": 5356,
-    "sha256": "af8e7d1628f0109b"
-   },
-   {
-    "file": "复盘1016_需求成功清单.md",
-    "bytes": 11517,
-    "sha256": "8f63fddc707bcdae"
-   },
-   {
-    "file": "复盘1017_JSON与线路源_探源司v1.3.0升级.md",
-    "bytes": 9680,
-    "sha256": "79f55c313414e1fd"
-   },
-   {
-    "file": "复盘1017_七轮清账全景_收益代价与转向.md",
-    "bytes": 6793,
-    "sha256": "61bc9b4fb8562046"
-   },
-   {
-    "file": "复盘1017_生态库与资料库联动大复盘.md",
-    "bytes": 4243,
-    "sha256": "d3698b77bae8bbe3"
-   },
-   {
-    "file": "复盘1017_近四天深挖复盘与大升级施工图.md",
-    "bytes": 12037,
-    "sha256": "71a4657ecc898347"
-   },
-   {
-    "file": "复盘1017_近四天系统性回顾与大升级方案.md",
-    "bytes": 6605,
-    "sha256": "8d84991e37921f08"
-   },
-   {
-    "file": "复盘1017_首次大复盘终版_基础定盘.md",
-    "bytes": 13036,
-    "sha256": "519b318268a93227"
-   },
-   {
-    "file": "复盘1018_S115_内容层测活与交付重建.md",
-    "bytes": 6903,
-    "sha256": "4c4b6cb32d5f6819"
-   },
-   {
-    "file": "复盘1018_生态体检_问题与改进建议.md",
-    "bytes": 9758,
-    "sha256": "26c4157fbfd0fb09"
-   },
-   {
-    "file": "复盘_1017_S139判死判据与平账.md",
-    "bytes": 5679,
-    "sha256": "568a60183eb40688"
-   },
-   {
-    "file": "工作区常用入口.md",
-    "bytes": 3865,
-    "sha256": "456d417f377d2c95"
-   },
-   {
-    "file": "技能触发失效_1017_查证与修复报告.md",
-    "bytes": 7380,
-    "sha256": "300f5538b306bbd2"
-   },
-   {
-    "file": "指南1017_以后新增技能与能力操作手册.md",
-    "bytes": 9237,
-    "sha256": "d918e7703b088698"
-   },
-   {
-    "file": "探源司1016_S095_测试清单.md",
-    "bytes": 7780,
-    "sha256": "186fe779126268f9"
-   },
-   {
-    "file": "收尾汇报_20261017.md",
-    "bytes": 2867,
-    "sha256": "2fba6e1fe8806b28"
-   },
-   {
-    "file": "收尾汇报_20261020.md",
-    "bytes": 8779,
-    "sha256": "3067538b7a8fbfa7"
-   },
-   {
-    "file": "方案1017_成品源库去重_完工报告.md",
-    "bytes": 20831,
-    "sha256": "6132973a448515e2"
-   },
-   {
-    "file": "方案1017_规则进化固化报告.md",
-    "bytes": 5300,
-    "sha256": "c22ec28a56337fa6"
-   },
-   {
-    "file": "方案1017_选线判据验证_5条实测.md",
-    "bytes": 5193,
-    "sha256": "248bd4eed87335d1"
-   },
-   {
-    "file": "方案1017_阶段5_完工报告.md",
-    "bytes": 10029,
-    "sha256": "c505c7e664df4882"
-   },
-   {
-    "file": "方案1017_黑名单标记_源指纹三层分级.md",
-    "bytes": 5593,
-    "sha256": "fc89be97c8671cfd"
-   },
-   {
-    "file": "施工1017_探源司统一库_方案与冲突.md",
-    "bytes": 11418,
-    "sha256": "536e227ed70624a6"
-   },
-   {
-    "file": "标准1015_做JSON标准流程SOP.md",
-    "bytes": 32441,
-    "sha256": "4688f04aabc698ef"
-   },
-   {
-    "file": "标准1015_底包细分类体系.md",
-    "bytes": 17755,
-    "sha256": "35ed054b0e2383fc"
-   },
-   {
-    "file": "溯源_1017_做JSON依据的从零演进.md",
-    "bytes": 8816,
-    "sha256": "70bebc25a8fe486f"
-   },
-   {
-    "file": "溯源_1017_往三包加线路的采集过程.md",
-    "bytes": 13411,
-    "sha256": "3f07fbf84ac8cab0"
-   },
-   {
-    "file": "溯源_1017_直链源渠道自建vs拉取.md",
-    "bytes": 13729,
-    "sha256": "ec295aa800786ab7"
-   },
-   {
-    "file": "生态1015_TVBox生态全局规则.md",
-    "bytes": 20150,
-    "sha256": "3db41b00dd2e4a0e"
-   },
-   {
-    "file": "生态1015_遗留问题监测报告.md",
-    "bytes": 7931,
-    "sha256": "d51b75b101e5506c"
-   },
-   {
-    "file": "生态1016_生态指挥家技能设计.md",
-    "bytes": 34052,
-    "sha256": "4d916c56e783bad7"
-   },
-   {
-    "file": "生态1016_生态认知总纲.md",
-    "bytes": 6645,
-    "sha256": "2eab9c7bbdc89048"
-   },
-   {
-    "file": "生态1016_遗留问题监测报告.md",
-    "bytes": 9529,
-    "sha256": "b864d3965c08d7d3"
-   },
-   {
-    "file": "生态1017_遗留问题监测报告.md",
-    "bytes": 12364,
-    "sha256": "ba7425dc74ecfd69"
-   },
-   {
-    "file": "生态1018_AI提速联动方案.md",
-    "bytes": 3988,
-    "sha256": "a3a1099001939c0f"
-   },
-   {
-    "file": "生态1018_两处修复与连带发现.md",
-    "bytes": 4129,
-    "sha256": "a4b45f2296584b6f"
-   },
-   {
-    "file": "生态1018_会话闸门硬约束.md",
-    "bytes": 3724,
-    "sha256": "206391aa3ffe8f51"
-   },
-   {
-    "file": "生态1018_大生态联动与待删机制核查.md",
-    "bytes": 4987,
-    "sha256": "973cb4d7275daa59"
-   },
-   {
-    "file": "生态1018_联动真实性普查报告.md",
-    "bytes": 5714,
-    "sha256": "a8bd26b83a841715"
-   },
-   {
-    "file": "说明_1017_探源司probe-hub全景.md",
-    "bytes": 8560,
-    "sha256": "d309eef059d09837"
-   },
-   {
-    "file": "账房司1018_技能设计方案.md",
-    "bytes": 11062,
-    "sha256": "c0eb1226af1c0b09"
-   },
-   {
-    "file": "账房司1018_方案深挖篇.md",
-    "bytes": 12457,
-    "sha256": "a428ca9b970439ae"
-   },
-   {
-    "file": "过程_1017_线路源你怎么要求我怎么判定.md",
-    "bytes": 9137,
-    "sha256": "2fa32d777a387d99"
-   },
-   {
-    "file": "闭环1017_SKILL体积与触发五问.md",
-    "bytes": 15362,
-    "sha256": "c647aad32ae6d7f7"
+    "file": "README_产物索引.md",
+    "bytes": 3414,
+    "sha256": "ab48c8344a071659"
    }
   ],
-  "folder_id": "tmjTFPQKkh2kQETEn3JocK",
-  "ok": 81,
+  "folder_id": "YoxdqOhGnZ8HcxSPk1unWt",
+  "ok": 7,
   "fail": 0
  }
 }

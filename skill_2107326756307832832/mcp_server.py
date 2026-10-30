@@ -20,14 +20,11 @@ from typing import Any, Dict, List, Optional
 PROJECT_ROOT = Path(__file__).parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from core.utils import (
-    load_config, get_logger, parse_date_range, extract_wechat_urls,
-    is_wechat_url, canonicalize_url, resolve_export_dir, resolve_state_dir,
-)
+from core.utils import load_config, get_logger, extract_wechat_urls, is_wechat_url, canonicalize_url, resolve_export_dir, resolve_state_dir
 from core.filters import filter_by_date, filter_by_keywords, rank_by_relevance, deduplicate
 from core.dedup import Deduplicator
 from core.state_store import StateStore
-from core.summarizer import build_digest, summarize_article, article_stats
+from core.summarizer import build_digest
 from core.image_downloader import ImageDownloader
 from core.article_parser import parse_article_html, extract_article_meta_from_html
 from scrapers.sogou_search import SogouWeChatSearcher, SogouBlocked

@@ -26,7 +26,7 @@ import json
 import re
 import sys
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List
 
 try:
     import sys as _s

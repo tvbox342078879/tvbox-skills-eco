@@ -1,3 +1,45 @@
+## 2026-10-25 v1.2.12
+- 由 skill-evolution upgrade 自动提升（1.2.11 → 1.2.12）
+- 依据 M-R111 提案：跨技能学习：借鉴 [T-J] 高危schema变更先在测试库演练（跨技能学习：字段级 schema 变更（枚举增删/改类型/重建字段）前 场景可借鉴）
+- 依据 M-R111 提案：跨技能学习：借鉴 [T-K] 批量写入大payload必分块（25条为界）（跨技能学习：批量写库 >25 条时 场景可借鉴）
+- 依据 M-R111 提案：跨技能学习：借鉴 [T-L] 「等外部恢复」欠账必配判愈探针（跨技能学习：欠账属于「等待外部环境恢复」类时 场景可借鉴）
+
+---
+
+## v1.2.11 — 版本前进（skill-evolution upgrade 自动提升）
+- 由 skill-evolution upgrade 推进（条目已置顶部，符合倒序惯例）
+
+## 2026-10-22 v1.2.10
+- 由 skill-evolution upgrade 自动提升（1.2.9 → 1.2.10）
+- ★ S202 分工修正：建夹/建库**不归本技能**——正本是资料库（library）的 M-R201 五闸 +
+  `manage/create_folder.py`。§1.1 正门表删去建夹行并补「建夹不归本技能」说明。
+- 执行层双闸定形（hooks/skill_route_guard.py）：闸一 JANITOR_CMDS（move-node/rename-node）
+  → 要求 tvbox-janitor；闸二 LIBRARY_CMDS（create_folder.py）→ 要求 library。
+  自测 6/6（含中途抓出「常量未定义导致闸二崩溃」并修复——先改调用点后改常量被闸拦成半改状态的教训）。
+- M-R202 规则表述同步修正（rules_registry.json：statement/landing/implementation/title）。
+
+## 2026-10-22 v1.2.9
+- 由 skill-evolution upgrade 自动提升（1.2.8 → 1.2.9）
+- ★ M-R202 立闸（S201）：节点搬迁/改名/建夹唯一正门=清道夫。SKILL.md 新增 §1.1「唯一正门」
+  （正门命令表 + 为什么是铁律），执行层硬闸落在 hooks/skill_route_guard.py（JANITOR_CMDS
+  命令面指纹：space.workspace.move-node / rename-node / manage/create_folder.py 命中且
+  本技能未加载 → exit 2 拦一次；双向自测 5 例通过）。
+- 坐标修正：§1 收件箱 id 不再写死（旧 tBlg… 已被用户删除导致失真），以
+  scripts/janitor_state.json 的 inbox 字段为准，janitor inbox 幂等重建并回写。
+- 现场：用户质问「建库，建夹，搬运不是都归清道夫管？手动搬运？」——agent 曾绕门直接调
+  space_api move-node 干完底包总库 25 节点搬迁。本版固化防线。修者：S201。
+
+## v1.2.8 — 新建夹即投 12607 重试护栏（P067 · S200）
+
+> 实测：收件箱夹**本次新建**后立即投递，move-node 必撞 12607 permission denied
+> （新建夹权限/索引传播延迟，非真权限问题——同参数几分钟后手动重试 7/7 全过，
+> 见 L244）。护栏：`add` 对 12607 错误带 5 秒间隔重试一次，再失败才按原逻辑
+> 登记「清单仍登记」。修者：S200。
+
+## v1.2.7 — 版本对齐补记（T18 探针发现 CHANGELOG 漏记）
+
+> 后续升版 CHANGELOG 漏记，本条补齐对齐。补记日 2026-10-22。
+
 ## v1.2.6 — 空夹不再自动投递 + 结构性容器双义交人裁（M-R125 · S179）
 
 ### 事故：判据挂在了名字上
@@ -352,3 +394,9 @@ S157 做技能指向核查，发现 6 个触发词同时归两个技能（`监�
 - 证据文件 [T-E]：`/root/.codebuddy/hooks/attach_guard.py`
 - 本条此前被误判"只说不做"，是因为判据只扫 `.py`、只看本技能目录、只认特定词形；
   `attach_guard.py` 在 hooks/ 下、是外部脚本，故一直读不到。
+
+## 2026-10-21 v1.2.7
+- 由 skill-evolution upgrade 自动提升（1.2.6 → 1.2.7）
+
+## 2026-10-22 v1.2.8
+- 由 skill-evolution upgrade 自动提升（1.2.7 → 1.2.8）

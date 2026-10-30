@@ -13,8 +13,6 @@
 而我开工时按「正常家宽 2MB/s」估，错了约 9 倍。那次若先跑 3 条样本，
 20 秒就能发现，而不是跑到 4 分钟零产出。
 """
-import io
-import math
 import sys
 
 sys.path.insert(0, '.')

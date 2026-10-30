@@ -94,26 +94,151 @@
   },
   {
     "date": "2026-10-20",
-    "overall": 100,
+    "overall": 98,
     "scores": {
       "cat_health": 100,
       "cat_gain": 100,
       "cat_noise": 100,
       "noise_state": "green",
       "cat_active": 100,
-      "cat_contract": 100,
-      "ver_state": "green",
-      "ver_ok": 13,
+      "cat_contract": 92,
+      "ver_state": "drift×1",
+      "ver_ok": 12,
+      "ver_total": 13,
+      "cat_biz": 100,
+      "cat_radar": 100
+    },
+    "metrics": {
+      "ready": "13/13",
+      "watchdog_ok": true,
+      "adopted": "30/30",
+      "retracted": 13,
+      "pending": 0,
+      "decided": 2
+    }
+  },
+  {
+    "date": "2026-10-21",
+    "overall": 95,
+    "scores": {
+      "cat_health": 100,
+      "cat_gain": 100,
+      "cat_noise": 100,
+      "noise_state": "green",
+      "cat_active": 100,
+      "cat_contract": 77,
+      "ver_state": "drift×3",
+      "ver_ok": 10,
       "ver_total": 13,
       "cat_biz": 0,
-      "cat_radar": 81
+      "cat_radar": 100
     },
     "metrics": {
       "ready": "13/13",
       "watchdog_ok": false,
-      "adopted": "30/37",
-      "retracted": 6,
-      "pending": 7,
+      "adopted": "30/30",
+      "retracted": 13,
+      "pending": 0,
+      "decided": 2
+    }
+  },
+  {
+    "date": "2026-10-22",
+    "overall": 73,
+    "scores": {
+      "cat_health": 59,
+      "cat_gain": 12,
+      "cat_noise": 100,
+      "noise_state": "green",
+      "cat_active": 100,
+      "cat_contract": 92,
+      "ver_state": "drift×1",
+      "ver_ok": 12,
+      "ver_total": 13,
+      "cat_biz": 0,
+      "cat_radar": 100
+    },
+    "metrics": {
+      "ready": "13/13",
+      "watchdog_ok": false,
+      "adopted": "30/30",
+      "retracted": 13,
+      "pending": 0,
+      "decided": 2
+    }
+  },
+  {
+    "date": "2026-10-24",
+    "overall": 73,
+    "scores": {
+      "cat_health": 59,
+      "cat_gain": 12,
+      "cat_noise": 100,
+      "noise_state": "green",
+      "cat_active": 100,
+      "cat_contract": 93,
+      "ver_state": "drift×1",
+      "ver_ok": 13,
+      "ver_total": 14,
+      "cat_biz": 0,
+      "cat_radar": 100
+    },
+    "metrics": {
+      "ready": "13/13",
+      "watchdog_ok": false,
+      "adopted": "30/30",
+      "retracted": 13,
+      "pending": 0,
+      "decided": 2
+    }
+  },
+  {
+    "date": "2026-10-25",
+    "overall": 89,
+    "scores": {
+      "cat_health": 57,
+      "cat_gain": 100,
+      "cat_noise": 100,
+      "noise_state": "green",
+      "cat_active": 100,
+      "cat_contract": 86,
+      "ver_state": "drift×2",
+      "ver_ok": 12,
+      "ver_total": 14,
+      "cat_biz": 0,
+      "cat_radar": 91
+    },
+    "metrics": {
+      "ready": "14/14",
+      "watchdog_ok": false,
+      "adopted": "32/35",
+      "retracted": 13,
+      "pending": 3,
+      "decided": 2
+    }
+  },
+  {
+    "date": "2026-10-28",
+    "overall": 90,
+    "scores": {
+      "cat_health": 56,
+      "cat_gain": 100,
+      "cat_noise": 100,
+      "noise_state": "green",
+      "cat_active": 100,
+      "cat_contract": 93,
+      "ver_state": "drift×1",
+      "ver_ok": 13,
+      "ver_total": 14,
+      "cat_biz": 0,
+      "cat_radar": 91
+    },
+    "metrics": {
+      "ready": "14/14",
+      "watchdog_ok": false,
+      "adopted": "32/35",
+      "retracted": 13,
+      "pending": 3,
       "decided": 2
     }
   }

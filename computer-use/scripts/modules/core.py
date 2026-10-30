@@ -11,7 +11,6 @@ import os
 import re
 from enum import Enum
 from pathlib import Path
-from typing import Optional
 from uuid import uuid4
 
 from .registry import register_action

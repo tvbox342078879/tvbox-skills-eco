@@ -24,10 +24,8 @@ wechat_convert.py — 把任意 HTML / Markdown 转成「公众号可粘贴」�
 import os
 import re
 import sys
-import json
 import base64
 import argparse
-import subprocess
 
 # Windows 控制台默认 gbk，强制 stdout/stderr 为 utf-8 以免打印 emoji 报错
 try:

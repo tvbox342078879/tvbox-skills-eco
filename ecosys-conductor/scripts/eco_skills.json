@@ -1,19 +1,20 @@
 {
- "eco_skills": [
-  "automation-task-manager",
-  "eco-ledger",
-  "ecosys-conductor",
-  "learn-hub",
-  "legacy-watchdog",
-  "probe-hub",
-  "skill-evolution",
-  "tvbox-inspect",
-  "tvbox-interface",
-  "tvbox-janitor",
-  "tvbox-source-blacklist",
-  "tvbox-source-hub",
-  "unfinished-audit"
- ],
- "note": "S127 P006 归一正本：conductor.py 与 inspect_engine.py 共同读取",
- "since": "2026-10-17"
+  "eco_skills": [
+    "automation-task-manager",
+    "eco-ledger",
+    "ecosys-conductor",
+    "learn-hub",
+    "legacy-watchdog",
+    "library",
+    "probe-hub",
+    "skill-evolution",
+    "tvbox-inspect",
+    "tvbox-interface",
+    "tvbox-janitor",
+    "tvbox-source-blacklist",
+    "tvbox-source-hub",
+    "unfinished-audit"
+  ],
+  "note": "S127 P006 归一正本：conductor.py 与 inspect_engine.py 共同读取 ｜S199 补 library（它有 SKILL.md 与建库五闸，M-R201 的 owner 就是它，却一直不在登记表里→成孤儿规则）",
+  "since": "2026-10-17"
 }

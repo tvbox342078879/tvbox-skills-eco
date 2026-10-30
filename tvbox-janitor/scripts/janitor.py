@@ -19,6 +19,8 @@ publish/unpublish）。凡 AI 删不掉的节点 → 本技能**移动**到一�
   janitor scan                        扫全空间找"废弃/待删/🗑"标记节点（补漏登记）
   janitor list                        打印待删清单（Markdown + CSV 落盘）
   janitor render                      把清单重写进收件箱内的说明文档
+  janitor move --node ID --to 父节点ID              节点移动到指定文件夹（改名/归位通用）
+  janitor rename --node ID --title "新标题"         节点改名
 
 铁律：
   · 只移动、不删除（AI 无删除权）；移动前**校验节点确实存在**。
@@ -30,8 +32,8 @@ import os, sys, json, argparse, subprocess, time, re
 HERE = os.path.dirname(os.path.abspath(__file__))
 LIB = '/root/.codebuddy/skills/library'
 SPACE = '8w5cnqCqQJ0wNoF2Hb6efH'
-# 收件箱挂在底包库根下（与线路总库并列，统一入口）
-PARENT = 'GCLJWbFGS1BmYbj6JCX9it'
+# 收件箱挂「我的资料」根目录（S196 用户 2026-10-21 21:27 指示：以后待删放根目录，一眼可见）
+PARENT = SPACE
 # ★ 全局扫描超根（S158 修：这里曾经写错了）
 #   原文注释断言「list-nodes 无法枚举空间顶层，故以探源司·总库为起点」——**那是错的**。
 #   实测（S158）：`--parent-node-id ""`（**空字符串，不是省略也不是 'root'**）即可枚举空间顶层，
@@ -308,8 +310,11 @@ def _find_parent(nid, skip_inbox=True):
 
 
 def _find_inbox():
-    """在 PARENT 下找已存在的收件箱文件夹（按标题前缀匹配）。"""
-    for n in _kids(PARENT):
+    """在 PARENT 下找已存在的收件箱文件夹（按标题前缀匹配）。
+    ★ S196：PARENT=空间根时必须用 _kids('')（空串=空间顶层唯一可行写法，见 _kids docstring；
+      _kids(SPACE) 报 11510——当晚实测因此没认出已搬根目录的老箱，重复建了一个）。"""
+    kids = _kids('') if PARENT == SPACE else _kids(PARENT)
+    for n in kids:
         if n.get('kind') == 'folder' and '待删收件箱' in (n.get('title') or ''):
             return n.get('id'), n.get('title')
     return '', ''
@@ -385,6 +390,12 @@ def cmd_add(a):
     origin = _find_parent(nid) or ''
     # 移动入收件箱（AI 能做的最后一步）
     mv = _space('space.workspace.move-node', node_id=nid, target_parent_id=iid)
+    # ★ S200 补护栏（P067·L244）：收件箱夹为本次新建时，首投可能撞 12607
+    #   permission denied（新建夹权限/索引传播延迟，非真权限问题——实测同参数
+    #   几分钟后重试 7/7 全过）。对 12607 带间隔重试一次，再失败才如实登记。
+    if mv and mv.get('error') and '12607' in str(mv.get('error')):
+        time.sleep(5)
+        mv = _space('space.workspace.move-node', node_id=nid, target_parent_id=iid)
     ok = bool(mv and not mv.get('error'))
     st['items'].append({
         'id': nid, 'title': title, 'kind': node.get('kind', ''),
@@ -890,6 +901,93 @@ def cmd_census(a):
     return 0
 
 
+def _node_parent(nid):
+    """反查节点的真实父节点。node-info 的 parentNodeId 实测恒为 None（不可信），
+    故走全树遍历 _find_parent。返回 '' 表示查不到（调用方必须显式报，不许当"根"）。"""
+    try:
+        return _find_parent(nid, skip_inbox=False) or ''
+    except Exception:
+        return ''
+
+
+def cmd_move(a):
+    """★ 节点移动（v1.2.0）：把任意节点挪到指定父节点下。
+
+    为什么归清道夫：本技能已是全生态**唯一**常驻持有 space.move-node 的地方
+    （add/restore 两条路径都靠它）。此前「节点移动改名」提案长期挂着，
+    真实原因是**没有统一入口**——各处零散调用 move-node，没人做「移前校验存在 +
+    移后回读确认」。本命令把这两条做成硬门。
+
+    三态（M-R60）：
+      移前：节点不存在 / 目标父不存在 → 直接拒，不动；
+      移中：move-node 返回 error / status=pending（跨空间异步）→ 如实报，不假装成功；
+      移后：**回读**（再查一次 node-info 的 parentId + 遍历确认目标下确有该节点），
+            回读不符 → 退出码 3，明说"服务端说成功但位置不符，疑似索引延迟，请复核"。
+    """
+    nid = a.node
+    target = a.to
+    info = _space('space.workspace.node-info', node_id=nid)
+    node = ((info or {}).get('data') or {}).get('node') or {}
+    title = node.get('title') or ''
+    if not title:
+        print(f'❌ 节点不存在或不可读（{nid}）——不移动（M-R60 如实报）')
+        return 1
+    tinfo = _space('space.workspace.node-info', node_id=target) if target else None
+    tnode = ((tinfo or {}).get('data') or {}).get('node') or {}
+    if not tnode.get('id') and not tnode.get('title'):
+        print(f'❌ 目标父节点不存在（{target}）——不移动')
+        return 1
+    if tnode.get('kind') and tnode.get('kind') != 'folder':
+        print(f'❌ 目标不是文件夹（{target} kind={tnode.get("kind")}）——不移动')
+        return 1
+    src = _node_parent(nid)
+    mv = _space('space.workspace.move-node', node_id=nid, target_parent_id=target)
+    if not mv or mv.get('error'):
+        print(f'❌ 移动失败：{str((mv or {}).get("error"))[:160] or "无响应"}')
+        return 1
+    data = mv.get('data') or {}
+    st = data.get('status') or ''
+    if st == 'pending':
+        tid = data.get('taskId') or ''
+        print(f'⏳ 跨空间移动已受理，异步进行中（taskId {tid}）——'
+              f'**尚未落地**，请用 move-node-progress 跟踪后再确认')
+        return 3
+    # 移后回读：目标下确有该节点
+    landed = any((n.get('id') or n.get('nodeId')) == nid for n in _kids(target))
+    if not landed:
+        print(f'⚠️ 服务端回报成功，但目标文件夹 {target} 下**未枚举到** {nid}'
+              f'——疑似索引延迟或移动未落地，请复核（不当作成功）')
+        return 3
+    print(f'✅ 已移动：{title}（{nid}）\n   从 {src or "（未知，全树未反查到）"} → {target}')
+    return 0
+
+
+def cmd_rename(a):
+    """★ 节点改名（v1.2.0）：移后回读标题，改不动不许说改好了。"""
+    nid = a.node
+    new = (a.title or '').strip()
+    if not new:
+        print('❌ 新标题不能为空'); return 1
+    info = _space('space.workspace.node-info', node_id=nid)
+    node = ((info or {}).get('data') or {}).get('node') or {}
+    old = node.get('title') or ''
+    if not old:
+        print(f'❌ 节点不存在或不可读（{nid}）——不改名')
+        return 1
+    r = _space('space.workspace.rename-node', node_id=nid, title=new)
+    if not r or r.get('error'):
+        print(f'❌ 改名失败：{str((r or {}).get("error"))[:160] or "无响应"}')
+        return 1
+    back = _space('space.workspace.node-info', node_id=nid)
+    now = (((back or {}).get('data') or {}).get('node') or {}).get('title') or ''
+    if now != new:
+        print(f'⚠️ 服务端未报错，但回读标题仍是「{now}」（期望「{new}」）'
+              f'——不当作成功，请复核')
+        return 3
+    print(f'✅ 已改名：{old} → {now}（{nid}）')
+    return 0
+
+
 def cmd_restore(a):
     """★ 误投回退（v1.1.7）：把节点从收件箱移回原位，并从清单移除。
 
@@ -982,10 +1080,16 @@ def main(argv=None):
     rs = sub.add_parser('restore')
     rs.add_argument('--node', required=True)
     rs.add_argument('--target', default='', help='无原位记录时，手动指定回退到的父节点ID')
+    mo = sub.add_parser('move')
+    mo.add_argument('--node', required=True)
+    mo.add_argument('--to', required=True, help='目标父文件夹节点 ID')
+    rn = sub.add_parser('rename')
+    rn.add_argument('--node', required=True)
+    rn.add_argument('--title', required=True)
     a = ap.parse_args(argv)
     return {'inbox': cmd_inbox, 'add': cmd_add, 'scan': cmd_scan,
             'list': cmd_list, 'render': cmd_render, 'census': cmd_census,
-            'restore': cmd_restore}[a.cmd](a)
+            'restore': cmd_restore, 'move': cmd_move, 'rename': cmd_rename}[a.cmd](a)
 
 
 def dispatch(argv=None):

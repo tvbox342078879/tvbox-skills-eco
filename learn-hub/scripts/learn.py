@@ -10,7 +10,7 @@
 自检探针一律用 AST 只取目标函数字面量（S171 教训：探针与被检代码同居一文件
 会自己判自己通过，这是"同侧变量互比"）。
 """
-import os, sys, json, re, hashlib, shutil, argparse, subprocess, time
+import os, sys, json, re, hashlib, shutil, argparse, subprocess, zipfile
 from datetime import datetime
 
 HOME = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -126,6 +126,25 @@ def _save_json(p, obj):
     with open(tmp, 'w', encoding='utf-8') as f:
         json.dump(obj, f, ensure_ascii=False, indent=1)
     os.replace(tmp, p)
+    # ★ S184（招式 T-I「写路径写后回读验证」正式落地）：
+    #   原来写到这里就返回了——`os.replace` 没抛异常就被当成"写成了"。
+    #   但 `os.replace` 成功只证明**换文件这一步**成功，不证明**内容对**：
+    #     ① 磁盘满/被截断 → 写出去的是半个 JSON，下次读才炸，且炸在很远的地方；
+    #     ② 传入的 obj 不可序列化部分被静默丢弃（中文/特殊字符编码问题）；
+    #     ③ 并发写同路径 → 后写者覆盖，先写者以为自己成功。
+    #   三类都表现为"函数正常返回、文件是坏的"，这正是招式里说的「写了 ≠ 写成了」。
+    #   回读校验的代价是一次 json.load（毫秒级），换来的是**错误发生在写它的这一行**。
+    #   为什么不用"再算一遍 json.dumps 比对"：字节级一致会被格式化细节绑死，
+    #   而我们要保证的是**语义可读回来**，json.load 成功 + 顶层类型一致即可。
+    try:
+        with open(p, encoding='utf-8') as f:
+            back = json.load(f)
+    except Exception as e:
+        raise RuntimeError(f'写后回读失败：{p} 不可读（{type(e).__name__}: {e}）'
+                           f'——写入步骤报成功但文件已损坏')
+    if isinstance(obj, dict) and isinstance(back, dict) and len(obj) != len(back):
+        raise RuntimeError(f'写后回读不一致：{p} 期望 {len(obj)} 个顶层键，实际 {len(back)} 个')
+    return back
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -165,7 +184,63 @@ def _extract_text(path):
             return None, 'timeout: pdftotext 超 120s'
         except Exception as e:
             return None, f'{type(e).__name__}: {e}'
+    if ext in ('.docx', '.pptx', '.xlsx'):
+        # S197 扩 OOXML 抽取：docx/pptx 本质是 zip+XML，文字可直接抽（不引依赖）。
+        # 坏法：①坏 zip → BadZipFile 归"文件损坏"；②纯图片页 → 正文0字，如实归
+        # "正文在图片里需OCR"，不许把空串当成功（M-L01）。
+        try:
+            import zipfile as _zf
+            z = _zf.ZipFile(path)
+            if ext == '.docx':
+                xml = z.read('word/document.xml').decode('utf-8', 'ignore')
+                # 按段落聚合 run（S197 实测：逐 <w:t> 抽会把「U盘」拆成孤立单字行，
+                # 既伤阅读又会被页眉页脚模式误判成水印——run 是排版片段不是语义单位）
+                paras = re.findall(r'<w:p[ >].*?</w:p>', xml, re.S)
+                parts = [''.join(re.findall(r'<w:t[^>]*>([^<]*)</w:t>', p)) for p in paras]
+            elif ext == '.pptx':
+                # S197 实测二段：有的 PPT 逐字成段（艺术字排版），按 <a:p> 聚合仍是碎行——
+                # 幻灯片是展示单位，按整页聚合才可读（页内 run 直接拼接）
+                parts = []
+                for s in sorted([n for n in z.namelist()
+                                 if re.match(r'ppt/slides/slide\d+\.xml$', n)],
+                                key=lambda x: int(re.search(r'(\d+)', x).group(1))):
+                    xml = z.read(s).decode('utf-8', 'ignore')
+                    t = ''.join(re.findall(r'<a:t>([^<]*)</a:t>', xml))
+                    if t.strip():
+                        parts.append(t)
+            else:  # xlsx
+                xml = z.read('xl/sharedStrings.xml').decode('utf-8', 'ignore')
+                parts = re.findall(r'<t[^>]*>([^<]*)</t>', xml)
+            text = '\n'.join(p for p in parts if p.strip())
+            if not text.strip():
+                return None, 'OOXML 无文本层（正文在图片里，需 scan-pdf-ocr/人工）'
+            n_media = len([n for n in z.namelist()
+                           if '/media/' in n])
+            if n_media:
+                text += f'\n\n[⚠️ 本件另有 {n_media} 个内嵌图片，文字未抽取，看图需人工]'
+            return text, f'ooxml:{ext[1:]}'
+        except zipfile.BadZipFile as e:
+            return None, f'BadZipFile: 文件损坏或非OOXML（{e}）'
+        except KeyError as e:
+            return None, f'ooxml结构异常: 缺 {e}'
+        except Exception as e:
+            return None, f'{type(e).__name__}: {e}'
     return None, f'unsupported: 暂不抽 {ext}（{len(IMG_EXT) and "图片需 OCR"}）'
+
+
+def _find_stored_item(h):
+    """全库按 sha256 找已收条目。返回 (manifest路径, manifest, item) 或 None（M-L03：找不到就是找不到）。"""
+    if not os.path.isdir(MAT):
+        return None
+    for d in sorted(os.listdir(MAT)):
+        mp = os.path.join(MAT, d, 'manifest.json')
+        if not os.path.isfile(mp):
+            continue
+        m = _load_json(mp, {}) or {}
+        for it in m.get('items', []):
+            if it.get('sha256') == h:
+                return mp, m, it
+    return None
 
 
 def cmd_intake(a):
@@ -246,7 +321,51 @@ def cmd_intake(a):
         h = sha256_file(src)
         rec.update(sha256=h, size=os.path.getsize(src))
         if h in seen:
-            rec.update(status=ST_OK, why='重复（内容哈希已存在），未再落一份', dup=True)
+            # S197c：同批次同哈希不重复追加记录（否则每跑一轮 dup 记录翻一倍——实测 5 文件跑 4 轮变 20 条）
+            # 但 --reextract 且该条目可刷新（OOXML 或状态非OK）时不短路，继续走重抽分支
+            _old_in_man = next((it for it in man['items'] if it.get('sha256') == h), None)
+            _can_re = (getattr(a, 'reextract', False) and _old_in_man and _old_in_man.get('local')
+                       and (_old_in_man.get('status') != ST_OK
+                            or os.path.splitext(_old_in_man['local'])[1].lower() in ('.docx', '.pptx', '.xlsx')))
+            if _old_in_man and not _can_re:
+                dup += 1
+                continue
+            # S197c --reextract：抽取器升级后，存量"无法判定"文件可就地重抽（哈希不变不重复落盘）
+            if getattr(a, 'reextract', False):
+                old = _find_stored_item(h)   # (man_path, man, item)｜None
+                # OOXML 类即使已成功也重抽（抽取器按段落/整页聚合升级后要换新）；
+                # pdf/txt 抽取稳定，仅失败件才重抽
+                _need = old and old[2].get('local') and (
+                    old[2].get('status') != ST_OK
+                    or os.path.splitext(old[2]['local'])[1].lower() in ('.docx', '.pptx', '.xlsx'))
+                if _need:
+                    mp, om, oit = old
+                    # ★若命中的就是当前批次 manifest，直接改内存里的 man（否则循环末
+                    #   _save_json(man) 会把重抽结果整体覆盖回去——S197 实测踩过）
+                    if os.path.abspath(mp) == os.path.abspath(os.path.join(outdir, 'manifest.json')):
+                        oit = _old_in_man   # 当前批次直接引用内存条目（同哈希必在，状态不论）
+                        om, mp = man, None   # None=循环末统一写，不单独落盘
+                    opath = os.path.join(HOME, oit['local'])
+                    txt, how = _extract_text(opath) if os.path.isfile(opath) else (None, 'local丢失')
+                    if txt is not None:
+                        oit.update(status=ST_OK, why=f'{how}（reextract）', chars=len(txt))
+                        tp = os.path.splitext(opath)[0] + '.extracted.txt'
+                        with open(tp, 'w', encoding='utf-8') as f:
+                            f.write(txt)
+                        if mp is not None:
+                            cnt2 = {ST_OK: 0, ST_MISS: 0, ST_UNK: 0}
+                            for it2 in om['items']:
+                                cnt2[it2.get('status', ST_UNK)] = cnt2.get(it2.get('status', ST_UNK), 0) + 1
+                            om.update(counts=cnt2, updated=now())
+                            _save_json(mp, om)
+                        print(f'  ♻️ 重抽成功：{os.path.basename(opath)}（{how}，{len(txt)}字）')
+                        rec.update(status=ST_OK, why='重复哈希，但已在源头重抽更新', dup=True)
+                    else:
+                        rec.update(status=ST_OK, why=f'重复（内容哈希已存在），源头重抽仍取不到：{how}', dup=True)
+                else:
+                    rec.update(status=ST_OK, why='重复（内容哈希已存在），未再落一份', dup=True)
+            else:
+                rec.update(status=ST_OK, why='重复（内容哈希已存在），未再落一份', dup=True)
             dup += 1
             man['items'].append(rec); continue
         dst = os.path.join(outdir, os.path.basename(src))
@@ -270,6 +389,9 @@ def cmd_intake(a):
             with open(tp, 'w', encoding='utf-8') as f:
                 f.write(txt)
         seen.add(h); added += 1
+        # ★归属判定（S197b）：进库即判 suggest——只记账不移动（无授权不建目录）。
+        sug, sug_why = _suggest_path(os.path.basename(src), txt or '')
+        rec.update(suggest=sug, suggest_why=sug_why)
         man['items'].append(rec)
 
     cnt = {ST_OK: 0, ST_MISS: 0, ST_UNK: 0}
@@ -295,20 +417,24 @@ def cmd_intake(a):
 
 def _intake_url(url, a):
     """网页/公众号。**200 ≠ 有正文**：SPA 壳、登录墙、列表页都要分开判。"""
+    # 学习工坊对齐：底层取数走 core.http_get（M-R213；三态语义 M-L03 原样保留：
+    # 412/连接失败→无法判定，404/410→确定取不到，200→看正文）
+    _UA = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+           '(KHTML, like Gecko) Chrome/124.0 Safari/537.36')
     try:
-        r = subprocess.run(['curl', '-sS', '-L', '-m', '40', '-o', '-',
-                            '-w', '\n<<HTTP:%{http_code}>>', '-A',
-                            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-                            '(KHTML, like Gecko) Chrome/124.0 Safari/537.36', url],
-                           capture_output=True, timeout=90)
-        raw = r.stdout.decode('utf-8', 'replace')
-    except subprocess.TimeoutExpired:
-        raw = '\n<<HTTP:000>>'; r = None
+        if _CORE is None:
+            print(f'❌ 取回失败：生态核心不可达（{_CORE_ERR}）'); sys.exit(2)
+        _st, _pl, _rs = _CORE.http_get(url, timeout=40, ua=_UA, return_status=True)
+        if _st == 'ok':
+            code, body = str(_pl[0]), _pl[1]
+        elif _rs and _rs.startswith('http_'):
+            code, body = _rs[5:], ''
+        else:
+            code, body = '000', ''          # conn/timeout/dns：无法判定，同原 curl 000
+    except SystemExit:
+        raise
     except Exception as e:
         print(f'❌ 取回失败 {type(e).__name__}: {e}'); sys.exit(2)
-    m = re.search(r'<<HTTP:(\d{3})>>\s*$', raw)
-    code = m.group(1) if m else '000'
-    body = raw[:m.start()] if m else raw
     if code == '412':
         print(f'判定：⚠️ 无法判定 —— HTTP 412（CDN 拒机房 IP，不是页面不存在；S171 归因）')
         sys.exit(3)
@@ -546,6 +672,137 @@ def cmd_sort(a):
 
     print(f'❌ 未知子命令：sort {sub}'); sys.exit(2)
 
+
+# ═══════════════════════════════════════════════════════════════
+# purify 净化闸（S197 · T3 第一个业务活）：资料进库第一步就纯净
+# 三件事：跨库硬去重（不只同批次）/ 水印清洗 / 图片水印诚实边界
+# 铁律：**默认只报不动手**，--apply 才改；动手必留备份与账。
+# ═══════════════════════════════════════════════════════════════
+_WATERMARK_PATTERNS = [
+    (re.compile(r'^-\s*\d+\s*-$'), '页码(- N -)'),
+    (re.compile(r'^第\s*\d+\s*页(\s*[/／共].*)?$'), '页码(第N页)'),
+    (re.compile(r'^\d+\s*/\s*\d+$'), '页码(N/M)'),
+    (re.compile(r'^page\s*\d+', re.I), '页码(Page N)'),
+    # S197 实测反例：正文「只能搜索频道，不能搜索群组」被旧模式(搜索…群)误判——
+    # 「搜索」是资料正文高频动词，不作引流动词；引流动词只有 加/关注/扫码
+    (re.compile(r'(加|关注|扫码).{0,8}(公众号|微信|微信公众|qq|群)', re.I), '引流话术'),
+    (re.compile(r'(微信|qq|vx|v信|weixin)[:：\s]*[a-zA-Z0-9_-]{4,}$', re.I), '联系方式'),
+    (re.compile(r'(独家|盗版必究|转载请注明|仅供学习交流|侵权(必删|删)|更多.{0,6}资料.{0,6}(联系|获取|领取))'), '版权噪声'),
+]
+
+def _wm_hit(line):
+    """单行水印判定：必须命中最少一个模式且行要短（<60字）——长句里的'微信'多半是正文。"""
+    s = line.strip()
+    if not s or len(s) > 60:
+        return None
+    for pat, why in _WATERMARK_PATTERNS:
+        if pat.search(s):
+            return why
+    return None
+
+def cmd_purify(a):
+    sub = a.sub
+    report = {'built': now(), 'sub': sub, 'apply': bool(a.apply), 'dedup': [], 'watermark': [], 'images': []}
+    if sub in ('dedup', 'all'):
+        # 跨库硬去重：全 materials 按 (size, sha256) 分组，与批次无关。
+        # ★现状缺口：intake 的 seen 只在同一 manifest 内——跨批次重复它管不着。
+        groups = {}
+        for dp, _, fns in os.walk(MAT):
+            for fn in fns:
+                if fn == 'manifest.json' or fn.endswith('.extracted.txt'):
+                    continue
+                p = os.path.join(dp, fn)
+                try:
+                    sz = os.path.getsize(p)
+                except OSError:
+                    continue
+                groups.setdefault((sz, sha256_file(p)), []).append(p)
+        dups = [fs for fs in groups.values() if len(fs) > 1]
+        removed = 0
+        for fs in dups:
+            fs.sort(key=lambda p: os.path.getmtime(p))   # 留最早那份
+            keep, rest = fs[0], fs[1:]
+            print(f'硬重复 {len(fs)} 份（留 {os.path.relpath(keep, MAT)}）：')
+            for p in rest:
+                print(f'    删候 {os.path.relpath(p, MAT)}')
+                report['dedup'].append({'keep': keep, 'dup': p})
+                if a.apply:
+                    trash = os.path.join(MAT, '.dup_trash')
+                    _ensure(trash)
+                    dst = os.path.join(trash, os.path.basename(p))
+                    i = 1
+                    while os.path.exists(dst):
+                        st, ex = os.path.splitext(os.path.basename(p))
+                        dst = os.path.join(trash, f'{st}_{i}{ex}'); i += 1
+                    try:
+                        shutil.move(p, dst)
+                        removed += 1
+                    except Exception as e:
+                        ok = _to_janitor(p, f'purify 去重移动失败 {type(e).__name__}')
+                        print(f'    ⚠️ 移动失败（{e}）{"，已投清道夫" if ok else "，投递也失败，请人工处理"}')
+        print(f'跨库硬去重：{len(dups)} 组重复，{"已移入 .dup_trash " + str(removed) + " 份" if a.apply else "仅报告（--apply 才动手）"}')
+    if sub in ('watermark', 'all'):
+        # 文本水印：默认 dry 逐文件报告；--apply 就地清洗并留 .pre_clean 备份。
+        # ⚠️ 行号影响：清洗后 extracted.txt 行号会漂——之后跑 outline/gate grounding 前重跑一遍。
+        targets = []
+        for dp, _, fns in os.walk(MAT):
+            for fn in fns:
+                if fn.endswith('.txt') and not fn.endswith('.pre_clean'):
+                    targets.append(os.path.join(dp, fn))
+        cleaned_files = 0
+        for p in targets:
+            try:
+                lines = open(p, encoding='utf-8', errors='replace').read().splitlines()
+            except Exception as e:
+                print(f'  ⚠️ 读不出 {os.path.relpath(p, MAT)}：{e}'); continue
+            hits = [(i, ln, _wm_hit(ln)) for i, ln in enumerate(lines, 1) if _wm_hit(ln)]
+            # 重复页眉/页脚：同一短行（<50字）出现≥5次，多半是每页页眉——只删第2次起的
+            # S197 实测：单字符行（如「U」）是抽取断行残留，len>2 起判，否则把正文拆字当页眉
+            from collections import Counter as _C
+            rep = {ln for ln, c in _C(l.strip() for l in lines).items()
+                   if c >= 5 and 2 < len(ln) < 50 and ln not in {h[1].strip() for h in hits}}
+            rep_lines = {i for i, ln in enumerate(lines, 1) if ln.strip() in rep}
+            all_kill = {i for i, _, _ in hits} | rep_lines
+            if not all_kill:
+                continue
+            whys = {}
+            for i, ln, w in hits:
+                whys.setdefault(w, []).append(i)
+            if rep_lines:
+                whys[f'重复页眉页脚({len(rep)}种)'] = sorted(rep_lines)[:5]
+            print(f'水印命中 {os.path.relpath(p, MAT)}：{sum(len(v) for v in whys.values())} 行 ' +
+                  '；'.join(f'{k}×{len(v)}' for k, v in whys.items()))
+            report['watermark'].append({'file': p, 'whys': {k: v for k, v in whys.items()}, 'n': len(all_kill)})
+            if a.apply:
+                bak = os.path.splitext(p)[0] + '.pre_clean'
+                if not os.path.exists(bak):
+                    shutil.copy2(p, bak)
+                kept = [ln for i, ln in enumerate(lines, 1) if i not in all_kill]
+                with open(p, 'w', encoding='utf-8') as f:
+                    f.write('\n'.join(kept) + ('\n' if kept else ''))
+                cleaned_files += 1
+        if report['watermark']:
+            print(f'文本水印：{len(report["watermark"])} 个文件命中，'
+                  f'{"已清洗（原文存 .pre_clean）" if a.apply else "仅报告（--apply 才动手）"}')
+        else:
+            print('文本水印：全库未命中')
+        # 图片水印诚实边界：只列报，不承诺自动去除
+        for dp, _, fns in os.walk(MAT):
+            for fn in fns:
+                if os.path.splitext(fn)[1].lower() in IMG_EXT:
+                    report['images'].append(os.path.join(dp, fn))
+        if report['images']:
+            print(f'⚠️ 图片水印 {len(report["images"])} 张——自动去除不可靠（会毁图），只列报需人工：')
+            for p in report['images'][:10]:
+                print(f'    {os.path.relpath(p, MAT)}')
+    if sub not in ('dedup', 'watermark', 'all'):
+        print(f'❌ 未知子命令：purify {sub}'); sys.exit(2)
+    if a.apply:
+        # ★关键动作前自动拍快照（S197b ⑥）：库级后悔药，diff 可对出本次动了什么
+        fp = _take_snapshot('pre_purify_apply')
+        print(f'📸 快照已拍：{os.path.relpath(fp, HOME)}（动手前的库长这样，出事可 diff）')
+    _save_json(os.path.join(WORK, 'purify_report.json'), report)
+    print(f'报告：{os.path.join(WORK, "purify_report.json")}')
 
 # ═══════════════════════════════════════════════════════════════
 # gate 质检闸：本技能的立身之处
@@ -818,6 +1075,30 @@ def cmd_forge(a):
 # ═══════════════════════════════════════════════════════════════
 # store 入库
 # ═══════════════════════════════════════════════════════════════
+def cmd_retro(a):
+    """M-R142 配套：完工复盘报告快查（进库由 threads.py 收口钩子自动做，这里只回看）。"""
+    rows = []
+    if os.path.isdir(MAT):
+        for d in sorted(os.listdir(MAT)):
+            mf = os.path.join(MAT, d, 'manifest.json')
+            if os.path.isfile(mf):
+                m = _load_json(mf, {}) or {}
+                blob = (m.get('name', '') or '') + ' ' + d
+                if '复盘' in blob:
+                    if getattr(a, 'kw', '') and a.kw not in blob:
+                        continue
+                    rows.append((d, m))
+    print(f'📚 复盘报告 {len(rows)} 份' + (f'（筛「{a.kw}」）' if getattr(a, 'kw', '') else ''))
+    for d, m in rows:
+        c = m.get('counts', {})
+        sug = m.get('suggest') or ''
+        print(f"  {m.get('date', '?'):<12}{m.get('name', '?')}"
+              f"  取到{c.get(ST_OK, 0)}  落点 materials/{d}" + (f"  归属:{sug}" if sug else ''))
+    if not rows:
+        print('  （无命中——复盘进库走 threads.py done --report，进库后这里可见）')
+    return 0
+
+
 def cmd_store(a):
     sub = a.sub
     if sub == 'put':
@@ -875,8 +1156,253 @@ def cmd_store(a):
             print(f'    {f["size"]:>9,}  {f["p"]}  {f["sha256"]}')
         return
 
+    if sub == 'tree':
+        t = _tree_json()
+        nodes = t.get('nodes', {})
+        if not nodes:
+            print('树索引空——先跑 `learn build` 建库'); return
+        print(f'库树（{len(nodes)} 节点，树版本 {t.get("spec_version","?")}，建于 {t.get("built","?")}）：')
+        for p in sorted(nodes):
+            depth = p.count(os.sep)
+            print(f'  {"  "*depth}{os.path.basename(p)}/  ({nodes[p].get("n_files",0)})')
+        return
+
+    if sub == 'export':
+        # 前缀匹配：拿到「某一类/某一节点」整个打包，支持 --zip
+        pref = a.path[0] if a.path else ''
+        if not pref:
+            print('❌ 用法：store export <节点前缀> [--out 目录] [--zip]'); sys.exit(2)
+        pref_n = pref.strip('/')
+        hits = []
+        for dp, _, fns in os.walk(LIB):
+            rel = os.path.relpath(dp, LIB)
+            if rel.startswith(pref_n) or pref_n.startswith(rel):
+                hits.append(dp)
+        if not hits:
+            print(f'❌ 库里没有匹配「{pref_n}」的节点（先 store tree 看树）'); sys.exit(2)
+        out = a.out or os.path.join(WORK, 'export')
+        os.makedirs(out, exist_ok=True)
+        n = 0
+        for dp in hits:
+            rel = os.path.relpath(dp, LIB)
+            dst = os.path.join(out, rel) if rel != '.' else out
+            os.makedirs(dst, exist_ok=True)
+            for fn in os.listdir(dp):
+                if os.path.isfile(os.path.join(dp, fn)):
+                    shutil.copy2(os.path.join(dp, fn), os.path.join(dst, fn)); n += 1
+        manifest = {'exported_at': now(), 'prefix': pref_n, 'n_files': n,
+                    'files': [{'p': os.path.relpath(p, out), 'sha256': sha256_file(p)[:16]}
+                              for dp, _, fns in os.walk(out) for p in (os.path.join(dp, f) for f in fns)]}
+        _save_json(os.path.join(out, '_export_manifest.json'), manifest)
+        print(f'导出「{pref_n}」→ {out}（{n} 个文件，带 _export_manifest.json 可追溯）')
+        if a.zip:
+            zp = shutil.make_archive(out, 'zip', out)
+            print(f'打包：{zp}')
+        return
+
     print(f'❌ 未知子命令：store {sub}'); sys.exit(2)
 
+
+# ═══════════════════════════════════════════════════════════════
+# library 库房（S197b）：五学域分级树 + 收件箱提案制 + export + 快照
+# 三条铁律：
+#   ① 目录即分类（单一真源=tree.json），不搞第二套标签体系；
+#   ② **无授权不建目录**——现分类装不下的进「待分类·收件箱」，
+#      learn-hub 自动出提案，用户确认后 place --apply 才 mkdir 迁移；
+#   ③ 关键动作前自动拍快照——库级后悔药。
+# ═══════════════════════════════════════════════════════════════
+_INBOX = '待分类·收件箱'
+
+def _k12_grades(seg):
+    return {'小学': [f'{y}年级' for y in ('一','二','三','四','五','六')],
+            '初中': ['初一', '初二', '初三'],
+            '高中': ['高一', '高二', '高三']}[seg]
+
+_PRIMARY_SUBJ = ['语文', '数学', '英语', '道法', '科学']
+_MIDHI_SUBJ = ['语文', '数学', '英语', '物理', '化学', '生物', '历史', '地理', '道法']
+_BOOKS = ['上册', '下册', '总复习']
+
+def _tree_spec():
+    """五学域树（嵌套 dict：目录名 → 子树 or None）。扩展学域在这里加。"""
+    k12 = {}
+    for seg in ('小学', '初中', '高中'):
+        subs = _PRIMARY_SUBJ if seg == '小学' else _MIDHI_SUBJ
+        k12[seg] = {g: {s: {b: None for b in _BOOKS} for s in subs}
+                    for g in _k12_grades(seg)}
+    return {
+        'K12·基础教育': k12,
+        '职业技能': {'编程·爬虫': None, '办公·效率': None, '设计·创作': None},
+        '考试·公考': {'行测': None, '申论': None, '面试': None, '真题': None},
+        '考证': {},                      # 按证书名扩展位
+        '生活技能': {'烹饪': None, '健康': None, '理财': None},
+        '对话沉淀': {},                  # 与用户对话提炼物的归档位
+        _INBOX: None,
+    }
+
+# 归属判定关键词表：每条 = (触发词列表, 库内路径)。**判定依据必须可解释**。
+_PLACE_KW = [
+    (('爬虫', 'scrapy', 'requests', '抓取', '采集程序'), '职业技能/编程·爬虫'),
+    (('行测',), '考试·公考/行测'), (('申论',), '考试·公考/申论'),
+    (('面试',), '考试·公考/面试'), (('真题', '试卷'), '考试·公考/真题'),
+    (('烹饪', '菜谱', '做菜', '红烧', '烘焙'), '生活技能/烹饪'),
+    (('养生', '健康', '健身'), '生活技能/健康'),
+    (('理财', '基金', '股票', '记账'), '生活技能/理财'),
+    (('人教', '北师大', '课时', '同步练', '教材'), None),  # 教材味 → 交给学段/科目层判
+]
+
+def _suggest_path(name, text=''):
+    """归属判定：返回 (相对路径|None, 依据)。None 且不在收件箱词内 → 落收件箱。"""
+    hay = f'{name}\n{(text or "")[:3000]}'
+    # ① 学域层：明确词
+    for kws, p in _PLACE_KW:
+        if p and any(k in hay for k in kws):
+            return p, f'命中关键词 {[k for k in kws if k in hay][:3]}'
+    # ② K12 层：学段→科目→册，逐层找。学段要认两种写法：
+    #    「初中」段落式 and「初一/初二/初三/七年级…」年级式（真实资料名多写年级式）
+    _SEG_HINTS = [('小学', ('小学', '一年级', '二年级', '三年级', '四年级', '五年级', '六年级')),
+                  ('初中', ('初中', '初一', '初二', '初三', '七年级', '八年级', '九年级')),
+                  ('高中', ('高中', '高一', '高二', '高三'))]
+    seg = next((s for s, hints in _SEG_HINTS if any(h in hay for h in hints)), None)
+    if seg:
+        grades = _k12_grades(seg)
+        sub = next((s for s in (_PRIMARY_SUBJ if seg == '小学' else _MIDHI_SUBJ) if s in hay), None)
+        if sub:
+            bk = next((b for b in _BOOKS if b in hay), '')
+            g = next((g for g in grades if g in hay), grades[0])
+            return f'K12·基础教育/{seg}/{g}/{sub}' + (f'/{bk}' if bk else ''), \
+                   f'命中学段「{seg}」科目「{sub}」' + (f'册「{bk}」' if bk else '') + '，年级缺省归该段首年级'
+    # ③ 对话沉淀：标注了来源标记的
+    if '对话' in name or '提炼' in name:
+        return '对话沉淀', '文件名含对话/提炼标记'
+    return _INBOX, '无命中判据——进收件箱等提案'
+
+def _tree_json():
+    return _load_json(os.path.join(LIB, 'tree.json'), {}) or {}
+
+def cmd_build(a):
+    """幂等建库：目录缺了补、树索引重建。**不删任何已有目录**（用户可能手工扩展过）。"""
+    spec = _tree_spec()
+    n = 0
+    def walk(sub, prefix):
+        nonlocal n
+        for k, v in sub.items():
+            p = os.path.join(LIB, prefix, k)
+            if not os.path.isdir(p):
+                os.makedirs(p, exist_ok=True); n += 1
+            if isinstance(v, dict) and v:
+                walk(v, os.path.join(prefix, k))
+    walk(spec, '')
+    # 树索引重建：保留人工扩展目录（在盘上但不在 spec 里的）
+    nodes = {}
+    for dp, _, fns in os.walk(LIB):
+        rel = os.path.relpath(dp, LIB)
+        if rel != '.':
+            nodes[rel] = {'n_files': len(fns)}
+    _save_json(os.path.join(LIB, 'tree.json'),
+               {'built': now(), 'spec_version': '1.1.0', 'nodes': nodes})
+    print(f'建库完成：新补目录 {n} 个，树上共 {len(nodes)} 个节点（含人工扩展的照单全收）')
+    print(f'树索引：library/tree.json（单一真源，目录即分类）')
+
+def cmd_propose(a):
+    """扫素材账：对 suggest=收件箱 的项做关键词聚类，自动出新建分类提案（只提不动）。"""
+    cands = []
+    if os.path.isdir(MAT):
+        for d in sorted(os.listdir(MAT)):
+            m = _load_json(os.path.join(MAT, d, 'manifest.json'), {}) or {}
+            for it in m.get('items', []):
+                if it.get('status') == ST_OK and it.get('suggest') == _INBOX:
+                    cands.append({'batch': d, 'name': os.path.basename(it.get('local') or it.get('src', '')),
+                                  'src': it.get('local') or it.get('src', ''), 'why': it.get('suggest_why', '')})
+    if not cands:
+        print('收件箱空：没有待提案的资料'); return
+    # 聚类：候选名里 2-gram 出现≥2次的词头当候选类目
+    import collections
+    grams = collections.Counter()
+    for c in cands:
+        t = re.sub(r'\s+', ' ', c['name'])          # 空白压成单空格（不是归一化，别与 _norm 分叉）
+        t = re.sub(r'[\\/:*?"<>|.]+', '', t)
+        for i in range(len(t) - 1):
+            grams[t[i:i + 2]] += 1
+    heads = [(g, n) for g, n in grams.most_common(10) if n >= 2 and len(g) >= 2]
+    props = []
+    if heads:
+        g, cnt = heads[0]
+        props.append({'id': f'P{datetime.now().strftime("%m%d%H%M")}',
+                      'new_dir': f'待定·按「{g}」建类（位置请审批时指定）',
+                      'basis': f'{cnt} 份资料名命中词头「{g}」',
+                      'items': [c['name'] for c in cands][:10]})
+    _save_json(os.path.join(WORK, 'propose.json'),
+               {'built': now(), 'inbox_n': len(cands), 'proposals': props, 'items': cands})
+    print(f'收件箱 {len(cands)} 份待分类 → 提案 {len(props)} 条：')
+    for p in props:
+        print(f'  提案 {p["id"]}：{p["new_dir"]}')
+        print(f'    依据：{p["basis"]}')
+        print(f'    涉及：{"、".join(p["items"][:5])}{"…" if len(p["items"]) > 5 else ""}')
+    if not props:
+        print('  （样本太少聚不出词头——资料多一点再跑，或人工指定类目）')
+    print(f'明细：{os.path.join(WORK, "propose.json")}（**只提案不动手**，确认后 place --confirm <提案id> --apply）')
+
+def cmd_place(a):
+    """按已确认的提案把素材归位进 library（复制原件，不动 materials 原档）。"""
+    if not (a.confirm and a.apply):
+        print('用法：place --confirm <提案id> --apply（**必须双确认**：提案id + --apply）')
+        print('在此之前：propose 出提案 → 用户审批 → 才轮到本命令'); return
+    pr = _load_json(os.path.join(WORK, 'propose.json'), {}) or {}
+    prop = next((p for p in pr.get('proposals', []) if p.get('id') == a.confirm), None)
+    if not prop:
+        print(f'❌ 找不到提案 {a.confirm}（先 propose）'); sys.exit(2)
+    print(f'❌ 提案 {a.confirm} 的目标类目是「{prop.get("new_dir")}」——含「待定」，')
+    print('   需要人定位置。请给出最终节点路径后，由会话方改写 propose.json 再跑本命令。')
+    sys.exit(3)
+
+def _snap_file():
+    snaps = sorted(os.listdir(_SNAPDIR)) if os.path.isdir(_SNAPDIR) else []
+    return os.path.join(_SNAPDIR, snaps[-1]) if snaps else None
+
+_SNAPDIR = os.path.join(WORK, 'snapshots')
+
+def _take_snapshot(tag):
+    os.makedirs(_SNAPDIR, exist_ok=True)
+    items = []
+    for root in (LIB, MAT):
+        for dp, _, fns in os.walk(root):
+            for fn in fns:
+                p = os.path.join(dp, fn)
+                items.append({'p': os.path.relpath(p, HOME), 'sha': sha256_file(p)[:16],
+                              'size': os.path.getsize(p)})
+    fp = os.path.join(_SNAPDIR, f'{datetime.now().strftime("%Y%m%d_%H%M%S")}_{tag}.json')
+    _save_json(fp, {'built': now(), 'tag': tag, 'n': len(items), 'items': items})
+    return fp
+
+def cmd_snapshot(a):
+    if a.sub == 'take':
+        fp = _take_snapshot(a.tag or 'manual')
+        print(f'快照：{os.path.relpath(fp, HOME)}（{sum(1 for _ in _load_json(fp)["items"])} 个文件清单）')
+        return
+    if a.sub == 'list':
+        snaps = sorted(os.listdir(_SNAPDIR)) if os.path.isdir(_SNAPDIR) else []
+        print(f'快照 {len(snaps)} 份（目录 {_SNAPDIR}）：')
+        for s in snaps[-10:]:
+            print(f'  {s}')
+        return
+    if a.sub == 'diff':
+        snaps = sorted(os.listdir(_SNAPDIR)) if os.path.isdir(_SNAPDIR) else []
+        if len(snaps) < 2 or a.arg not in snaps:
+            print(f'❌ 要对比的快照不存在。现有：{snaps[-5:]}'); sys.exit(2)
+        i = snaps.index(a.arg)
+        older = _load_json(os.path.join(_SNAPDIR, snaps[i - 1])) if i else {'items': []}
+        newer = _load_json(os.path.join(_SNAPDIR, snaps[i]))
+        old = {it['p']: it['sha'] for it in older.get('items', [])}
+        new = {it['p']: it['sha'] for it in newer.get('items', [])}
+        added = [p for p in new if p not in old]
+        removed = [p for p in old if p not in new]
+        changed = [p for p in new if p in old and new[p] != old[p]]
+        print(f'{snaps[i-1] if i else "(空)"} → {snaps[i]}：新增 {len(added)}，删除 {len(removed)}，内容变更 {len(changed)}')
+        for p in added[:10]: print(f'  + {p}')
+        for p in removed[:10]: print(f'  - {p}')
+        for p in changed[:10]: print(f'  ~ {p}')
+        return
+    print(f'❌ 未知子命令：snapshot {a.sub}'); sys.exit(2)
 
 # ═══════════════════════════════════════════════════════════════
 # watch 监测
@@ -896,11 +1422,15 @@ def cmd_watch(a):
             print('（没有网络来源素材，无需监测）'); return
         for it in rows:
             src = it['src']
+            # 对齐：走 core.http_get（三态→code 映射，ST 判据不变：200→ok、404/410→miss、其余→unknown）
             try:
-                r = subprocess.run(['curl', '-sS', '-o', '/dev/null', '-m', '25',
-                                    '-w', '%{http_code}', '-L', src],
-                                   capture_output=True, timeout=40)
-                code = r.stdout.decode().strip() or '000'
+                _st, _pl, _rs = _CORE.http_get(src, timeout=25, return_status=True)
+                if _st == 'ok':
+                    code = str(_pl[0])
+                elif _rs and _rs.startswith('http_'):
+                    code = _rs[5:]
+                else:
+                    code = '000'
             except Exception:
                 code = '000'
             st = ST_OK if code == '200' else (ST_MISS if code in ('404', '410') else ST_UNK)
@@ -1324,6 +1854,14 @@ def cmd_selfcheck(a):
     fp15 = bool(days) and days[0] == 1
     res.append(('间隔序列严格递增', ok15, fp15))
 
+    # ⑯ 水印模式不误伤正文（S197 真实反例：更新日志「只能搜索频道，不能搜索群组」
+    #   被「搜索…群」模式误判引流话术——搜索是正文高频动词，不作引流动词）。
+    #   正例（该拦）与反例（该放）都从真实素材抄录，防自测自绿（M-R135）。
+    hit_real = _wm_hit('加我微信 abc1234 领取更多资料')
+    miss_body = _wm_hit('修复PG搜，因规则变动，只能搜索频道，不能搜索群组。')
+    ok16 = (hit_real == '引流话术' and miss_body is None)
+    res.append(('水印引流话术·正文不误伤', ok16, hit_real == '引流话术'))
+
     n = len(res)
     passed = sum(1 for _, h, c in res if h and c)
     for nm, h, c in res:
@@ -1342,11 +1880,13 @@ def build_parser():
     i = s.add_parser('intake', help='采集：file/url/pan/scan/list')
     si = i.add_subparsers(dest='sub')
     f = si.add_parser('file'); f.add_argument('path', nargs='*'); f.add_argument('--name', default='')
+    f.add_argument('--reextract', action='store_true', help='哈希重复但存量状态非"取到"时，就地重抽更新')
     u = si.add_parser('url'); u.add_argument('path', nargs='*'); u.add_argument('--name', default='')
     pn = si.add_parser('pan'); pn.add_argument('path', nargs='*')
     sc = si.add_parser('scan'); sc.add_argument('path', nargs='*')
     sc.add_argument('--recursive', action='store_true'); sc.add_argument('--dry', action='store_true')
     sc.add_argument('--name', default='')
+    sc.add_argument('--reextract', action='store_true', help='哈希重复但存量状态非"取到"时，就地重抽更新')
     ls = si.add_parser('list'); ls.add_argument('--json', dest='json', action='store_true')
 
     so = s.add_parser('sort', help='分类整理：outline/dedupe/difficulty')
@@ -1355,6 +1895,11 @@ def build_parser():
     o.add_argument('--from', dest='frm', default=''); o.add_argument('--out', default='')
     dd = ss.add_parser('dedupe'); dd.add_argument('path', nargs='*')
     df = ss.add_parser('difficulty'); df.add_argument('path', nargs='*')
+
+    pu2 = s.add_parser('purify', help='净化闸（S197）：dedup/watermark/all——默认只报，--apply 才动手')
+    p2 = pu2.add_subparsers(dest='sub', required=True)
+    for nm in ('dedup', 'watermark', 'all'):
+        ap2 = p2.add_parser(nm); ap2.add_argument('--apply', action='store_true')
 
     g = s.add_parser('gate', help='质检闸：run/coverage/grounding/ratio')
     sg = g.add_subparsers(dest='sub')
@@ -1369,18 +1914,34 @@ def build_parser():
     sh = sf.add_parser('schedule'); sh.add_argument('--n', default='8')
     ck = sf.add_parser('check'); ck.add_argument('path', nargs='*')
 
-    st = s.add_parser('store', help='入库：put/find/trace')
+    st = s.add_parser('store', help='入库：put/find/trace/tree/export')
     stt = st.add_subparsers(dest='sub')
     pu = stt.add_parser('put'); pu.add_argument('path', nargs='*')
     pu.add_argument('--name', default=''); pu.add_argument('--tags', default='')
     fi = stt.add_parser('find'); fi.add_argument('path', nargs='*')
     tr = stt.add_parser('trace'); tr.add_argument('path', nargs='*')
+    stt.add_parser('tree')
+    ex = stt.add_parser('export'); ex.add_argument('path', nargs='*')
+    ex.add_argument('--out', default=''); ex.add_argument('--zip', action='store_true')
+
+    ld = s.add_parser('build', help='建库：幂等生成五学域骨架+树索引')
+    pr3 = s.add_parser('propose', help='收件箱聚类→新建分类提案（只提不动）')
+    pl3 = s.add_parser('place', help='归位：按已确认提案迁移（--confirm id --apply 双确认）')
+    pl3.add_argument('--confirm', default=''); pl3.add_argument('--apply', action='store_true')
+    sn = s.add_parser('snapshot', help='库快照：take/list/diff')
+    snt = sn.add_subparsers(dest='sub')
+    snt.add_parser('list')
+    tk = snt.add_parser('take'); tk.add_argument('--tag', default='manual')
+    df2 = snt.add_parser('diff'); df2.add_argument('arg', nargs='?')
 
     w = s.add_parser('watch', help='监测：sources/stale/refresh')
     sw = w.add_subparsers(dest='sub')
     sw.add_parser('sources')
     sl = sw.add_parser('stale'); sl.add_argument('--days', default='180')
     sw.add_parser('refresh')
+
+    r3 = s.add_parser('retro', help='完工复盘快查（M-R142）')
+    r3.add_argument('kw', nargs='?', default='')
 
     s.add_parser('self-check', help='命门自检')
     return p
@@ -1399,7 +1960,9 @@ def dispatch(argv=None):
     if a.mod == 'self-check':
         return cmd_selfcheck(a)
     fn = {'intake': cmd_intake, 'sort': cmd_sort, 'gate': cmd_gate,
-          'forge': cmd_forge, 'store': cmd_store, 'watch': cmd_watch}.get(a.mod)
+          'forge': cmd_forge, 'store': cmd_store, 'watch': cmd_watch,
+          'purify': cmd_purify, 'build': cmd_build, 'propose': cmd_propose,
+          'place': cmd_place, 'snapshot': cmd_snapshot, 'retro': cmd_retro}.get(a.mod)
     if fn is None:
         print(f'❌ 未知模块：{a.mod}'); sys.exit(2)
     fn(a)

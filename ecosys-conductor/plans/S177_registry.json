@@ -8,16 +8,24 @@
   "commands": "tvbox-source-hub/manifest.json"
  },
  "counts": {
-  "skills": 13,
-  "rules": 141,
+  "skills": 14,
+  "rules": 178,
   "signals": 45,
-  "monitors": 46,
-  "commands": 111
+  "monitors": 57,
+  "commands": 117
  },
  "by_skill": {
   "automation-task-manager": {
-   "rules_owned": [],
-   "rules_touched": [],
+   "rules_owned": [
+    "M-R204",
+    "M-R205",
+    "M-R209"
+   ],
+   "rules_touched": [
+    "M-R204",
+    "M-R205",
+    "M-R209"
+   ],
    "signals": [],
    "monitors": [],
    "commands": [],
@@ -38,7 +46,15 @@
     "M43",
     "M44",
     "M45",
-    "M48"
+    "M48",
+    "M49",
+    "M50",
+    "M51",
+    "M53",
+    "M54",
+    "M55",
+    "M57",
+    "M58"
    ]
   },
   "eco-ledger": {
@@ -145,7 +161,36 @@
     "M-R125",
     "M-R126",
     "R-BG03",
-    "M-R128"
+    "M-R128",
+    "M-R129",
+    "M-R130",
+    "M-R131",
+    "M-R132",
+    "M-R133",
+    "M-R134",
+    "M-R135",
+    "M-R136",
+    "M-R137",
+    "M-R138",
+    "M-R139",
+    "M-R140",
+    "M-R142",
+    "M-R143",
+    "M-R144",
+    "M-R145",
+    "M-R146",
+    "M-R147",
+    "M-R148",
+    "M-R206",
+    "M-R207",
+    "M-R208",
+    "M-R153",
+    "M-R210",
+    "M-R211",
+    "M-R213",
+    "M-R214",
+    "M-R215",
+    "M-R216"
    ],
    "rules_touched": [
     "M-R23",
@@ -226,7 +271,20 @@
     "M-R125",
     "M-R126",
     "R-BG03",
-    "M-R128"
+    "M-R128",
+    "M-R129",
+    "M-R130",
+    "M-R131",
+    "M-R132",
+    "M-R133",
+    "M-R134",
+    "M-R135",
+    "M-R136",
+    "M-R137",
+    "M-R206",
+    "M-R207",
+    "M-R208",
+    "M-R215"
    ],
    "signals": [],
    "monitors": [],
@@ -272,10 +330,21 @@
     "M39",
     "M40",
     "M41",
+    "M54",
     "M43",
     "M44",
     "M45",
-    "M48"
+    "M48",
+    "M49",
+    "M50",
+    "M51",
+    "M52",
+    "M53",
+    "M54",
+    "M55",
+    "M56",
+    "M57",
+    "M58"
    ]
   },
   "learn-hub": {
@@ -338,6 +407,17 @@
     "M18"
    ]
   },
+  "library": {
+   "rules_owned": [
+    "M-R201"
+   ],
+   "rules_touched": [
+    "M-R132"
+   ],
+   "signals": [],
+   "monitors": [],
+   "commands": []
+  },
   "probe-hub": {
    "rules_owned": [
     "M-R65",
@@ -347,7 +427,9 @@
     "M-R99",
     "M-R101",
     "M-R102",
-    "M-R103"
+    "M-R103",
+    "M-R203",
+    "M-R212"
    ],
    "rules_touched": [
     "L025",
@@ -364,7 +446,9 @@
     "M-R102",
     "M-R103",
     "M-R109",
-    "M-R114"
+    "M-R114",
+    "M-R133",
+    "M-R208"
    ],
    "signals": [],
    "monitors": [],
@@ -432,9 +516,15 @@
     "M43",
     "M44",
     "M45",
-    "M46",
-    "M47",
-    "M48"
+    "M48",
+    "M49",
+    "M50",
+    "M51",
+    "M53",
+    "M54",
+    "M55",
+    "M57",
+    "M58"
    ]
   },
   "tvbox-inspect": {
@@ -544,12 +634,23 @@
     "M40",
     "M41",
     "M42",
+    "M54",
     "M43",
     "M44",
     "M45",
     "M46",
     "M47",
-    "M48"
+    "M48",
+    "M49",
+    "M50",
+    "M51",
+    "M52",
+    "M53",
+    "M54",
+    "M55",
+    "M56",
+    "M57",
+    "M58"
    ],
    "commands": [
     "tvbox inspect scan",
@@ -565,23 +666,28 @@
   "tvbox-interface": {
    "rules_owned": [
     "L025",
-    "L027"
+    "L027",
+    "M-R141"
    ],
    "rules_touched": [
     "L025",
     "L027",
     "M-R45",
-    "P-R1"
+    "P-R1",
+    "M-R141"
    ],
    "signals": [],
    "monitors": [],
    "commands": [],
    "monitors_via": [
-    "M08"
+    "M08",
+    "M52"
    ]
   },
   "tvbox-janitor": {
-   "rules_owned": [],
+   "rules_owned": [
+    "M-R202"
+   ],
    "rules_touched": [
     "M-R57",
     "M-R60",
@@ -758,17 +864,7 @@
   "orphan_rules_owner_not_registered": [],
   "rules_without_probe": [],
   "rules_without_landing": [],
-  "orphan_skills": [
-   {
-    "skill": "automation-task-manager",
-    "touched_rules": 0,
-    "has_skill_md": true,
-    "has_flow": true,
-    "declared_alternative": "优先用 MCP 工具 automation_update（server=scheduler-assistant）",
-    "alt_undetermined": false,
-    "note": "有显式替代路径，**不是孤儿**，应走下线流程"
-   }
-  ],
+  "orphan_skills": [],
   "skills_without_any_rule": []
  }
 }

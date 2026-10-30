@@ -18,3 +18,10 @@ __pycache__/
 # 同上的脚本侧：rules_registry.json 等改前留档（.bak_<规则id>_<时间戳>）。
 # 改规则前一定要留，但留档本身不是源码。
 **/scripts/_bak/
+# 大体积业务素材与工作数据（learn-hub materials 56M；数据走 conductor backup 通道）
+learn-hub/materials/
+**/session_journal.jsonl
+**/harvest_candidates/
+**/assets/
+*.bak_*
+*.bak2

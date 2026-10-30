@@ -37,7 +37,6 @@ import sys
 import unicodedata
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
 
 SCRIPT_VERSION = "0.5.0"
 

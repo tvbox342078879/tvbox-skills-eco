@@ -15,13 +15,7 @@ import inspect
 
 import pytest
 
-from modules.registry import (
-    ActionSpec,
-    get_action_spec,
-    get_all_action_names,
-    get_registry,
-    register_action,
-)
+from modules.registry import ActionSpec, get_action_spec, get_all_action_names, register_action
 
 
 class TestRegistryBasics:

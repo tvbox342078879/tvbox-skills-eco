@@ -13,7 +13,7 @@
 
 失效库 database: hGwE41OpJDOR8CW0sLUwRx
 """
-import os,sys,json,csv,io,time,argparse,subprocess
+import os, sys, json, time, argparse, subprocess
 from urllib.parse import urlparse
 from collections import Counter
 
@@ -32,7 +32,7 @@ sys.path.insert(0, '/root/.codebuddy/skills/tvbox-source-hub/scripts')
 from core import (rows_of, add_records, add_records_parallel,
 
                   invalidate, file_to_janitor, register_monitor,
-                  SRC_DBS, src_rows, src_rows_t)  # noqa: E402  S159：源库联合
+                  SRC_DBS, src_rows, src_rows_t, http_get)  # noqa: E402  S159：源库联合
 
 # ---------- M-R114 统一并发入口（S110） ----------
 # 本文件原先就地写死 max_workers=N，数字无依据。改为按档位表取上限。
@@ -455,25 +455,21 @@ def _probe_api(api):
     """
     if not api:
         return 'SKIP'
+    # ECO 对齐：底层取数走 core.http_get（保留 -m 10 整体超时与四态语义；
+    # conn/timeout/dns → 'ERR' 不当作死，与原 curl 连不上/超时同口径）
     try:
-        r = subprocess.run(['/usr/bin/curl', '-sSL', '-m', '10', '-A', UA,
-                            '-w', '\n%{http_code}', api],
-                           capture_output=True, text=True, timeout=14)
-        raw = r.stdout or ''
-        if '\n' not in raw:
+        _st, _pl, _rs = http_get(api, timeout=10, ua=UA, return_status=True)
+        if _st == 'ok':
+            code, body = _pl[0], _pl[1]
+        elif _rs and _rs.startswith('http_'):
+            code, body = int(_rs[5:]), ''
+        else:
             return 'ERR'
-        body, code = raw.rsplit('\n', 1)
-        code = (code or '000').strip()
-        if code != '200':
+        if str(code) != '200':
             return 'DEAD'
         return '200' if _body_is_real(body, api) else 'DEAD'
-    except subprocess.TimeoutExpired:
-        return 'ERR'
     except Exception as e:
-        # 关键区分（S139 实踩）：探针自身的 bug（如 NameError: _SOFT_BLOCK 未定义）
-        # 被同一个 except 吞成 'ERR'，于是在报表里表现为「网络异常，源不可达」——
-        # 一条真活的 XML 源因此被判死，**而所有证据都指向源，不指向代码**。
-        # 这类错误必须自报家门，不许伪装成外部故障。
+        # 探针自身 bug 自报家门（S139 实踩），不许伪装成外部故障
         return f'BUG:{type(e).__name__}'
 
 
@@ -585,9 +581,33 @@ def cmd_single_review(a):
     # 复测面须覆盖「待复测 + 仍失效」：判据升级后，旧结论可能整体作废。
     # 实测：补认 XML 形态后，7 条先前判死的真活源全部翻案。若只重跑「待复测」，
     # 已判死的条目再也不会被复查——**判据修好了，旧账却永远停在错误结论上**。
-    # 用 `--recheck` 显式重跑已判死的（默认仍只跑待复测，避免每次全量）。
-    todo_all=[r for r in tg if r.get('复测结果') in ('未复测','待复测')
-              or (getattr(a,'recheck',False) and r.get('复测结果')=='仍失效')]
+    #
+    # ★ S187 修（默认漏跑缺陷）：原默认只跑「未复测/待复测」，把「仍失效」留给 --recheck。
+    #   看似省流量，实则**默认等于不干活**——实测 2026-10-20：73 条单条类
+    #   **100% 都是「仍失效」**，于是 `blk review --single` 打印「单条复测 0 条」
+    #   然后正常退出（0 条、不报错、看着像已完成）。后果：这批自 10-17 起
+    #   2~3 天没被复查过一次，失效库只进不出。
+    #   且同一命令的整域路径（cmd_review）**根本不按复测结果过滤**，每轮全跑——
+    #   两条路径行为相反：整域每次都查，单条永远不查。
+    #   修法：默认纳入「仍失效」，并按**停滞时长**升序（最久没查的优先），
+    #   `--limit N` 因此总能覆盖最该复查的那批；`--recheck` 保留为显式全量语义（无实质差别，
+    #   但老脚本/文档里的调用不失效）。
+    def _stale_days(r):
+        t = str(r.get('复测时间') or '')
+        if not t:
+            return 9999.0           # 从没复测过 → 最优先
+        for fmt in ('%Y-%m-%dT%H:%M:%SZ', '%Y-%m-%d'):
+            try:
+                return (time.time() - time.mktime(time.strptime(t[:19] if 'T' in fmt else t[:10], fmt))) / 86400
+            except Exception:
+                continue
+        return 9999.0
+    cand=[r for r in tg if r.get('复测结果') in ('未复测','待复测','仍失效')]
+    cand.sort(key=_stale_days, reverse=True)     # 停最久的排前面
+    todo_all=cand
+    _recheck_extra = [r for r in tg if getattr(a,'recheck',False)
+                      and r.get('复测结果') not in ('未复测','待复测','仍失效')]
+    todo_all = todo_all + _recheck_extra
     # 分母必须用**截断前**的待测数算，否则 `--limit 3` 会把没跑的 95 条算成「已复测过」
     # ——实测踩到：98 条全待测，却打印「95 条已复测过」。计数顺序错=凭空造出进度。
     todo=todo_all[:a.limit] if a.limit else todo_all
@@ -848,6 +868,50 @@ def cmd_review(a):
         elif confirmed:
             print('  → 确认复活后可 --apply 自动回写「已复活」（回流需人工验源确认）')
 
+def cmd_hostcheck(a):
+    """★ T28（P053）：M-R106 的可执行判据——「整域拉黑」与「公共平台域/代理域」的矛盾检查。
+
+    规则原文：只有「独占域名的私人站」才配整域拉黑；公共代码托管平台（github/gitee/
+    jsdelivr 等，一个域下挂无数互不相关的发布者）与代理域（gh-proxy 等）**只能单条拉黑**。
+    违反后果不是"多拦一条"，而是**该域下全部存活源被一并判死**（S159 实测：git.yylx.win
+    的 5 条记录写着单源失效，拉黑范围却填整域，整域存活源全灭）。
+
+    本命令只做**报出**，不改表——判据能判真假，但"该改成单条还是该保留整域"需人看上下文。
+    （M-R136 第③关：误报代价只是多看一眼，误拦代价是一域全灭。）
+
+    三态：无矛盾=通过退出 0；有矛盾=列出并退出 1；参数为空=无法判定退出 2。
+    """
+    raw = (getattr(a, 'hosts', '') or '').strip()
+    if not raw:
+        # 未给 --hosts → 从失效库里取全部「整域」记录自查（这正是 S159 事故现场）
+        try:
+            import core as _c
+            rows = _c.rows_of(os.environ.get('BLK_DB', '')) if False else []
+        except Exception:
+            rows = []
+        print('❌ 未给 --hosts，且自动读库未启用——**无法判定**（不是通过）')
+        print('   用法: blk.py hostcheck --hosts "raw.githubusercontent.com,gitee.com"')
+        return 2
+    hosts = [h.strip().lower() for h in raw.replace('，', ',').split(',') if h.strip()]
+    if not hosts:
+        print('❌ hosts 解析为空——无法判定')
+        return 2
+    bad = []
+    for h in hosts:
+        pf = is_platform_host(h)
+        px = is_proxy_host(h)
+        if pf or px:
+            bad.append((h, '公共平台域' if pf else '代理域'))
+    print(f'🔍 M-R106 整域拉黑矛盾检查：{len(hosts)} 个 host')
+    if not bad:
+        print('  ✅ 无矛盾（无一是公共平台域/代理域，可整域拉黑）')
+        return 0
+    print(f'  🔴 {len(bad)} 个 host 属公共平台域/代理域，**不得整域拉黑**：')
+    for h, why in bad:
+        print(f'     · {h}（{why}）→ 改为单条拉黑，否则整域存活源会被一并判死')
+    return 1
+
+
 def build_parser():
     ap=argparse.ArgumentParser(prog='blk.py')
     sub=ap.add_subparsers(dest='cmd',required=True)
@@ -857,26 +921,46 @@ def build_parser():
     l=sub.add_parser('list');  l.add_argument('--host',default='')
     sub.add_parser('stats')
     rv=sub.add_parser('review'); rv.add_argument('--limit',type=int,default=0)
-    rv.add_argument('--deep',action='store_true',help='联合复测：样例api正文验证（三次采样）')
+    # ★ S187：`--deep` 改默认开启。原默认只测 host 的 HTTP 码，而实测
+    #   （2026-10-20，145 个整域 host）「疑似复活 13 个」加正文验证后 **13 个全是假活**
+    #   （拒付/反爬/空壳，全都回 200）。只测码 = 每轮稳定产出 0 真复活 + 一堆假活。
+    #   要快速只测连通性，显式传 `--shallow`。
+    rv.add_argument('--deep', dest='deep', action='store_true', default=True,
+                    help='联合复测：样例api正文验证（三次采样）【默认开启】')
+    rv.add_argument('--shallow', dest='deep', action='store_false',
+                    help='只测 host 连通性（快，但会把拒付/空壳误判成复活）')
     rv.add_argument('--single',action='store_true',help='单条类复测：按样例api逐条验（host通≠源可用）')
     rv.add_argument('--recheck',action='store_true',help='连同「仍失效」一起重跑（判据升级后用）')
     ar=sub.add_parser('archive'); ar.add_argument('--apply',action='store_true',
         help='真删失效库中已复活且源库正常的条目（默认 dry-run）')
     rv.add_argument('--apply',action='store_true',help='确认复活自动回写「已复活」')
+    hc=sub.add_parser('hostcheck', help='M-R106 整域拉黑矛盾检查（公共平台域/代理域不得整域）')
+    hc.add_argument('--hosts', default='', help='逗号分隔的 host 列表')
     return ap
 
 AP=build_parser()
 DISPATCH={'mark':cmd_mark,'check':cmd_check,'guard':cmd_guard,
-          'list':cmd_list,'stats':cmd_stats,'review':cmd_review,'archive':cmd_archive}
+          'list':cmd_list,'stats':cmd_stats,'review':cmd_review,'archive':cmd_archive,
+          'hostcheck':cmd_hostcheck}
 
 def dispatch(argv=None):
-    """供调度器 tvbox 在同进程内直接调用，共享 core 缓存与并行池。"""
+    """供调度器 tvbox 在同进程内直接调用，共享 core 缓存与并行池。
+
+    ★ T28 修：原实现 `DISPATCH[a.cmd](a)` **丢弃返回值**，`main()` 也不 return，
+    于是无论子命令内部 `return 1`（判出矛盾）还是 `return 2`（无法判定），
+    进程退出码恒为 0。后果不是"少个信号"，而是**任何按退出码判断的门禁都会把它记成通过**
+    ——本轮 M-R106 探针正例捕获 False 就是这么来的（输出说"1 个 host 不得整域拉黑"，
+    退出码却 0）。与 S177 修 rules_cmd 的那处是同一族病：判定算对了，没交到下游。
+    """
     a=AP.parse_args(argv)
     # `--single` 走单条复测（按 api 逐条验），与整域复测是两套判据，不能合并
     if a.cmd=='review' and getattr(a,'single',False):
-        cmd_single_review(a); return
-    DISPATCH[a.cmd](a)
+        return cmd_single_review(a)
+    return DISPATCH[a.cmd](a)
 
-def main(): dispatch()
+def main():
+    """退出码必须说真话：子命令返回什么，进程就退什么（int 才传，None 当 0）。"""
+    rc = dispatch()
+    raise SystemExit(int(rc) if isinstance(rc, int) else 0)
 
 if __name__=='__main__': main()

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """selftest.py — mdskill-web 自检契约（8 项断言）"""
-import os, sys, tempfile
+import os, sys
 
 base = os.path.dirname(os.path.abspath(__file__))
 for p in (base, os.path.join(base, "scripts")):

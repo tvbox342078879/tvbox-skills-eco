@@ -12,11 +12,9 @@ from __future__ import annotations
 
 import io
 import os
-from collections import Counter
 from typing import Any
 
-from pdf_engine import (DocumentIR, PDFEngineError, TableData, TextBlock,
-                        image_to_bytes, render_page_image)
+from pdf_engine import DocumentIR, TableData, TextBlock, image_to_bytes, render_page_image
 
 # --------------------------------------------------------------------------- #
 # 统一异常
@@ -70,7 +68,6 @@ def write_word(doc: DocumentIR, out_path: str, *,
     """
     _import("docx", "python-docx")
     from docx import Document
-    from docx.enum.text import WD_ALIGN_PARAGRAPH
     from docx.oxml.ns import qn
     from docx.shared import Pt, RGBColor, Cm
 
@@ -505,7 +502,6 @@ def write_pptx(doc: DocumentIR, out_path: str, *,
                 bullets.append(" | ".join(t.rows[0]))
 
         if bullets:
-            from pptx.util import Inches
             top = Emu(int(prs.slide_height * (0.24 if title else 0.10)))
             height = prs.slide_height - top - Emu(int(prs.slide_height * 0.07))
             tb = slide.shapes.add_textbox(
@@ -528,7 +524,6 @@ def write_pptx(doc: DocumentIR, out_path: str, *,
 
         # 页面中的插图也一并带上（text 模式下）
         if page.images:
-            from PIL import Image
             img = page.images[0].image
             iw, ih = img.size
             max_w = Emu(int(prs.slide_width * 0.34))

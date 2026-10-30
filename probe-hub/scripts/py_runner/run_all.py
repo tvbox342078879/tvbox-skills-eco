@@ -13,7 +13,6 @@ import os
 import subprocess
 import sys
 import tempfile
-from urllib.request import urlretrieve
 
 # ---------- M-R114 统一并发入口（S110） ----------
 # 本文件原先就地写死 max_workers=N，数字无依据。改为按档位表取上限。
@@ -25,10 +24,13 @@ from concurrency import run_bounded as _run_bounded  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 WORKER = os.path.join(HERE, 'worker.py')
+import sys as _sys
+_sys.path.insert(0, '/root/.codebuddy/skills/tvbox-source-hub/scripts')
+from core import ORIG_DIR  # noqa: E402  # 共享核心(B3)：原仓库目录，env TVBOX_ORIG_DIR 可覆写
 BASE = 'https://clun.top'
 UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/131.0.0.0'
 CACHE = os.path.join(HERE, '_pycache')
-ORIG = '/workspace/原仓库库/cluntop_box原文_1018.json'
+ORIG = '%s/cluntop_box原文_1018.json' % ORIG_DIR
 OUT = os.path.join(HERE, 'py_run_result.json')
 
 

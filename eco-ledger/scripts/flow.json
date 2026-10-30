@@ -79,7 +79,9 @@
   "single_writer": "分录唯一入口 ledger.py post；绕行者由证证对账抓出",
   "one_way_dependency": "账房只读检查器输出（docsync/version_guard/signal-check），检查器不调账房（防 F12 循环依赖）"
  },
- "backlog": [],
+ "backlog": [
+  "[清账司派单 2026-11-01] [M19] eco-ledger 平衡性 82.4｜最弱=进化停滞(29.445158728074144) ｜ sid=eb7f27a17fc1 ｜ 下一步 tvbox conductor issues ／ 先看 eco-ledger 名下这条为何是红的，再决定修监测项还是修技能"
+ ],
  "resolved_backlog": [
   {
    "item": "db move 独立语义（当前=merge 单源）",

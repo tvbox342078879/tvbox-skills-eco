@@ -24,7 +24,6 @@ import json
 import re
 import subprocess
 import sys
-import time
 from urllib.parse import urlparse, urljoin
 
 UA = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
@@ -107,6 +106,36 @@ def resolution_level(text):
     return '360p', h
 
 
+def bandwidth_trust(text):
+    """HLS 多码率清单 BANDWIDTH 可信度 → ('不可信'|'可信'|'不适用', 说明)。
+
+    ★ 移植自道长 spider-craft 实战判据：不少站把每个码率档的 BANDWIDTH
+      全写成同一个值（最常见 128000）——该字段就废了，拿它排名会把假高清档
+      排到真高清前面。此时画质只能以 RESOLUTION 实测为准。
+      另查一类自相矛盾：带宽最高档的分辨率反而不是最高。
+    本函数只产证据提示，不改分数（画质判据仍是 resolution_level）。
+    """
+    pairs = []
+    for line in (text or '').splitlines():
+        if 'EXT-X-STREAM-INF' not in line:
+            continue
+        bw = re.search(r'BANDWIDTH=(\d+)', line)
+        rs = re.search(r'RESOLUTION=(\d+)x(\d+)', line)
+        if bw and rs:
+            pairs.append((int(bw.group(1)), int(rs.group(2))))
+    if len(pairs) < 2:
+        return '不适用', ''
+    bws = [p[0] for p in pairs]
+    if len(set(bws)) == 1:
+        return '不可信', f'{len(pairs)} 个码率档 BANDWIDTH 全等于 {bws[0]}，该字段不可用于排名'
+    top_bw = max(pairs, key=lambda p: p[0])
+    top_rs = max(pairs, key=lambda p: p[1])
+    if top_bw[1] < top_rs[1]:
+        return '不可信', (f'BANDWIDTH 最高档仅 {top_bw[1]}p，低于最高分辨率档 {top_rs[1]}p'
+                          f'——带宽与画质矛盾，画质以 RESOLUTION 实测为准')
+    return '可信', ''
+
+
 def _is_m3u8(url, body):
     u = (url or '').lower()
     return u.split('?')[0].endswith('.m3u8') or b'#EXTM3U' in (body or b'')[:2048]
@@ -144,6 +173,18 @@ def ad_judgment(m3u_text, seg_urls, play_url):
                 return '疑似', f'分片域名命中广告特征：{h}'
     if 'EXT-X-DISCONTINUITY' in (m3u_text or '') and len(seg_urls) < 5:
         return '疑似', '含 EXT-X-DISCONTINUITY 且分片少于 5 条（疑插播）'
+    # ★ S196 新判据：主清单内多域名分片 —— 贴片/中插广告的典型形态是
+    #   广告分片走另一个 CDN 域名。相对地址按播放地址补全后再比 host。
+    #   只取前 30 条分片（整清单上百条，抽样足够且快）。
+    hosts = set()
+    for u in seg_urls[:30]:
+        absu = urljoin(play_url or '', u)
+        h = urlparse(absu).netloc.lower()
+        if h:
+            hosts.add(h)
+    if len(hosts) > 1:
+        hs = sorted(hosts)
+        return '疑似', f'主清单内分片跨 {len(hs)} 个域名（疑插播）：{"、".join(hs[:3])}'
     return '无', ''
 
 
@@ -160,9 +201,21 @@ def score(quality, first_ms, kbps, ad):
       档位取自 111 条实测分位数：速率 P25=174/P50=225/P75=316，首片 P50=743/P90=1676。
     """
     # 基准分：档位间隔必须 > 修正项最大振幅(8+2=10，加上广告 -30 的极端不影响相对序)。
-    # 实测校准后间隔取 16：1080p 92 / 720p 76 / 480p 60 / 360p 44 / 未知 56
-    # （未知落在 480p 与 360p 之间：读不到分辨率不代表差，但也不能当高画质）
-    base = {'1080p': 92, '720p': 76, '480p': 60, '360p': 44}.get(quality, 56)
+    # 实测校准后间隔取 16：1080p 92 / 720p 76 / 480p 60 / 360p 44
+    #
+    # ★ S196 修：画质「未知」不再折成 56 分。
+    #   旧版 base 兜底 56（落在 480p 与 360p 之间），注释写着"读不到不代表差"，
+    #   但 56 分实打实把它排到了 720p 之后 —— 等于对"测不出"做了一次未声明的惩罚。
+    #   实测后果：112 条里 31 条（16 条 mp4 直链 + 15 条单码率无 RESOLUTION）
+    #   一律 56 分，其中 `🌺红牛资源` 首包仅 102ms 也躺在这堆里，
+    #   按分排序给 D 包换路线时会被系统性排到后面。
+    #   改为返 None 表示"不评分"：画质既不加分也不扣分，只保留速度/首片/广告的相对信息，
+    #   并在 evidence 里标"画质不可测"。上层排序时 None 不与数字同列（M-R60：拿不到就说拿不到）。
+    if quality in ('未知', '', None):
+        base = None
+    else:
+        base = {'1080p': 92, '720p': 76, '480p': 60, '360p': 44}.get(quality, None)
+
 
     # 速度修正：±8 分封顶
     if kbps >= 316:
@@ -188,6 +241,10 @@ def score(quality, first_ms, kbps, ad):
 
     # 广告：命中直接重罚（用户最反感），无广告不加分（本来是应然状态）
     d_ad = {'无': 0, '疑似': -15, '确认': -30}.get(ad, 0)
+
+    # ★ 画质不可测 → 不评分（返 None），只让上层拿 evidence 里的速度/首片信息
+    if base is None:
+        return None
 
     return max(0, min(base + d_speed + d_first + d_ad, 100))
 
@@ -221,10 +278,15 @@ def evaluate(play_url, timeout=12, rounds=3):
     if not _is_m3u8(url, body):
         return {'verdict': '通过' if code == 200 else '无法判定', 'quality': '未知',
                 'first_ms': int(tsec * 1000), 'kbps': 0, 'ad': '未知',
-                'score': score('未知', 0, 0, '无'),
-                'evidence': f'mp4/非HLS 直链 HTTP {code}·首包{int(tsec * 1000)}ms·未测速（非HLS不适用）'}
+                'score': None,   # S196：画质不可测 → 不评分（旧版 56 分属未声明惩罚）
+                'evidence': f'mp4/非HLS 直链 HTTP {code}·首包{int(tsec * 1000)}ms·'
+                            f'未测速（非HLS不适用）·画质不可测'}
 
     quality, width = resolution_level(text)
+    # ★ S194（移植道长判据）：BANDWIDTH 可信度。全等/自相矛盾的 BANDWIDTH
+    #   不能用于画质排名，只作证据提示——分数仍以 RESOLUTION 实测为准，不因它改。
+    bw_trust, bw_note = bandwidth_trust(text)
+    bw_ev = f'·BANDWIDTH {bw_note}' if bw_note else ''
 
     # 主清单可能是多码率（含子清单）→ 取第一条子清单继续
     sub = ''
@@ -243,6 +305,11 @@ def evaluate(play_url, timeout=12, rounds=3):
                 quality, width = q2, w2
             text = t2 if '#EXTINF' in t2 else text
             url_for_seg = target
+            if not bw_note:               # 主清单没查出问题，子清单再补查一次
+                bw2, note2 = bandwidth_trust(t2)
+                if note2:
+                    bw_trust, bw_note = bw2, note2
+                    bw_ev = f'·BANDWIDTH {bw_note}'
         else:
             url_for_seg = url
     else:
@@ -283,23 +350,26 @@ def evaluate(play_url, timeout=12, rounds=3):
     if seg and not times:
         return {'verdict': '无法判定', 'quality': quality, 'first_ms': 0, 'kbps': 0,
                 'ad': ad, 'score': 0,
-                'evidence': f'清单可读({quality})但分片拉不动·{seg[:60]}'}
+                'evidence': f'清单可读({quality})但分片拉不动·{seg[:60]}{bw_ev}'}
     if not seg:
         return {'verdict': '失败', 'quality': quality, 'first_ms': 0, 'kbps': 0,
                 'ad': ad, 'score': 0, 'evidence': 'm3u8 内无有效分片（空清单）'}
 
     sc = score(quality, first_ms, kbps, ad)
     ev = (f'{quality}({width}w)·首片{first_ms}ms·{kbps}KB/s(沙箱实测·相对参考)'
-          f'·广告{ad}{"·" + ad_ev if ad_ev else ""}')
+          f'·广告{ad}{"·" + ad_ev if ad_ev else ""}{bw_ev}'
+          + ('·画质不可测(不评分)' if sc is None else ''))
     return {'verdict': '通过', 'quality': quality, 'first_ms': first_ms,
             'kbps': kbps, 'ad': ad, 'score': sc, 'evidence': ev}
 
 
-def main():
-    if len(sys.argv) < 2:
-        print(__doc__)
-        sys.exit(2)
-    arg = sys.argv[1]
+def main(arg=None):
+    # C8（T6）：arg=None 时兼容旧直跑（读 sys.argv）；probe.py 总调度传参直接给 arg
+    if arg is None:
+        if len(sys.argv) < 2:
+            print(__doc__)
+            sys.exit(2)
+        arg = sys.argv[1]
     if arg == '--batch':
         items = json.load(open(sys.argv[2], encoding='utf-8'))
         out = []
@@ -307,7 +377,8 @@ def main():
             r = evaluate(it.get('url') or it.get('play_url') or '')
             r['name'] = it.get('name', '')
             out.append(r)
-            print(f"  {r['verdict']:4s} {r['score']:3d} 分  {r['name'][:20]:22s} {r['evidence'][:70]}")
+            _sc = '  —' if r['score'] is None else f"{r['score']:3d}"
+            print(f"  {r['verdict']:4s} {_sc} 分  {r['name'][:20]:22s} {r['evidence'][:70]}")
         base = sys.argv[2]
         dst = base.rsplit('.', 1)[0] + '_quality.json'
         json.dump(out, open(dst, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)

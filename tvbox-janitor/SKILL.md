@@ -1,5 +1,5 @@
 ---
-version: "1.2.6"
+version: "1.2.12"
 name: tvbox-janitor
 description: "清道夫·待删收件箱 —— TVBox 生态的「人工清理投递」技能。当云端库存在 AI 删不掉的节点（WorkBuddy space 无删除 API），本技能把冗余节点**移动**到一个统一收件箱文件夹，并生成《待删清单》，用户只需打开这一个文件夹按单删除。 触发词：删不掉 / 清一下 / 待删的放哪 / 垃圾清一清 / 收件箱满了 / 要删的先放这 / 清理一下 / 待删 / 清理 / 删除不了 / 收件箱 / 清道夫 / 整理 / 废弃节点 / 冗余节点 / 重复节点 / 库房整理。"
 ---
@@ -28,11 +28,33 @@ move / publish / unpublish）。所以：
 | 项 | 值 |
 |---|---|
 | space | `8w5cnqCqQJ0wNoF2Hb6efH`（TVBox 生态空间） |
-| 收件箱父节点 | `GCLJWbFGS1BmYbj6JCX9it`（底包库根） |
-| **收件箱** | `🗑 待删收件箱（清道夫·按单删即可）` → `tBlgSL4SPEFMrsyTBTg03c` |
+| 收件箱父节点 | 空间根（`我的资料` 顶层，S196 用户指示待删放根目录；父 id = SPACE 自身） |
+| **收件箱** | `🗑 待删收件箱（清道夫·按单删即可）` —— **id 以 `scripts/janitor_state.json` 的 `inbox` 字段为准，本文件不写死**。S201 教训：旧箱被用户删除后此处写死的 id 全部失真（tBlg… 已死），`janitor inbox` 幂等重建并回写状态文件才是真源 |
 | **全局扫描超根 ROOT** | `gZ4xP6kXXeCpTlsH2CN9tJ`（探源司·总库：涵盖底包库根/收件箱/各源库=整个空间） |
 | 状态文件 | `scripts/janitor_state.json`（inbox id + items 清单） |
 | 清单落盘 | `/workspace/S104_<MMDD>_待删清单.md` + `.csv` |
+
+## 1.1 ★ 唯一正门（M-R202 · S201 立闸）
+
+**节点搬迁 / 改名 / 新建文件夹，全生态只认本技能一条正门**：
+
+| 动作 | 正门命令 | 硬门 |
+|---|---|---|
+| 搬运 | `janitor move --node <ID> --to <父ID>` | 移前双校验 + 移后回读 |
+| 改名 | `janitor rename --node <ID> --title "新名"` | 改后回读标题 |
+| 投收件箱 | `janitor add --node <ID> [--reason R]` | 护栏 + 登记清单 |
+
+> **建夹/建库不归本技能**：正本是资料库技能（library）的 M-R201 建库五闸 +
+> `manage/create_folder.py`（S202 修正：曾误挂本技能名下）。执行层分工：
+> 命令面闸一对 `move-node`/`rename-node` 要求加载本技能；
+> 闸二对 `create_folder.py` 要求加载 **library**。
+
+> **为什么是铁律（S201 现场）**：任何技能绕过本门直接调
+> `space.workspace.move-node` / `rename-node`，等于绕开「移后回读」
+> 假绿防线——M-R201 第3闸（返回码不算数）形同虚设。执行层硬闸：
+> `~/.codebuddy/hooks/skill_route_guard.py` 对命令面出现
+> `space.workspace.move-node` / `rename-node`
+> 且本轮未加载本技能时 `exit 2` 拦一次（M-R202）。
 
 ## 2. 命令
 
@@ -43,6 +65,8 @@ python3 janitor.py scan                          # ★ 全局递归扫描：识�
 python3 janitor.py scan --dry-run               # 仅预览候选（不移动），首次/安全核查用
 python3 janitor.py list                          # 输出待删清单（md + csv 落盘）
 python3 janitor.py restore --node ID [--target 父ID]  # ★ 误投回退：移回原位并移除清单项
+python3 janitor.py move --node ID --to 父ID      # ★ 节点移动（移前双校验 + 移后回读）
+python3 janitor.py rename --node ID --title "新名"  # ★ 节点改名（改后回读标题）
 python3 janitor.py census [--json]              # ★ 分层普查：一条命令回答"这块归谁管"（S158）
 ```
 

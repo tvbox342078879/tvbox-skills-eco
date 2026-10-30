@@ -1,202 +1,459 @@
 {
-  "name": "probe-hub-flow",
-  "version": "1.16.0",
-  "created": "2026-10-16",
-  "source": "规则54四化落地（SKILL.md §1-§7 的机器可读版）；生态第7成员「探源司」立项：上游侦察三模块 monitor/search/harvest",
-  "route_decision": {
-    "monitor_upstream_repo": "probe.py monitor check/diff/status（上游仓库四类信号·快照对比三态）",
-    "search_more_repos": "probe.py search github/gitee/rank/verify（扩充第三方仓库·库容量）",
-    "harvest_lines": "probe.py harvest scan/pull/filter/export/dispatch（采集线路→候选→ingest）",
-    "grow_monitor_target": "probe.py monitor add（登记新监测目标，代码零改动）"
+ "name": "probe-hub-flow",
+ "version": "1.20.8",
+ "created": "2026-10-16",
+ "source": "规则54四化落地（SKILL.md §1-§7 的机器可读版）；生态第7成员「探源司」立项：上游侦察三模块 monitor/search/harvest",
+ "route_decision": {
+  "monitor_upstream_repo": "probe.py monitor check/diff/status（上游仓库四类信号·快照对比三态）",
+  "search_more_repos": "probe.py search github/gitee/rank/verify（扩充第三方仓库·库容量）",
+  "harvest_lines": "probe.py harvest scan/pull/filter/export/dispatch（采集线路→候选→ingest）",
+  "grow_monitor_target": "probe.py monitor add（登记新监测目标，代码零改动）"
+ },
+ "steps": [
+  {
+   "no": 0,
+   "name": "触发判定",
+   "rule": "触发词命中：上游仓库/作者仓库/原作者/跑路/被封/仓库监测/找仓库/采集线路/探源；或底包库线路失效怀疑源头出问题时",
+   "cmd": null,
+   "artifact": null,
+   "action": "主动侦察，不等用户开口；先看 monitor status 摸清现有监测目标"
   },
-  "steps": [
-    {
-      "no": 0,
-      "name": "触发判定",
-      "rule": "触发词命中：上游仓库/作者仓库/原作者/跑路/被封/仓库监测/找仓库/采集线路/探源；或底包库线路失效怀疑源头出问题时",
-      "cmd": null,
-      "artifact": null,
-      "action": "主动侦察，不等用户开口；先看 monitor status 摸清现有监测目标"
-    },
-    {
-      "no": 1,
-      "name": "监测上游",
-      "rule": "monitor check：存活/内容/目录/活跃度四信号，逐条三态（真阳性/真阴性/无法判定）",
-      "cmd": "tvbox probe monitor check",
-      "artifact": "状态回写 + activity_log.json 采样",
-      "action": "无法判定≠阴性：网络失败绝不当作「仓库没变化」；禁裸 except 折叠"
-    },
-    {
-      "no": 2,
-      "name": "快照对比",
-      "rule": "monitor diff：本次 vs 上次指纹，输出 新增commit/内容变更/目录增删",
-      "cmd": "tvbox probe monitor diff",
-      "artifact": "变更摘要",
-      "action": "数据基座 activity_log.json 损坏态拒绝回写覆盖（M-R60）"
-    },
-    {
-      "no": 3,
-      "name": "搜索补源",
-      "rule": "search github/gitee→rank→verify，去伪存真，扩充库容量",
-      "cmd": "tvbox probe search github --topic tvbox",
-      "artifact": "search_results.json + 候选监测目标",
-      "action": "API 限流 403 → 报「无法判定」并退避，不报「不存在」；高评分仓库转 monitor add"
-    },
-    {
-      "no": 4,
-      "name": "采集线路",
-      "rule": "harvest scan/pull→filter（测活+去重+黑名单预筛）",
-      "cmd": "tvbox probe harvest scan --repo <url>",
-      "artifact": "harvest_candidates/harvest_MMDD.json",
-      "action": "测活口径用 pipeline._alive（ALIVE_CODES={200,206,301,302,303,307,308}），不用 probe_src 采集口径"
-    },
-    {
-      "no": 5,
-      "name": "入库",
-      "rule": "harvest export→dispatch→link.py ingest（内含 blk guard 第一道闸）",
-      "cmd": "tvbox probe harvest dispatch",
-      "artifact": "DB_SRC 记录 + DB_DEAD 归档",
-      "action": "禁止绕过闸门直写源总库；代理型 host 禁整域拉黑（is_proxy_api，S026）"
-    },
-    {
-      "no": 6,
-      "name": "复盘闭环",
-      "rule": "规则47快照+规则48四问+规则52固化",
-      "cmd": "tvbox log / tvbox snapshot",
-      "artifact": "台账 + 快照",
-      "action": "写库动作收工必 snapshot；平台经验回写 ④ 经验库"
-    },
-    {
-      "id": "S109",
-      "name": "直链类轻量 json 生成（harvest lightjson）",
-      "desc": "复刻「原仓库→轻量json」直链链路：分诊(只留 http(s))→真实测活闸→api级去重→产出 TVBox 结构(key=probe-hash, type: m3u8=0/其余=1)→规则51命名+剔失清单",
-      "cmd": "tvbox probe harvest lightjson --in <cands.json> --outdir ./out --desc <描述>",
-      "iron": [
-        "M-R59",
-        "M-R38",
-        "M-R65"
-      ]
-    },
-    {
-      "id": "S109b",
-      "name": "采料去向业务锚定：D 包换路线",
-      "desc": "harvest 采到的 http(s) 活直链首要供 D 包（DmaxPro908·纯直链底座）换路线。用户三包 L包lytvs/G包guard/D包DmaxPro908；回路 scan/pull→livecheck→promote→DB_PROD→用户据成品源库给D包换路线。供D包直链必须过测活闸。",
-      "cmd": "tvbox probe harvest promote --in <候选.json>（活直链入成品源库 DB_PROD）",
-      "iron": [
-        "M-R66",
-        "P-R1",
-        "M-R65"
-      ]
-    },
-    {
-      "no": 10,
-      "name": "质量评测（画质/速度/广告）",
-      "rule": "成品源库条目测活通过后，需回答「好不好用」而非仅「能不能拉」",
-      "cmd": "python3 quality_batch.py --db 成品源库 --workers 8",
-      "artifact": "回填 最高画质/首片耗时/下载速率/广告判定/质量分/质量证据",
-      "action": "①只对成品源库有意义（线路源库全是 csp/本地形态，沙箱无 spider，实测 620/620 无法判定）②沙箱测速仅作同批相对比较，不得当绝对值③评分以画质为基准、速度/首片只在基准上加减，保证画质档位严格单调"
-    }
-  ],
-  "iron_order": [
-    "触发",
-    "监测上游",
-    "快照对比",
-    "搜索补源",
-    "采集线路",
-    "入库",
-    "复盘闭环"
-  ],
-  "iron_rules": {
-    "定位": "生态**上游侦察层**（探源司）——底包库作者仓库动态监测 / 搜索更多仓库 / 采集高质量线路并真实测活产出合格源",
-    "守护": {
-      "M-R32": "装健康的哑巴——监测四信号逐条三态，无裸 except 折叠",
-      "M-R38": "单一事实源——harvest 类目判据复用整包坊 classify_line / 复用 core.py，不重复实现 rows_of",
-      "M-R55": "修完度量器必配探针——每个检测器配活体探针（注入→捕获→清理）且假阳性基线为0",
-      "M-R57": "输出→判定三态——监测四信号真阳性/真阴性/无法判定；search 401 鉴权失败单列不折叠成『空结果』",
-      "M-R60": "数据基座读取三态化——无法判定绝不写回覆盖快照（损坏态拒回写）",
-      "M-R64": "缓存不得固化假态——持久化候选册用稳定指纹幂等 upsert，读失败不入缓存",
-      "M-R65": "真实数据驱动——测活引擎须真拉播放层（vod_play_url/分片字节流），合成用例不能证明『对世界为真』",
-      "P-R1": "合格线路源判据=真实可用——livecheck 三态测活（通过/失败/无法判定），harvest promote 只写真实通过者进成品源库（DB_PROD），未测/失败禁入库",
-      "M-R59": "直链边界单一事实源——lightjson 只产直链类（api 以 http(s) 开头），csp/jar 与 ./py 归属其他支线，逐条交代剔除禁静默裁剪（S109）",
-      "M-R66": "采料去向锚定——harvest 采到的 http(s) 活直链首要供 D 包（DmaxPro908·纯直链底座）换路线；用户三包 L包lytvs/G包guard/D包DmaxPro908，与底包库体系D·Amns系无关；供 D 包直链必须过测活闸（S109）",
-      "M-R103": "一条线路只许占一个分组——指纹唯一≠线路唯一；同指纹多条只留 _canon_rank 最规范者，『同源』须三判据实测（total/首播/sha256），取不到数据不合并标待人工（S146）",
-      "M-R117": "解析可用性不得由 HTTP 码或正文正则推断——只能由真跑出流证明；双向都会错（正文无流但能播 / 200 但是告别页）",
-      "M-R118": "注入回归的每条注入必须证明\"改坏后结果真的变了\"——结果不变＝注入点没被执行，记\"未生效\"而非\"漏了\""
-    }
+  {
+   "no": 1,
+   "name": "监测上游",
+   "rule": "monitor check：存活/内容/目录/活跃度四信号，逐条三态（真阳性/真阴性/无法判定）",
+   "cmd": "tvbox probe monitor check",
+   "artifact": "状态回写 + activity_log.json 采样",
+   "action": "无法判定≠阴性：网络失败绝不当作「仓库没变化」；禁裸 except 折叠"
   },
-  "self_check": [
-    "监测四信号逐条三态（真阳性/真阴性/无法判定），无裸 except 折叠（M-R60）",
-    "无法判定绝不写回覆盖快照（数据基座损坏态拒回写，M-R60） （M-R60）",
-    "每个检测器配活体探针（注入→捕获→清理）且假阳性基线为0（M-R55）",
-    "写库 PropertyValue 包装正确（select 列用 {'select':..}，否则被平台静默丢弃，S027） （M-R32）",
-    "harvest 候选经 blk guard 拦截后才入 DB_SRC（无绕过闸门）",
-    "代理型 host 不参与整域拉黑（is_proxy_api，S026）",
-    "入库后已 tvbox snapshot 刷新（规则47） （M-R60）",
-    "新监测目标用 monitor add 登记（代码零改动）",
-    "生态登记库 DB_ECO 已 register_eco（非 tvbox- 前缀必登记，否则 evolve scan 扫不到） （M-R38）",
-    "manifest.json 已加 probe 意图路由（skill 字段含字面 probe-hub，否则路由盲区）",
-    "复用 core.py（不重复实现 rows_of/api/add_records） （M-R38）",
-    "测活口径统一用 pipeline._alive，不与 probe_src 采集口径混用 （M-R38/M-R65）",
-    "XML 版苹果CMS 判活走 `<dd><![CDATA[..]]>` 通道，不得只查 `vod_play_url` 字样（S141/S142）",
-    "上云写入看 results.success 计数，不得以『回执前 40 字符无 error』判成功（S143）",
-    "候选评分用四分量加权（相关/体量/新鲜/存活）并写 score_why，禁把 stars 直接当分（S143）",
-    "删除登记册目标须云端真删除（save_targets 只 upsert，否则删后复活）（S143）",
-    "反假阳性：零相关仓库即使再新也不得进前排（self-check『候选评分分层』守）",
-    "self-check 21/21：新增第㉑组 URL 解码 / 代理前缀剥离归一（S146·M-R96 ⑦⑧），含『少一个斜杠』反例——注入旧 bug 时该组当场红、rc=1",
-    "反假阳性：同 host 不同仓库的两个 js 必须能区分（不得因剥代理把不同文件归一成一条），scheme/尾斜杠差异必须归一（不得把同一条拆成两条）",
-    "一条线路只许占一个分组（M-R103）：`harvest dedup` 默认预演，--apply 后必须全量翻页复核「唯一指纹数 = 条数」且「跨分组线路 = 0」，再跑一次须幂等删 0",
-    "self-check 22/22：新增第㉒组 jsm 拆包分诊（S147·harvest splitjsm）。分组取自**源枢库曹正本** split_jsm.group_of（探源司不复制），正本找不到即报错退出，不降级成另一套口径",
-    "反假阳性：非外链（csp_/./py/*.py/./lib/*.js）必须被 _lj_api_kind 判为非 http 且不进候选；总数守恒 14+150=164，回读断言不得漏项。故障注入（把正本 csp_ 兜底改成\"外链采集\"）须让该组当场红",
-    "拆得出 ≠ 采得到：--no-probe 时报「未测」而非「通过 0 条」（没测 ≠ 测了不通过，M-R60 同族）",
-    "取数层镜像回退：raw.githubusercontent 直连慢（实测 22–40s）时必须自动改走镜像（gh-proxy/ghfast），慢一次即置 _RAW_SLOW 供后续优先走镜像；非 raw 域名不得被塞镜像（回退是定向的，不是全站改道）。故障注入（把慢阈值 8s 改 999 / 把 raw 判断改 if True）须让该组当场红",
-    "破甲模块（armor.py）：PKCS7 必须严格（非法填充→None，禁\"宽容兜底\"返回半成品）；XOR 图片必过解码器验证（周期性数据不许凑成图）；形态分诊 html-page/xml-doc/hex/base64-json 各归各位；变换链须识别 JS 侧 atob/JSON.parse。故障注入（宽容兜底 / html 归 text / 图片退回只看魔数）须当场红",
-    "self-check 25/25：新增第㉕组 源验证器（spider_verify）三态判定。坏源必须判失败（分类空/语法错/丢集），域名不存在的源必须判**无法判定**而非失败（M-R60：不冤杀）。多集样本取自**接口原始数据**而非源产出（否则坏源自己把 84 集砍成 1 集，验证器被被测对象牵着走）。故障注入（宽正则 Connection / _reachability 恒 unknown）须当场红、rc=1",
-    "反假阳性：`Connection: keep-alive` / `sqlite3.Connection` 属正常写法，不得被判成网络故障；否则好源只要写了 header 就永远「无法判定」，验证器等于被废掉",
-    "self-check 26/26：新增第㉖组 触发词覆盖（M-R104）。守的是「技能写了但从不被触发」——S148 实测一次长会话 12884 次工具调用里探源司 0 次被调用，全程手工跑脚本。三判据：①description「触发词：」段必须同时含业务语言与术语 ②这些话必须能被 conductor._route_score 打到 ≥2 分（路由真接得住，不是字面有就行）③两源一致（description 声明的词必须在 _SKILL_INTENTS 投影里，否则 M-R76 静默失配）。三次故障注入（删业务话/删投影/删铁律段）均当场红、rc=1",
-    "判据必须落在执行路径上（S172·§3.13 ⑥）：AST 取字面量只是缩小取样范围，不等于取到的就是判据。六变种——①报错文案冒充判据 ②工具当调用点 ③OR 判据 ④结果验不出路径（兜底也给同值）⑤并集冒充分支 ⑥探针里重算一遍。正解：只取**比较/真值测试**位置的字面量，或用 _lits_of_branch 锁到 `if sub=='x':` 分支；能行为测就行为测。反例基线：把目标改坏后探针必须红，还原必须全绿——不注入无法区分'在工作'与'在睡觉'。",
-    "解析接口真实出流（S173·§3.15）：parses 是\"给个影片页才出流\"的服务，不能拿\"能直接吐播放地址的源\"的尺子量。判据被实测推翻四次——①正文正则找 m3u8：yparse 27KB 正文 0 个 m3u8，真跑后 iframe 里拉到 48771B 分片（漏判）②只看主 frame：同一站播放器在 frame[1]，主 frame 只有「云解析」（漏判）③200 即通过：xmflv 返 200 + 「江湖路远，后会无期」告别页，0 个流请求（误判）④抓到 m3u8 即过：ckplayer/盘古 地址分片 404。正解＝headless 真跑 → 遍历所有 frame → 再走 check_m3u8 真拉分片。基线：cluntop/tvbox box.json 抽 21 条，HTTP 全通，真出流仅 3 条——按 200 收就是 18 条垃圾。注入回归：每条注入必须配一个\"必然经过该行\"的样本，否则结果不变只说明注入没测到东西，不能记成\"判据漏了\"（S172 变种 d 重演）。"
-  ],
-  "snapshot_refresh_rule": "凡对 DB_SRC/DB_DEAD 的写操作收工必 tvbox snapshot；纯监测（只写 DB_UPSTREAM/本地留痕）按需刷",
-  "backlog": [
-    "[已清零 S087] 探源司建档：三模块 monitor/search/harvest + self-check 5 组探针落地，入口路由/生态登记/manifest 意图全部就位（本轮回填）",
-    "[已清零 S088] 监测册迁云端专用库 DB_UPSTREAM（18 字段建成 aCSvley568A0aW3sggzJwA）；真实仓库驱动修 6 缺陷（404折叠/分支探测/活跃度口径/record_id/目录差集守卫/探针本地化）；扫描器白名单键改指纹化",
-    "[已清零 S089] GitHub 鉴权：token 多源解析 + 配额可视化（60→5000 req/h）；探针 6→7 组、信号源18 断言 10→13",
-    "[已清零 S090] 变更通知触达 watchdog：新增 M18「上游仓库跑路/弃更未处置」检查器，把探源司结论转译为遗留项（跑路→阻断/归档→耗时/无法判定→不产）；跨技能联动端到端验证通过",
-    "[已清零 S091] 多平台适配：新增 _parse_ts 跨格式时间戳统一解析 / _parse_repo 四元组（owner,repo,platform,host）+ Gitea 族识别（自建/工蜂 git.code.tencent.com）/ _platform_base + _platform_meta 统一取数层（GitHub api.github.com·GitLab gitlab.com/api/v4·Gitee gitee.com/api/v5·Gitea {host}/api/v1）/ _api_get 通用取数（限流先判语义再判 JSON）/ _gh_api 收敛为封装（M-R38 单一事实源）/ search gitlab 命令；自检 7→8 组；真实端到端 GitLab(gitlab-org/gitlab-runner)/Gitee(oschina/git-osc)/Gitea族 三平台验证通过",
-    "[已清零 S092] harvest 复用整包坊 split 判据（M-R38 单一事实源）：探源司自写的 _guess_category（type0/3/4→直链/网盘/配置）废弃，改复用整包坊 classify_line（py/采集/直链/其他 四类，§4.2.0 权威判据），两技能类目口径**不再分叉**；整包坊不可用时显式降级（stderr 告警 + 保守判据），绝不静默用错口径。**真实数据抓出 harvest 侧两个同型缺陷**：① 默认分支硬编码 main（老仓库多为 master）→ raw 全 404 谎报\"无线路文件\"（S088 在 monitor 侧修过、harvest 侧漏修）；② 拉取失败(fail)与不存在(notfound)被折叠 → M-R60 命门违例，网络抖动即谎报\"仓库无配置\"；已改为三态显式区分（全失败→无法判定 exit2 / 部分失败→结论不完整 / 未命中→确实没有）。自检 8→9 组（新增「harvest判据一致性」）；真实仓库 lxcjy/IPTV2 端到端通过（24 条候选→filter 保留 4）",
-    "[已清零 S093] 活跃度预测（roadmap 末项）：新增 _forecast_risk 纯函数——对采样史 n_commits_30d 序列做**最小二乘线性回归**→外推弃更风险（升高/稳定/增长）；与 _activity_verdict（瞬时判定）互补。**三态命门**：None 空洞**跳过不填充 0**（否则\"读不到\"被当\"零提交\"、斜率失真）；有效点 <6 期 / 跨度 <7 天 → **数据不足**（明确不预测，绝不拿 2 期数据外推）；全 None → 数据不足（不报任何风险）。新增 `monitor forecast [--json]` 命令；自检 9→10 组（新增「活跃度预测」四路断言：真阳性双向趋势 / None 不填充 / 不足不预测 / 假阳性基线）。**探源司 roadmap 清零**。",
-    "[已清零 S094] 三模块真实落地（search/harvest 从\"有代码未验证\"到\"真能干活\"）：真实跑通 search github→rank→verify 与 harvest scan→filter→export→dispatch(--dry)；**修 5 个真实缺陷**：① _api_get 只看正文不看 HTTP 状态码 → GitLab 401 被判 ok（错误响应当成功）→ 新增 unauthorized 态；② cmd_search_gitee 自写一套 curl（无三态）→ 改走 _api_get + 区分\"真无结果\"与\"未鉴权空结果\"；③ _save_search 覆盖写 → search gitee 空结果整表覆盖 github 的 5 条 → 改**合并写**（同 url 去重，空不覆盖非空）；④ cmd_search_verify 用裸探测主页判存活（GitHub 常返 0 误判无法判定）→ 改走 _platform_meta；⑤ verify 硬编码分支 main（老仓库 master 漏检）→ 走自动探测。新增 dispatch --dry；自检 10→11 组（新增「search三态与写保护」）",
-    "[已归档(不修) 2026-10-18]（sid=321ff3ec60ac）假阳性收口：本条是 SKILL.md 里的**判据说明**（\"保留待人工\"/\"保留待测活\"），被 TODO_MARK 的 ‖ 原条目：[清账司派单 2026-10-25] `http(s)://` 直链 → 保留待测活 ｜ sid=321ff3ec60ac ｜ 下一步 tvbox probe monitor status",
-    "[已清零 S110] 质量评测闭环：quality.py + quality_batch.py 落地，两库各加 6 个质量字段，成品源库 111 条回填完成（有分 90，中位 72）",
-    "[已清零 S110] 评分模型校准三轮：v1 速度无区分度（1080p 全卡 65 分）→ v2 速度可反超画质（360p 拿 100 分）→ v3 画质定基准+有限加减，90 组合全矩阵严格单调",
-    "[已清零 S110] 体系二值重构落地：620+111 条刷为 jar系/直链系，jar文件名/随身文件 3 字段回填，旧 可用体系 清零",
-    "[已清零 2026-10-18]（无 sid·手工收口）并入 tvbox-interface/scripts/flow.json「[遗留 S110·正本] 采集缺包级字段」（用户裁定正本归修复方；本条与 5e79eeb5ba4f/becf9081fdbc 同一根因） ‖ 原条目：[遗留 S110] 采集缺包级字段：原作者包的 spider/jar 在抽取时被丢弃，导致 jar 地址无处可查，jar 溯源需先补这一环",
-    "[已清零 2026-10-18]（sid=5e79eeb5ba4f）并入 tvbox-interface/scripts/flow.json「[遗留 S110·正本] 采集缺包级字段」（用 ‖ 原条目：[清账司派单 2026-10-25] [遗留 S110] 采集缺包级字段：原作者包的 spider/jar 在抽取时被丢弃，导致 jar 地址无处可查，jar 溯源需先补这一环 ｜ sid=5e79eeb5ba4f ｜ 下一步 tvbox probe monitor status",
-    "[已清零 2026-10-19]（sid=c62973b49707）根因不是服务挂，是库坐标协议陈旧：api接口 存的是 http://www.cmov.cn/api.php/provid ‖ 原条目：[清账司派单 2026-10-26] 成品源库 1 条源类型无法判定：🌻全民视界🌻（www.cmov.cn）HTTP 301→HTTPS 后 502 Bad Gateway。按 M-R60 保持空值不猜填，待服务恢复后实测补录（P020· ｜ sid=c62973b49707 ｜ 下一步 tvbox probe monitor status",
-    "[清账司派单 2026-10-26] S163-GitHub-token：用户配 GitHub token（教程已给：github.com/settings/tokens → Generate new token (classic) →  ｜ sid=5e6c60a6e4e2 ｜ 下一步 tvbox probe monitor status"
-  ],
-  "roadmap": [
-    "search 结果上云（DB_UPSTREAM 增候选表或复用 DB_SRC 草稿区）",
-    "harvest 采集产物上云（跨设备共享候选池）"
-  ],
-  "sop_binding": {
-    "authority": "本技能 SKILL.md §1-§7（SSOT）+ probe.py；上游 hub core.py 与 library 云读写",
-    "note": "监测口径以 monitor_targets.json + activity_log.json 为准；候选格式以 hub contracts.json candidate-list 为准"
+  {
+   "no": 2,
+   "name": "快照对比",
+   "rule": "monitor diff：本次 vs 上次指纹，输出 新增commit/内容变更/目录增删",
+   "cmd": "tvbox probe monitor diff",
+   "artifact": "变更摘要",
+   "action": "数据基座 activity_log.json 损坏态拒绝回写覆盖（M-R60）"
   },
-  "resolved_backlog": [
-    {
-      "item": "[遗留 S110] 分页参数坑：query_database_record.py 的游标参数是 --start-curs…",
-      "resolved": "S156",
-      "note": "S156 排查完成：全生态 grep 无 `--cursor` 误用（全部为 --start-cursor）；probe.py 两处分页循环中 5810 处原有闸门、569 处（_cloud_id_map）缺闸门已补；并把该函数 `except: return {}` 改为返回 None（三态，读失败≠空表），三个调用点全部改为显式处理 None（删除路径不再假报成功、upsert 不再全量重插）。新增探针「record_id三态·读失败≠空表」，反向注入验证：回退旧实现即判红 26/27。"
-    }
-  ],
-  "done": [
-    {
-      "sid": "ccabdc0dd337",
-      "text": "[遗留 S111 2026-10-18] M-R114 判据3 空转：本文件 5 处 ThreadPoolExecutor 直接吃 --workers（:2316 max(4,min(.,12),16) / :2589 / :2925 a.workers / :4007 / :4128 getattr 12），argparse 默认 12 —— 全程不经 resolve_workers，传 --workers 30 就真开 30 线程打公网站点。实测 resolve_workers(\"B\",12) 会 raise，闸门本身好的，是这五处没接闸门。修法：改 resolve_workers(\"B\") 或整体换 run_bounded。登记 issues_ledger P016。⚠️按用户指示只记账不修。",
-      "closed_at": "2026-10-19 08:51",
-      "evidence": "probe.py 9 处裸池全部改走 concurrency.run_bounded，_mk_pool() 删除。audit_concurrency 全库 86 文件违规 16→0。受控单测三点通过。实测回归：monitor check 业务结论与改前一致、conductor verify 10/12 无回归。另修 raw 直连超时黑洞（61s/文件 → 0.3s）。S163。",
-      "session": "S163"
-    }
-  ]
+  {
+   "no": 3,
+   "name": "搜索补源",
+   "rule": "search github/gitee→rank→verify，去伪存真，扩充库容量",
+   "cmd": "tvbox probe search github --topic tvbox",
+   "artifact": "search_results.json + 候选监测目标",
+   "action": "API 限流 403 → 报「无法判定」并退避，不报「不存在」；高评分仓库转 monitor add"
+  },
+  {
+   "no": 4,
+   "name": "采集线路",
+   "rule": "harvest scan/pull→filter（测活+去重+黑名单预筛）",
+   "cmd": "tvbox probe harvest scan --repo <url>",
+   "artifact": "harvest_candidates/harvest_MMDD.json",
+   "action": "测活口径用 pipeline._alive（ALIVE_CODES={200,206,301,302,303,307,308}），不用 probe_src 采集口径"
+  },
+  {
+   "no": 5,
+   "name": "入库",
+   "rule": "harvest export→dispatch→link.py ingest（内含 blk guard 第一道闸）",
+   "cmd": "tvbox probe harvest dispatch",
+   "artifact": "DB_SRC 记录 + DB_DEAD 归档",
+   "action": "禁止绕过闸门直写源总库；代理型 host 禁整域拉黑（is_proxy_api，S026）"
+  },
+  {
+   "no": 6,
+   "name": "复盘闭环",
+   "rule": "规则47快照+规则48四问+规则52固化",
+   "cmd": "tvbox log / tvbox snapshot",
+   "artifact": "台账 + 快照",
+   "action": "写库动作收工必 snapshot；平台经验回写 ④ 经验库"
+  },
+  {
+   "id": "S109",
+   "name": "直链类轻量 json 生成（harvest lightjson）",
+   "desc": "复刻「原仓库→轻量json」直链链路：分诊(只留 http(s))→真实测活闸→api级去重→产出 TVBox 结构(key=probe-hash, type: m3u8=0/其余=1)→规则51命名+剔失清单",
+   "cmd": "tvbox probe harvest lightjson --in <cands.json> --outdir ./out --desc <描述>",
+   "iron": [
+    "M-R59",
+    "M-R38",
+    "M-R65"
+   ]
+  },
+  {
+   "id": "S109b",
+   "name": "采料去向业务锚定：直链系线路池换路线",
+   "desc": "harvest 采到的 http(s) 活直链首要供**直链系线路池**换路线（三系口径 1025：csp系/直链系/脚本系，废弃三包 L/G/D，D 包为历史别名）。回路 scan/pull→livecheck→promote→DB_PROD→用户据成品源库给任何直链型配置换路线。供直链系必须过测活闸。",
+   "cmd": "tvbox probe harvest promote --in <候选.json>（活直链入成品源库 DB_PROD）",
+   "iron": [
+    "M-R66",
+    "P-R1",
+    "M-R65"
+   ]
+  },
+  {
+   "no": 10,
+   "name": "质量评测（画质/速度/广告）",
+   "rule": "成品源库条目测活通过后，需回答「好不好用」而非仅「能不能拉」",
+   "cmd": "python3 quality_batch.py --db 成品源库 --workers 8",
+   "artifact": "回填 最高画质/首片耗时/下载速率/广告判定/质量分/质量证据",
+   "action": "①只对成品源库有意义（线路源库全是 csp/本地形态，沙箱无 spider，实测 620/620 无法判定）②沙箱测速仅作同批相对比较，不得当绝对值③评分以画质为基准、速度/首片只在基准上加减，保证画质档位严格单调"
+  },
+  {
+   "id": "S194",
+   "name": "写源模块增强：留档审计 + 站点画像（借鉴道长 spider-craft）",
+   "desc": "forge audit 七项闸门查 sources/ 账实一致性（索引可读/file唯一/四要素/双向对账[孤儿WARN·幽灵FAIL]/内部计数自洽/在册必须「通过」/时间可解析；FAIL→exit1、WARN→exit0、索引坏→exit2）；forge profile 39 项特征扫描→防御等级 0-4→CMS 判定，道长 modules_for 改造为 next_steps 推荐探源司命令；quality.bandwidth_trust BANDWIDTH 全等/矛盾不可信（只作证据不改分）；livecheck 仅父级补 pagecount/total 聚合判据（「1 条数据配 697 页」）。",
+   "cmd": "tvbox probe forge audit / tvbox probe forge profile <url>",
+   "iron": [
+    "M-R60",
+    "M-R55",
+    "S161铁律①"
+   ]
+  }
+ ],
+ "iron_order": [
+  "触发",
+  "监测上游",
+  "快照对比",
+  "搜索补源",
+  "采集线路",
+  "入库",
+  "复盘闭环"
+ ],
+ "iron_rules": {
+  "定位": "生态**上游侦察层**（探源司）——底包库作者仓库动态监测 / 搜索更多仓库 / 采集高质量线路并真实测活产出合格源",
+  "守护": {
+   "M-R32": "装健康的哑巴——监测四信号逐条三态，无裸 except 折叠",
+   "M-R38": "单一事实源——harvest 类目判据复用整包坊 classify_line / 复用 core.py，不重复实现 rows_of",
+   "M-R55": "修完度量器必配探针——每个检测器配活体探针（注入→捕获→清理）且假阳性基线为0",
+   "M-R57": "输出→判定三态——监测四信号真阳性/真阴性/无法判定；search 401 鉴权失败单列不折叠成『空结果』",
+   "M-R60": "数据基座读取三态化——无法判定绝不写回覆盖快照（损坏态拒回写）",
+   "M-R64": "缓存不得固化假态——持久化候选册用稳定指纹幂等 upsert，读失败不入缓存",
+   "M-R65": "真实数据驱动——测活引擎须真拉播放层（vod_play_url/分片字节流），合成用例不能证明『对世界为真』",
+   "P-R1": "合格线路源判据=真实可用——livecheck 三态测活（通过/失败/无法判定），harvest promote 只写真实通过者进成品源库（DB_PROD），未测/失败禁入库",
+   "M-R59": "直链边界单一事实源——lightjson 只产直链类（api 以 http(s) 开头），csp/jar 与 ./py 归属其他支线，逐条交代剔除禁静默裁剪（S109）",
+   "M-R66": "采料去向锚定——harvest 采到的 http(s) 活直链首要供**直链系**换路线（三系口径 1025：csp系靠jar真身/直链系靠直链本身/脚本系靠各自宿主，三系与 A-E 配置形态正交；原三包 L/G/D 为历史别名）；供直链系直链必须过测活闸（S109）",
+   "M-R103": "一条线路只许占一个分组——指纹唯一≠线路唯一；同指纹多条只留 _canon_rank 最规范者，『同源』须三判据实测（total/首播/sha256），取不到数据不合并标待人工（S146）",
+   "M-R117": "解析可用性不得由 HTTP 码或正文正则推断——只能由真跑出流证明；双向都会错（正文无流但能播 / 200 但是告别页）",
+   "M-R118": "注入回归的每条注入必须证明\"改坏后结果真的变了\"——结果不变＝注入点没被执行，记\"未生效\"而非\"漏了\""
+  }
+ },
+ "self_check": [
+  "监测四信号逐条三态（真阳性/真阴性/无法判定），无裸 except 折叠（M-R60）",
+  "无法判定绝不写回覆盖快照（数据基座损坏态拒回写，M-R60） （M-R60）",
+  "每个检测器配活体探针（注入→捕获→清理）且假阳性基线为0（M-R55）",
+  "写库 PropertyValue 包装正确（select 列用 {'select':..}，否则被平台静默丢弃，S027） （M-R32）",
+  "harvest 候选经 blk guard 拦截后才入 DB_SRC（无绕过闸门）",
+  "代理型 host 不参与整域拉黑（is_proxy_api，S026）",
+  "入库后已 tvbox snapshot 刷新（规则47） （M-R60）",
+  "新监测目标用 monitor add 登记（代码零改动）",
+  "生态登记库 DB_ECO 已 register_eco（非 tvbox- 前缀必登记，否则 evolve scan 扫不到） （M-R38）",
+  "manifest.json 已加 probe 意图路由（skill 字段含字面 probe-hub，否则路由盲区）",
+  "复用 core.py（不重复实现 rows_of/api/add_records） （M-R38）",
+  "测活口径统一用 pipeline._alive，不与 probe_src 采集口径混用 （M-R38/M-R65）",
+  "XML 版苹果CMS 判活走 `<dd><![CDATA[..]]>` 通道，不得只查 `vod_play_url` 字样（S141/S142）",
+  "上云写入看 results.success 计数，不得以『回执前 40 字符无 error』判成功（S143）",
+  "候选评分用四分量加权（相关/体量/新鲜/存活）并写 score_why，禁把 stars 直接当分（S143）",
+  "删除登记册目标须云端真删除（save_targets 只 upsert，否则删后复活）（S143）",
+  "反假阳性：零相关仓库即使再新也不得进前排（self-check『候选评分分层』守）",
+  "self-check 21/21：新增第㉑组 URL 解码 / 代理前缀剥离归一（S146·M-R96 ⑦⑧），含『少一个斜杠』反例——注入旧 bug 时该组当场红、rc=1",
+  "反假阳性：同 host 不同仓库的两个 js 必须能区分（不得因剥代理把不同文件归一成一条），scheme/尾斜杠差异必须归一（不得把同一条拆成两条）",
+  "一条线路只许占一个分组（M-R103）：`harvest dedup` 默认预演，--apply 后必须全量翻页复核「唯一指纹数 = 条数」且「跨分组线路 = 0」，再跑一次须幂等删 0",
+  "self-check 22/22：新增第㉒组 jsm 拆包分诊（S147·harvest splitjsm）。分组取自**源枢库曹正本** split_jsm.group_of（探源司不复制），正本找不到即报错退出，不降级成另一套口径",
+  "反假阳性：非外链（csp_/./py/*.py/./lib/*.js）必须被 _lj_api_kind 判为非 http 且不进候选；总数守恒 14+150=164，回读断言不得漏项。故障注入（把正本 csp_ 兜底改成\"外链采集\"）须让该组当场红",
+  "拆得出 ≠ 采得到：--no-probe 时报「未测」而非「通过 0 条」（没测 ≠ 测了不通过，M-R60 同族）",
+  "取数层镜像回退：raw.githubusercontent 直连慢（实测 22–40s）时必须自动改走镜像（gh-proxy/ghfast），慢一次即置 _RAW_SLOW 供后续优先走镜像；非 raw 域名不得被塞镜像（回退是定向的，不是全站改道）。故障注入（把慢阈值 8s 改 999 / 把 raw 判断改 if True）须让该组当场红",
+  "破甲模块（armor.py）：PKCS7 必须严格（非法填充→None，禁\"宽容兜底\"返回半成品）；XOR 图片必过解码器验证（周期性数据不许凑成图）；形态分诊 html-page/xml-doc/hex/base64-json 各归各位；变换链须识别 JS 侧 atob/JSON.parse。故障注入（宽容兜底 / html 归 text / 图片退回只看魔数）须当场红",
+  "self-check 25/25：新增第㉕组 源验证器（spider_verify）三态判定。坏源必须判失败（分类空/语法错/丢集），域名不存在的源必须判**无法判定**而非失败（M-R60：不冤杀）。多集样本取自**接口原始数据**而非源产出（否则坏源自己把 84 集砍成 1 集，验证器被被测对象牵着走）。故障注入（宽正则 Connection / _reachability 恒 unknown）须当场红、rc=1",
+  "反假阳性：`Connection: keep-alive` / `sqlite3.Connection` 属正常写法，不得被判成网络故障；否则好源只要写了 header 就永远「无法判定」，验证器等于被废掉",
+  "self-check 26/26：新增第㉖组 触发词覆盖（M-R104）。守的是「技能写了但从不被触发」——S148 实测一次长会话 12884 次工具调用里探源司 0 次被调用，全程手工跑脚本。三判据：①description「触发词：」段必须同时含业务语言与术语 ②这些话必须能被 conductor._route_score 打到 ≥2 分（路由真接得住，不是字面有就行）③两源一致（description 声明的词必须在 _SKILL_INTENTS 投影里，否则 M-R76 静默失配）。三次故障注入（删业务话/删投影/删铁律段）均当场红、rc=1",
+  "判据必须落在执行路径上（S172·§3.13 ⑥）：AST 取字面量只是缩小取样范围，不等于取到的就是判据。六变种——①报错文案冒充判据 ②工具当调用点 ③OR 判据 ④结果验不出路径（兜底也给同值）⑤并集冒充分支 ⑥探针里重算一遍。正解：只取**比较/真值测试**位置的字面量，或用 _lits_of_branch 锁到 `if sub=='x':` 分支；能行为测就行为测。反例基线：把目标改坏后探针必须红，还原必须全绿——不注入无法区分'在工作'与'在睡觉'。",
+  "解析接口真实出流（S173·§3.15）：parses 是\"给个影片页才出流\"的服务，不能拿\"能直接吐播放地址的源\"的尺子量。判据被实测推翻四次——①正文正则找 m3u8：yparse 27KB 正文 0 个 m3u8，真跑后 iframe 里拉到 48771B 分片（漏判）②只看主 frame：同一站播放器在 frame[1]，主 frame 只有「云解析」（漏判）③200 即通过：xmflv 返 200 + 「江湖路远，后会无期」告别页，0 个流请求（误判）④抓到 m3u8 即过：ckplayer/盘古 地址分片 404。正解＝headless 真跑 → 遍历所有 frame → 再走 check_m3u8 真拉分片。基线：cluntop/tvbox box.json 抽 21 条，HTTP 全通，真出流仅 3 条——按 200 收就是 18 条垃圾。注入回归：每条注入必须配一个\"必然经过该行\"的样本，否则结果不变只说明注入没测到东西，不能记成\"判据漏了\"（S172 变种 d 重演）。",
+  "forge audit 七项闸门负向可证（S194·§3.12 铁律⑤）：幽灵/重复 file/没通过在册/四要素缺/索引坏必须各自红（exit 1/2），孤儿只 WARN（exit 0）——负向测试 19/19 全过，且初版⑤\"拿索引条数比磁盘文件数\"就是被负向测试当场抓出（孤儿双重定罪）；forge profile 不可达必须报「无法判定」不许说「无特征」（M-R60）；集成夹具必须按 URL 分岔两种响应，恒定 fake 会让聚合探针拿到无 pagecount 的分类树而假绿（S172 变种 d 的又一形态）。"
+ ],
+ "snapshot_refresh_rule": "凡对 DB_SRC/DB_DEAD 的写操作收工必 tvbox snapshot；纯监测（只写 DB_UPSTREAM/本地留痕）按需刷",
+ "backlog": [
+  "[S195·用户 2026-10-21 同意登记] 宝宝巴士音乐网页 https://am-4u2.pages.dev/（洛雪生态·网页播放器，支持导入墨澜 .js 音源）——非 git 托管按纪律不进 DB_UPSTREAM 监测册（eco_unified_entry §68），改本地记账：每周手动查活一次，TG 频道 t.me/nostremby 可看作者动态",
+  "[S195 缺陷·Gitee判死判据失真] 2026-10-21 monitor check 对 https://gitee.com/hulanlu/04 拿到「Gitee 元信息获取失败（unauthorized）」却判定「已封禁/删除」。双重核实后确认该仓确实不存在（网页 404 + API v5 /repos/hulanlu/04 404），即**结论对、依据错**——这与 §3.13 ③「按失败次数判死而不问为什么」同族。风险：Gitee 对不存在仓库返回 401 而非 404，下次遇到真鉴权失败会误杀活仓（违反 M-R60 无法判定≠死）。修法：Gitee 系判死必须走「API v5 404 或网页 404」双证，单凭 unauthorized 只能落「无法判定」。",
+  "18 条「非可评形态」无评测口径：js 源走 spider 运行时非直链、直播源是持续流无\"首片\"，需各自建模，塞进 m3u8 模型必然测不出（S196）",
+  "[已清零 2026-10-29]（无 sid·标题匹配75%）probe.py load_targets 新增 _merge_local_ext 回补 kind seed_urls， ‖ 原条目：[清账司待登记 2026-10-29] [探源司·1029会话] iface 误路由根因已修待收口：probe.py load_targets 新增 _merge_local_ext 回补 kind/seed_urls，60个 iface 路由已翻转至 _probe_tvbox_iface，py_compile 过、self-check 39/39、回归 25存活/26已失效/9无法判定",
+  "[已清零 2026-10-29]（无 sid·标题匹配75%）habit_inject MAX_CHARS 4000改9000全量注入user_habit_brief全文8799字符 ‖ 原条目：[清账司待登记 2026-10-29] [探源司·1029会话] 开工必读截断漏注入机制缺口：habit_inject.py MAX_CHARS=4000 把 user_habit_brief.md（8799字符）截断在第108行，M-R137/M-R207/M-R210/M-R211 等22条规则正文注入不到任何模型上下文，且无 GATE 强制补读——大生态机制缺口待根治",
+  "[已清零 2026-10-29]（sid=0424fba26cdd）本会话2026-10-29已将探源司1029会话暴露的5条欠账真实写入ledger，flow.backlog六源采集sy ‖ 原条目：[清账司待登记 2026-10-29] [探源司·1029会话] 顽疾 0424fba26cdd 本轮复发：本会话连出7轮诊断/方案报告，欠账未真实写入 ledger（与顽疾描述同型），违反 M-R147/M-R148——本轮补登收口",
+  "[已清零 2026-10-29]（无 sid·标题匹配100%）本会话已真实沉淀经验到本地经验库 S200 habit_inject MAX_CHARS 截断致规则漏注入跨模型缺陷，读 ‖ 原条目：[清账司待登记 2026-10-29] [探源司·1029会话] 经验池未沉淀：本会话全程 0 次 tvbox close learn，signal 源22（会话经验留痕缺口）必报缺口，违反经验池闭环",
+  "[已清零 2026-10-29]（无 sid·标题匹配95%）实测signal-check完整跑通45信号源探针44/45有效已留痕signal_proven.json，exit3为 ‖ 原条目：[清账司待登记 2026-10-29] [探源司·1029会话] signal-check 守护脆弱：conductor signal-check 前台/后台均 exit 3 无输出（疑似入口 import/云端依赖），经验池守护依赖外部缺降级",
+  "[清账司派单 2026-11-05] --title 成品源库 select 写入整库假成功（体系字段损坏，数据暂走 体系txt） --owner probe-hub（P076·open） ｜ sid=98545c31a434 ｜ 下一步 python3 /workspace/产出区_1016/恢复工具_1025/check_select_heal.py 退出码0即恢复，随后跑同目录 migrate_back.py 迁回并删 体系txt --due 每轮体检跑探针；两周未愈升级平台工单",
+  "[已清零 2026-10-29]（sid=318d282795e6）probe.py load_targets 新增 _merge_local_ext 回补 kind seed_urls， ‖ 原条目：[清账司派单 2026-11-05] [清账司待登记 2026-10-29] [探源司·1029会话] iface 误路由根因已修待收口：probe.py load_targets 新增 _merge_local_ext 回补 kind/ ｜ sid=318d282795e6 ｜ 下一步 tvbox conductor onboard <技能名>",
+  "[已清零 2026-10-29]（sid=5f4bedb883ca）habit_inject MAX_CHARS 4000改9000全量注入user_habit_brief全文8799字符 ‖ 原条目：[清账司派单 2026-11-12] [清账司待登记 2026-10-29] [探源司·1029会话] 开工必读截断漏注入机制缺口：habit_inject.py MAX_CHARS=4000 把 user_habit_brief.md（ ｜ sid=5f4bedb883ca ｜ 下一步 tvbox evolve upgrade <技能名>",
+  "[已清零 2026-10-29]（sid=76cbb361d2a3）本会话早期连出7轮只出报告不立账确属顽疾0424fba26cdd复发，但本轮已用真实动作纠正：写flow.backlog ‖ 原条目：[清账司派单 2026-11-12] [清账司待登记 2026-10-29] [探源司·1029会话] 顽疾 0424fba26cdd 本轮复发：本会话连出7轮诊断/方案报告，欠账未真实写入 ledger（与顽疾描述同型），违反 M-R1 ｜ sid=76cbb361d2a3 ｜ 下一步 tvbox conductor issues",
+  "[已清零 2026-10-29]（sid=20cdee50d7c5）本会话已真实沉淀经验到本地经验库 S200 habit_inject MAX_CHARS 截断致规则漏注入跨模型缺陷，读 ‖ 原条目：[清账司派单 2026-11-12] [清账司待登记 2026-10-29] [探源司·1029会话] 经验池未沉淀：本会话全程 0 次 tvbox close learn，signal 源22（会话经验留痕缺口）必报缺口，违反经验池闭环 ｜ sid=20cdee50d7c5 ｜ 下一步 tvbox evolve upgrade <技能名>",
+  "[已清零 2026-10-29]（sid=14e0ec1e5aaf）实测signal-check完整跑通45信号源探针44/45有效已留痕signal_proven.json，exit3为 ‖ 原条目：[清账司派单 2026-11-12] [清账司待登记 2026-10-29] [探源司·1029会话] signal-check 守护脆弱：conductor signal-check 前台/后台均 exit 3 无输出（疑似入口 imp ｜ sid=14e0ec1e5aaf ｜ 下一步 tvbox evolve upgrade <技能名>"
+ ],
+ "roadmap": [
+  "search 结果上云（DB_UPSTREAM 增候选表或复用 DB_SRC 草稿区）",
+  "harvest 采集产物上云（跨设备共享候选池）"
+ ],
+ "sop_binding": {
+  "authority": "本技能 SKILL.md §1-§7（SSOT）+ probe.py；上游 hub core.py 与 library 云读写",
+  "note": "监测口径以 monitor_targets.json + activity_log.json 为准；候选格式以 hub contracts.json candidate-list 为准"
+ },
+ "resolved_backlog": [
+  {
+   "item": "[遗留 S110] 分页参数坑：query_database_record.py 的游标参数是 --start-curs…",
+   "resolved": "S156",
+   "note": "S156 排查完成：全生态 grep 无 `--cursor` 误用（全部为 --start-cursor）；probe.py 两处分页循环中 5810 处原有闸门、569 处（_cloud_id_map）缺闸门已补；并把该函数 `except: return {}` 改为返回 None（三态，读失败≠空表），三个调用点全部改为显式处理 None（删除路径不再假报成功、upsert 不再全量重插）。新增探针「record_id三态·读失败≠空表」，反向注入验证：回退旧实现即判红 26/27。"
+  },
+  {
+   "item": "[S195·监测册缺陷·id已修枚举未修] ①（已修 2026-10-21）save_targets/monitor_add 仓库名做 id 重名互踩 → cmd_monitor_add 改「平台-作者-仓库名」复合键（probe.py:2152 附近），py_compile 过、批量复用无撞名告警",
+   "resolved": "本轮清账（1025）",
+   "note": "原 backlog 已自行标注完成却未销账，移出以防重复计数（M-R147）"
+  },
+  {
+   "item": "[已清零 S087] 探源司建档：三模块 monitor/search/harvest + self-check 5 组探针落地，入口路由/生态登记/manifest 意图全部就位（本轮回填）",
+   "resolved": "本轮清账（1025）",
+   "note": "原 backlog 已自行标注完成却未销账，移出以防重复计数（M-R147）"
+  },
+  {
+   "item": "[已清零 S088] 监测册迁云端专用库 DB_UPSTREAM（18 字段建成 aCSvley568A0aW3sggzJwA）；真实仓库驱动修 6 缺陷（404折叠/分支探测/活跃度口径/record_id/目录差集守卫/探针本地化）；扫描器白名单键改指纹化",
+   "resolved": "本轮清账（1025）",
+   "note": "原 backlog 已自行标注完成却未销账，移出以防重复计数（M-R147）"
+  },
+  {
+   "item": "[已清零 S089] GitHub 鉴权：token 多源解析 + 配额可视化（60→5000 req/h）；探针 6→7 组、信号源18 断言 10→13",
+   "resolved": "本轮清账（1025）",
+   "note": "原 backlog 已自行标注完成却未销账，移出以防重复计数（M-R147）"
+  },
+  {
+   "item": "[已清零 S090] 变更通知触达 watchdog：新增 M18「上游仓库跑路/弃更未处置」检查器，把探源司结论转译为遗留项（跑路→阻断/归档→耗时/无法判定→不产）；跨技能联动端到端验证通过",
+   "resolved": "本轮清账（1025）",
+   "note": "原 backlog 已自行标注完成却未销账，移出以防重复计数（M-R147）"
+  },
+  {
+   "item": "[已清零 S091] 多平台适配：新增 _parse_ts 跨格式时间戳统一解析 / _parse_repo 四元组（owner,repo,platform,host）+ Gitea 族识别（自建/工蜂 git.code.tencent.com）/ _platform_base + _platfor",
+   "resolved": "本轮清账（1025）",
+   "note": "原 backlog 已自行标注完成却未销账，移出以防重复计数（M-R147）"
+  },
+  {
+   "item": "[已清零 S092] harvest 复用整包坊 split 判据（M-R38 单一事实源）：探源司自写的 _guess_category（type0/3/4→直链/网盘/配置）废弃，改复用整包坊 classify_line（py/采集/直链/其他 四类，§4.2.0 权威判据），两技能类目口径**",
+   "resolved": "本轮清账（1025）",
+   "note": "原 backlog 已自行标注完成却未销账，移出以防重复计数（M-R147）"
+  },
+  {
+   "item": "[已清零 S093] 活跃度预测（roadmap 末项）：新增 _forecast_risk 纯函数——对采样史 n_commits_30d 序列做**最小二乘线性回归**→外推弃更风险（升高/稳定/增长）；与 _activity_verdict（瞬时判定）互补。**三态命门**：None 空洞**",
+   "resolved": "本轮清账（1025）",
+   "note": "原 backlog 已自行标注完成却未销账，移出以防重复计数（M-R147）"
+  },
+  {
+   "item": "[已清零 S094] 三模块真实落地（search/harvest 从\"有代码未验证\"到\"真能干活\"）：真实跑通 search github→rank→verify 与 harvest scan→filter→export→dispatch(--dry)；**修 5 个真实缺陷**：① _api_g",
+   "resolved": "本轮清账（1025）",
+   "note": "原 backlog 已自行标注完成却未销账，移出以防重复计数（M-R147）"
+  },
+  {
+   "item": "[已清零 S110] 质量评测闭环：quality.py + quality_batch.py 落地，两库各加 6 个质量字段，成品源库 111 条回填完成（有分 90，中位 72）",
+   "resolved": "本轮清账（1025）",
+   "note": "原 backlog 已自行标注完成却未销账，移出以防重复计数（M-R147）"
+  },
+  {
+   "item": "[已清零 S110] 评分模型校准三轮：v1 速度无区分度（1080p 全卡 65 分）→ v2 速度可反超画质（360p 拿 100 分）→ v3 画质定基准+有限加减，90 组合全矩阵严格单调",
+   "resolved": "本轮清账（1025）",
+   "note": "原 backlog 已自行标注完成却未销账，移出以防重复计数（M-R147）"
+  },
+  {
+   "item": "[已清零 S110] 体系二值重构落地：620+111 条刷为 jar系/直链系，jar文件名/随身文件 3 字段回填，旧 可用体系 清零",
+   "resolved": "本轮清账（1025）",
+   "note": "原 backlog 已自行标注完成却未销账，移出以防重复计数（M-R147）"
+  },
+  {
+   "item": "[已清零 2026-10-18]（无 sid·手工收口）并入 tvbox-interface/scripts/flow.json「[遗留 S110·正本] 采集缺包级字段」（用户裁定正本归修复方；本条与 5e79eeb5ba4f/becf9081fdbc 同一根因） ‖ 原条目：[遗留 S110] ",
+   "resolved": "本轮清账（1025）",
+   "note": "原 backlog 已自行标注完成却未销账，移出以防重复计数（M-R147）"
+  },
+  {
+   "item": "[已清零 2026-10-18]（sid=5e79eeb5ba4f）并入 tvbox-interface/scripts/flow.json「[遗留 S110·正本] 采集缺包级字段」（用 ‖ 原条目：[清账司派单 2026-10-25] [遗留 S110] 采集缺包级字段：原作者包的 spider",
+   "resolved": "本轮清账（1025）",
+   "note": "原 backlog 已自行标注完成却未销账，移出以防重复计数（M-R147）"
+  },
+  {
+   "item": "[已清零 2026-10-19]（sid=c62973b49707）根因不是服务挂，是库坐标协议陈旧：api接口 存的是 http://www.cmov.cn/api.php/provid ‖ 原条目：[清账司派单 2026-10-26] 成品源库 1 条源类型无法判定：🌻全民视界🌻（www.cmo",
+   "resolved": "本轮清账（1025）",
+   "note": "原 backlog 已自行标注完成却未销账，移出以防重复计数（M-R147）"
+  },
+  {
+   "item": "[已清零 2026-10-21]（无 sid·标题匹配80%）证据：①token 文件 .gh_token 已配置（probe token 实测「已配置 ghp_****n8s7」） ‖ 原条目：[清账司派单 2026-10-26] S163-GitHub-token：用户配 GitHub toke",
+   "resolved": "本轮清账（1025）",
+   "note": "原 backlog 已自行标注完成却未销账，移出以防重复计数（M-R147）"
+  },
+  {
+   "item": "[S196·已落一条判据·留尾巴] 广告判定升级：已加「主清单内多域名分片」判据（相对地址补全后比 host，跨域即疑似·插播典型形态），回归 4 例全绿（scripts/quality.py ad_judgment）。尾巴：前端注入型贴片（HTML 层广告、片长与集时长不符）仍未检测，需抓播放页设",
+   "resolved": "本轮清账（1025）",
+   "note": "原 backlog 已自行标注完成却未销账，移出以防重复计数（M-R147）"
+  },
+  {
+   "item": "[S196·已完成] 同源多点失效聚类——scripts/domain_cluster.py 落码。关键发现：纯域名聚类漏一半（非凡系 4 条分属 ffzyapi.com 与 ffzy.tv 两后缀），须品牌级聚类（标签去数字取后两段）。112 条共 9 个品牌级同源组",
+   "resolved": "本轮清账（1025）",
+   "note": "原 backlog 已自行标注完成却未销账，移出以防重复计数（M-R147）"
+  },
+  {
+   "item": "[S196·已完成] danmu 实例选型落码——scripts/danmu_pick.py。打分：config 可读 40 + 版本≤24 + 源数每源1分(≤17) + 别名库维护 9 + 速度≤7。实测 7 实例：logvar.hhht.cc.cd(17源·1.21.6·维护别名库) 94 分",
+   "resolved": "本轮清账（1025）",
+   "note": "原 backlog 已自行标注完成却未销账，移出以防重复计数（M-R147）"
+  },
+  {
+   "item": "[S196·已完成 2026-10-21] demo-sources 全部拆完（22 文件全读）。补读三份：七星猫=多平台合流+加密三层兜底(CryptoJS/Node/require)；喜福=零依赖纯JS(HMAC-SHA1自带)+本地过滤分页+阿里云VOD正版接法；央视频+_lib=wasm工厂",
+   "resolved": "本轮清账（1025）",
+   "note": "原 backlog 已自行标注完成却未销账，移出以防重复计数（M-R147）"
+  },
+  {
+   "item": "[S196·已完成 2026-10-21] danmu-api 部署验证——实机跑通，产出 /workspace/1021/danmu-api实机部署验证_1021.md。实测：25MB/145MB RSS/冷启动0.30s/冷查询1.84s/热0.01s；全链路通（搜索→详情176集→弹幕20035条2MB",
+   "resolved": "本轮清账（1025）",
+   "note": "原 backlog 已自行标注完成却未销账，移出以防重复计数（M-R147）"
+  },
+  {
+   "item": "壳源侦察与抠链（shellcrack·第四类业务模块）",
+   "note": "已兑现：v1.20.0 模块 G（S196 跨站实验固化），正本 references/S196_壳源侦察与抠链.md",
+   "added": "2026-10-21"
+  },
+  {
+   "item": "[清账司派单 2026-10-28] [S195·监测册缺陷·id已修枚举未修] ①（已修 2026-10-21）save_targets/monitor_add 仓库名做 id 重名互踩 → cmd_monitor_add 改「平台-作 ｜ sid=aa48cb4366f6 ｜ 下一步 tvbox",
+   "resolved": "本轮清账（1025）",
+   "note": "原 backlog 已自行标注完成却未销账，移出以防重复计数（M-R147）"
+  },
+  {
+   "item": "[清账司派单 2026-10-28] [S196·已落一条判据·留尾巴] 广告判定升级：已加「主清单内多域名分片」判据（相对地址补全后比 host，跨域即疑似·插播典型形态），回归 4 例全绿（scripts/quality.py ad_ ｜ sid=8fb402ce5961 ｜ 下一步 tvbox",
+   "resolved": "本轮清账（1025）",
+   "note": "原 backlog 已自行标注完成却未销账，移出以防重复计数（M-R147）"
+  },
+  {
+   "item": "[清账司派单 2026-10-28] [S196·已完成] 同源多点失效聚类——scripts/domain_cluster.py 落码。关键发现：纯域名聚类漏一半（非凡系 4 条分属 ffzyapi.com 与 ffzy.tv 两后缀） ｜ sid=94f6b4e0d4cc ｜ 下一步 tvbox",
+   "resolved": "本轮清账（1025）",
+   "note": "原 backlog 已自行标注完成却未销账，移出以防重复计数（M-R147）"
+  },
+  {
+   "item": "[清账司派单 2026-11-04] [S196·已完成] danmu 实例选型落码——scripts/danmu_pick.py。打分：config 可读 40 + 版本≤24 + 源数每源1分(≤17) + 别名库维护 9 + 速度≤ ｜ sid=e17f3dfde719 ｜ 下一步 tvbox",
+   "resolved": "本轮清账（1025）",
+   "note": "原 backlog 已自行标注完成却未销账，移出以防重复计数（M-R147）"
+  },
+  {
+   "item": "[清账司派单 2026-11-04] [S196·已完成 2026-10-21] demo-sources 全部拆完（22 文件全读）。补读三份：七星猫=多平台合流+加密三层兜底(CryptoJS/Node/require)；喜福=零依赖 ｜ sid=1ddf2e10aab1 ｜ 下一步 tvbox",
+   "resolved": "本轮清账（1025）",
+   "note": "原 backlog 已自行标注完成却未销账，移出以防重复计数（M-R147）"
+  },
+  {
+   "item": "[清账司派单 2026-11-04] [S196·已完成 2026-10-21] danmu-api 部署验证——实机跑通，产出 /workspace/1021/danmu-api实机部署验证_1021.md。实测：25MB/145MB RSS/冷 ｜ sid=369f9db1aa74 ｜ 下一步 tvbox",
+   "resolved": "本轮清账（1025）",
+   "note": "原 backlog 已自行标注完成却未销账，移出以防重复计数（M-R147）"
+  },
+  {
+   "item": "[清账司派单 2026-11-04] {'item': '壳源侦察与抠链（shellcrack·第四类业务模块）', 'note': '已兑现：v1.20.0 模块 G（S196 跨站实验固化），正本 references/S196_壳源 ｜ sid=6af9f4e7f69e ｜ 下一步 tvbox",
+   "resolved": "本轮清账（1025）",
+   "note": "原 backlog 已自行标注完成却未销账，移出以防重复计数（M-R147）"
+  },
+  {
+   "item": "[S195·noStr作者触点（记账不登记）] https://www.252035.xyz/ ——jar 系网盘聚合配置分发站（FongMi.json 43 站/custom_spider.jar、jsm.json 74 站/pg.jar，JSONC 带注释壳可吃 Python 不能）；csp_N",
+   "resolved": "wontfix（用户明示：只记账不排期/留档）",
+   "note": "依 M-R147 关闭凭证据——用户指示即依据，保留留痕但不再计\"未清\""
+  },
+  {
+   "item": "[S195·yckceo源仓库集市·作者触点（记账不登记）] https://www.yckceo.com/ ——书源/图源/TVBox接口发布集市（非 git 不进监测册）；其 TVBox 页是介绍页无接口清单，真实料在集市各作者摊位；下次收割时拉其接口列表与 de5.net 备份站做差集，多出的",
+   "resolved": "wontfix（用户明示：只记账不排期/留档）",
+   "note": "依 M-R147 关闭凭证据——用户指示即依据，保留留痕但不再计\"未清\""
+  },
+  {
+   "item": "[S195·集多导航站·作者触点（记账不登记）] http://jd.3116598.xyz/home/ ——「集多」作者导航页（rihou.cc:88/demo.php 同作者），站上接口均已在收割范围，无新增情报；价值=作者换域名的信号源；同页 flac.music.hi.cn（无损直链）202",
+   "resolved": "wontfix（用户明示：只记账不排期/留档）",
+   "note": "依 M-R147 关闭凭证据——用户指示即依据，保留留痕但不再计\"未清\""
+  },
+  {
+   "item": "[S194·vox包借鉴·边界笔记（不搬，留档）] vox remote=2「远程404兜底读本地」是体验哲学（旧值好过没有）；本生态 M-R60 是账实哲学（旧账禁冒充现状）——只读展示场景可『陈旧值+标注时间』，写/判死场景禁兜底。对照实查：core.py 无 remote 兜底逻辑（grep ",
+   "resolved": "wontfix（用户明示：只记账不排期/留档）",
+   "note": "依 M-R147 关闭凭证据——用户指示即依据，保留留痕但不再计\"未清\""
+  },
+  {
+   "item": "[S194·vox包借鉴·待落地] README『更新日志体例』（日期+改动+注意事项的用户可读格式）待为生态引用——候选落点：整包坊/源枢库曹的发布说明，先记账不排期",
+   "resolved": "wontfix（用户明示：只记账不排期/留档）",
+   "note": "依 M-R147 关闭凭证据——用户指示即依据，保留留痕但不再计\"未清\""
+  },
+  {
+   "item": "[历史待办 S193·用户 2026-10-21 指示只记账不排期] 上一轮（S193）交付报告未更新——当前进展以 S194 报告为准（/workspace/1021/intel/S194_道长借鉴落地_留档审计与站点画像.md），S193 补写待后续轮次自然收口",
+   "resolved": "wontfix（用户明示：只记账不排期/留档）",
+   "note": "依 M-R147 关闭凭证据——用户指示即依据，保留留痕但不再计\"未清\""
+  },
+  {
+   "item": "[已归档(不修) 2026-10-18]（sid=321ff3ec60ac）假阳性收口：本条是 SKILL.md 里的**判据说明**（\"保留待人工\"/\"保留待测活\"），被 TODO_MARK 的 ‖ 原条目：[清账司派单 2026-10-25] `http(s)://` 直链 → 保留待测活 ｜ ",
+   "resolved": "wontfix（用户明示：只记账不排期/留档）",
+   "note": "依 M-R147 关闭凭证据——用户指示即依据，保留留痕但不再计\"未清\""
+  },
+  {
+   "item": "[清账司派单 2026-10-28] [S195·noStr作者触点（记账不登记）] https://www.252035.xyz/ ——jar 系网盘聚合配置分发站（FongMi.json 43 站/custom_spider.jar、 ｜ sid=c57d9e5243f0 ｜ 下一步 tvbox",
+   "resolved": "wontfix（用户明示：只记账不排期/留档）",
+   "note": "依 M-R147 关闭凭证据——用户指示即依据，保留留痕但不再计\"未清\""
+  },
+  {
+   "item": "[清账司派单 2026-10-28] [S195·yckceo源仓库集市·作者触点（记账不登记）] https://www.yckceo.com/ ——书源/图源/TVBox接口发布集市（非 git 不进监测册）；其 TVBox 页是介绍 ｜ sid=1602b48208b6 ｜ 下一步 tvbox",
+   "resolved": "wontfix（用户明示：只记账不排期/留档）",
+   "note": "依 M-R147 关闭凭证据——用户指示即依据，保留留痕但不再计\"未清\""
+  },
+  {
+   "item": "[清账司派单 2026-10-28] [S195·集多导航站·作者触点（记账不登记）] http://jd.3116598.xyz/home/ ——「集多」作者导航页（rihou.cc:88/demo.php 同作者），站上接口均已在收割 ｜ sid=4dce6bbe8452 ｜ 下一步 tvbox",
+   "resolved": "wontfix（用户明示：只记账不排期/留档）",
+   "note": "依 M-R147 关闭凭证据——用户指示即依据，保留留痕但不再计\"未清\""
+  },
+  {
+   "item": "[清账司派单 2026-11-04] [S195·用户 2026-10-21 同意登记] 宝宝巴士音乐网页 https://am-4u2.pages.dev/（洛雪生态·网页播放器，支持导入墨澜 .js 音源）——非 git 托管按纪律不 ｜ sid=20ef3c9d95fe ｜ 下一步 tvbox",
+   "resolved": "去重",
+   "note": "与已登记条目重复（清账司派单副本），移出防重复计数"
+  },
+  {
+   "item": "[清账司派单 2026-11-04] [S194·vox包借鉴·边界笔记（不搬，留档）] vox remote=2「远程404兜底读本地」是体验哲学（旧值好过没有）；本生态 M-R60 是账实哲学（旧账禁冒充现状）——只读展示场景可『陈旧 ｜ sid=0144b1713ae4 ｜ 下一步 tvbox",
+   "resolved": "wontfix（用户明示：只记账不排期/留档）",
+   "note": "依 M-R147 关闭凭证据——用户指示即依据，保留留痕但不再计\"未清\""
+  },
+  {
+   "item": "[清账司派单 2026-10-28] [S194·vox包借鉴·待落地] README『更新日志体例』（日期+改动+注意事项的用户可读格式）待为生态引用——候选落点：整包坊/源枢库曹的发布说明，先记账不排期 ｜ sid=a3b25c03d0cd ｜ 下一步 tvbox status",
+   "resolved": "wontfix（用户明示：只记账不排期/留档）",
+   "note": "依 M-R147 关闭凭证据——用户指示即依据，保留留痕但不再计\"未清\""
+  },
+  {
+   "item": "[清账司派单 2026-11-04] [历史待办 S193·用户 2026-10-21 指示只记账不排期] 上一轮（S193）交付报告未更新——当前进展以 S194 报告为准（/workspace/intel/S194_道长借鉴落地_留档 ｜ sid=90a96233c38b ｜ 下一步 tvbox",
+   "resolved": "wontfix（用户明示：只记账不排期/留档）",
+   "note": "依 M-R147 关闭凭证据——用户指示即依据，保留留痕但不再计\"未清\""
+  },
+  {
+   "item": "[清账司派单 2026-10-28] [S195 缺陷·Gitee判死判据失真] 2026-10-21 monitor check 对 https://gitee.com/hulanlu/04 拿到「Gitee 元信息获取失败（unaut ｜ sid=90171b4032c8 ｜ 下一步 tvbox",
+   "resolved": "去重",
+   "note": "与已登记条目重复（清账司派单副本），移出防重复计数"
+  },
+  {
+   "item": "[清账司派单 2026-10-28] 18 条「非可评形态」无评测口径：js 源走 spider 运行时非直链、直播源是持续流无\"首片\"，需各自建模，塞进 m3u8 模型必然测不出（S196） ｜ sid=7e23198e6f48 ｜ 下一步 tvbox probe monitor status",
+   "resolved": "去重",
+   "note": "与已登记条目重复（清账司派单副本），移出防重复计数"
+  }
+ ],
+ "done": [
+  {
+   "sid": "ccabdc0dd337",
+   "text": "[遗留 S111 2026-10-18] M-R114 判据3 空转：本文件 5 处 ThreadPoolExecutor 直接吃 --workers（:2316 max(4,min(.,12),16) / :2589 / :2925 a.workers / :4007 / :4128 getattr 12），argparse 默认 12 —— 全程不经 resolve_workers，传 --workers 30 就真开 30 线程打公网站点。实测 resolve_workers(\"B\",12) 会 raise，闸门本身好的，是这五处没接闸门。修法：改 resolve_workers(\"B\") 或整体换 run_bounded。登记 issues_ledger P016。⚠️按用户指示只记账不修。",
+   "closed_at": "2026-10-19 08:51",
+   "evidence": "probe.py 9 处裸池全部改走 concurrency.run_bounded，_mk_pool() 删除。audit_concurrency 全库 86 文件违规 16→0。受控单测三点通过。实测回归：monitor check 业务结论与改前一致、conductor verify 10/12 无回归。另修 raw 直连超时黑洞（61s/文件 → 0.3s）。S163。",
+   "session": "S163"
+  }
+ ],
+ "references": {
+  "drpy3_源写作指南.md": {
+   "source": "DsPlayer(道壳) 0.9.9 内置 assets/agent/（hjdhnx = drpy3 作者亲写）",
+   "size": "37.8KB / 17 章",
+   "covers": "三种源形态、meta/rule 字段全集、11 个 async 钩子签名与返回协议、ctx 参考、全局函数、解析器语法、播放链路、代理专题、dr2→dr3 迁移",
+   "when": "写 drpy3 js 源时查字段与钩子协议",
+   "boundary": "描述 drpy3 宿主环境；forge verify 只验 py 源，不验 drpy3 js 源——能不能用以宿主实跑为准（M-R60）"
+  },
+  "源本地代理指南.md": {
+   "source": "同上",
+   "size": "14.8KB / 9 章",
+   "covers": "六类源(dr3/dr2/cat/py/t4/php)的代理返回契约统一口径、局域网与投屏、常见错误速查",
+   "when": "写本地代理 / 排查代理返回格式时"
+  },
+  "drpy3_实景范本对照.md": {
+   "source": "hjdhnx/dsplayer-plugin → assets/demo-sources.zip（S196 拆解）",
+   "size": "四份官方范本 + danmu-api 服务端包",
+   "covers": "百忙无果(108行/仅2钩子)、PPnix(830行/全8钩子+proxy)、奇奇影视(筛选项表组织法)、_lib 共享库约定；含 AES-128 密钥取前16字符、proxy 五元组与 ASCII 铁律、字幕走 play.subs 而非 m3u8、all() 并发分页、域名 %编码绕扫描；danmu-api 25 源/默认 token 87654321/SOURCE_ORDER 缺省坑/6KB EPISODE_TITLE_FILTER 正则",
+   "when": "写 drpy3 js 源想抄实战写法时；部署自建 danmu-api 时",
+   "boundary": "静态阅读，四份源未在真实壳内跑通；央视频/七星猫/喜福三份未细读；_lib 4289 行只看了头部"
+  }
+ }
 }

@@ -22,7 +22,6 @@ TVBox 技能生态统一入口（技能↔脚本联动中枢 + 并行加速）
   tvbox p "block stats" "evolve scan" "eco"   # 三件独立事并行跑
 """
 import sys, os, io, time, json, subprocess, importlib.util
-from concurrent.futures import ThreadPoolExecutor
 
 HUB = '/root/.codebuddy/skills/tvbox-source-hub/scripts'
 BLK = '/root/.codebuddy/skills/tvbox-source-blacklist/scripts/blk.py'
@@ -32,18 +31,18 @@ CON = '/root/.codebuddy/skills/ecosys-conductor/scripts/conductor.py'
 IPL = '/root/.codebuddy/skills/tvbox-interface/scripts/pipeline.py'
 PRB = '/root/.codebuddy/skills/probe-hub/scripts/probe.py'
 UNF = '/root/.codebuddy/skills/unfinished-audit/scripts/unfinished_cli.py'   # S136 清账司
-# S148 补：监察司 / 清道夫从未接入入口——manifest 登记了 `tvbox inspect *` 与 `tvbox janitor *`
+# S148 补（已闭环）：监察司 / 清道夫此前未接入入口——manifest 登记了 `tvbox inspect *` 与 `tvbox janitor *`
 # 共 12 条命令，SKILL.md 也写明了用法，但 ROUTE 里没有这两个词，实跑一律「未知子命令: inspect」。
-# 后果：9 个信号源自检里监察司相关的全部无法被调用；M-R83 的探针 `tvbox inspect scan` 是幽灵命令，
-# 规则册声称「有探针」而探针根本不存在——比没有探针更坏（看规则的人以为已经守着）。
+# **已于 ROUTE 行100 接好**：`'inspect': INS, 'janitor': JAN`（S148 修复落点，现可路由）。
+# 历史残留（保留作审计）：M-R83 的探针 `tvbox inspect scan` 一度是幽灵命令（规则册声称有探针而探针不存在，
+# 比没有更坏）；入口接好后该命令已可路由，规则册"有探针"登记现状见 M-R83 自身。
 INS = '/root/.codebuddy/skills/tvbox-inspect/scripts/inspect.py'
 JAN = '/root/.codebuddy/skills/tvbox-janitor/scripts/janitor.py'
-# ★ S156：账房司（eco-ledger）建好后从未接进入口——SKILL.md 写了用法，`tvbox ledger` 却报未知子命令。
-# 与 S148 的 inspect/janitor 同型：**技能建好了但没人叫得动**。
+# ★ S156（已闭环）：账房司（eco-ledger）此前未接进入口——SKILL.md 写了用法，`tvbox ledger` 却报未知子命令。
+# 与 S148 的 inspect/janitor 同型：**技能建好但没人叫得动**。**已于 ROUTE 行101 接好**：`'ledger': LED`。
 LED = '/root/.codebuddy/skills/eco-ledger/scripts/ledger.py'
-# ★ S172：学习工坊（learn-hub）。建好后必须接入口——
-# 否则 manifest 里登记的命令全变幽灵（信号源34 当场报出来，实测就是这个：
-# 我先在 manifest 写了 6 条 `python3 ~/.../learn.py xxx`，检测器判"入口没有 python3 这个词"）。
+# ★ S172（已闭环）：学习工坊（learn-hub）。建好后必须接入口，否则 manifest 里登记的命令全变幽灵。
+# 已在 ROUTE 行110 接好：`'study': LRN`（动词取 `study` 不取 `learn`，避免与 link.py 冲突）。
 # 动词取 `study` 不取 `learn`：`learn` 已被 link.py 占用（查业务历史经验），
 # 同名会让两套语义挤在一个词上，那比幽灵命令更难查。
 LRN = '/root/.codebuddy/skills/learn-hub/scripts/learn.py'
@@ -963,14 +962,31 @@ def cmd_parallel(specs):
         print(f'❌ 没有可执行命令：{"、".join(bad) or "（空）"} 都不在路由表里')
         print(f'   可用子命令见 `tvbox` 帮助，或用 `tvbox conductor ask "<需求>"` 查该敲什么')
         return 2
-    t0 = time.time()
-    with ThreadPoolExecutor(max_workers=min(len(tasks), 8)) as ex:
-        res = list(ex.map(run_subprocess, tasks))
-    for spec, out in res:
+    # ★ S193 修（audit_concurrency.py 实测报违规 1 处）：
+    #   原写法 `ThreadPoolExecutor(max_workers=min(len(tasks), 8))` 是**就地拍数**——
+    #   8 这个数字没有依据，且绕开了统一档位表 concurrency.TIERS，
+    #   正是 M-R114 判据3「并发数必须来自统一档位表，禁止就地拍数」禁止的形态。
+    #   tasks 跑的是本地 tvbox 子命令（子进程、无对外网络），属 **D·本地/无网络档**，
+    #   上限 = min(cpu_count, 8)，由档位表给出而不是写死在这里。
+    #
+    #   keep_order=True：原实现用 `ex.map` 天然保序，换成 run_bounded 默认
+    #   as_completed 会乱序（concurrency.py 注释里 core.fanout 就栽过），
+    #   调用方按 spec 顺序读输出，必须显式保序。
+    from concurrency import run_bounded, TIER_LOCAL
+    rep = run_bounded(tasks, run_subprocess, tier=TIER_LOCAL,
+                      label='tvbox p', keep_order=True)
+    for item in rep.results:
+        if item is None:          # keep_order=True 时，失败位置为 None
+            continue
+        spec, out = item
         print(f'\n═══ {spec} ═══')
         print(out.rstrip())
-    print(f'\n⏱  p 并行完成 {len(tasks)} 个命令，用时 {time.time()-t0:.1f}s'
-          f'（{len(tasks)} 并发 · 子进程隔离）', file=sys.stderr)
+    # 单条失败不再整批崩（原 ex.map 会抛），但要让用户看见是哪条、为什么
+    for e in rep.errors:
+        print(f'❌ 并行子任务失败：{e}', file=sys.stderr)
+    print(f'\n⏱  p 并行完成 {rep.n} 个命令，用时 {rep.elapsed:.1f}s'
+          f'（{rep.workers} 并发 · D·本地档 · 子进程隔离）', file=sys.stderr)
+    return 0 if not rep.errors else 1
 
 
 def main():

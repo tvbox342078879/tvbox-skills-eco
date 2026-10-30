@@ -30,10 +30,8 @@ import argparse
 import json
 import os
 import re
-import socket
 import subprocess
 import sys
-import time
 from urllib.parse import urlsplit
 sys.path.insert(0, '/root/.codebuddy/skills/tvbox-source-hub/scripts')
 from concurrency import run_bounded, TIER_WEB  # noqa: E402  M-R114 统一入口
@@ -82,15 +80,43 @@ def _curl(url, *, timeout=TIMEOUT, headers=None, want_body=True, rng=None):
             code = int(tail.strip())
         except Exception:
             code = 0
-        _last_err_kind = '' if code else _classify_err(err)
+        # ★S193：把 curl 退出码一并交给分类器（主判据；err 仅兜底）
+        _last_err_kind = '' if code else _classify_err(err, p.returncode)
         return code, (body if want_body else '')
     except Exception:
         _last_err_kind = 'other'
         return 0, ''
 
 
-def _classify_err(err):
-    """curl stderr 关键词 → 失败类别。**只分类，不改判定**（判死与否仍由上层定）。"""
+def _classify_err(err, rc=0):
+    """curl 失败 → 类别。**只分类，不改判定**（判死与否仍由上层定）。
+
+    ★S193：主判据从「stderr 关键词」改为「**curl 退出码优先**」。
+
+      实测（本机 curl）：连不上时统一吐
+        `curl: (7) Failed to connect to 10.255.255.1 port 80: Couldn't connect to server`
+      ——**既没有 refused 也没有 timeout**，关键词判据把"端口关了"和"超时"
+      两类全塌成 other，分类等于白做：看的人还是分不清该重试还是该判死。
+      而 curl 退出码是 libcurl 的稳定错误码，比人话文案可靠：
+        6  = 域名解析不了   7 = 连不上（端口关/被拒/不可路由）
+        28 = 超时          35 = SSL/TLS 握手失败
+        51/58 = 证书本身有问题    60 = 证书校验不过（过期通常是这个）
+      退出码优先；stderr 关键词保留作**老版本 curl 的兜底**（措辞会随版本变，
+      退出码不会），两者都没有时才落 other。
+    """
+    if rc == 6:
+        return 'dns'
+    if rc == 7:
+        return 'refused'
+    if rc == 28:
+        return 'timeout'
+    if rc in (51, 58):
+        return 'cert_invalid'
+    if rc == 60:
+        return 'cert_expired' if ('expired' in err or 'has expired' in err) else 'cert_invalid'
+    if rc == 35:
+        return 'tls'
+    # —— 以下为老版 curl 兜底 ——
     if 'certificate' in err and 'expired' in err:
         return 'cert_expired'
     if 'certificate' in err:
@@ -108,6 +134,53 @@ def _classify_err(err):
 
 CERT_KINDS = ('cert_expired', 'cert_invalid', 'tls')
 
+# ★S193：失败成因的说明 + 处置提示，提到模块级供**所有** check_* 复用。
+#
+#   原来这份字典内联在 check_vod 里，m3u8 / 分片 / 分类接口三处拿不到，
+#   于是它们一律硬写"超时/不可达"——把「DNS 没解析出 A 记录」「端口关了」
+#   「证书过期」全说成超时，看的人分不清**该重试**还是**该判死**。
+#   这正是 S169 的根因形态：失败原因塌成一个，上层只能按次数判死。
+#   M-R38 单一事实源：同一份口径只写一处，其余函数引用，不各写各的。
+ERR_HINT = {
+    'cert_expired': '证书已过期（**续期即恢复，非站点失效**；建议跳过校验复验内容）',
+    'cert_invalid': '证书校验失败（可能是自签/CDN 错配；建议跳过校验复验内容）',
+    'tls':          'TLS 握手失败（同上，先排除证书再谈失效）',
+    'dns':          'DNS 无 A 记录（域名真没了）',
+    'timeout':      '连接超时（可能在墙/在挂，不一定是死）',
+    # curl 退出码 7 = CURLE_COULDNT_CONNECT，涵盖"端口关/被拒/路由不通"三种，
+    # 旧提示只写"端口关了"——实测不可路由 IP 也是 rc=7，会被误导成端口问题。
+    'refused':      '连不上：端口关闭／被拒／路由不通（三者 curl 都是退出码 7）',
+}
+
+# 按成因给出**准确的动词**：dns 就是解析失败，不该统统说成"超时"
+ERR_LEAD = {
+    'dns':          '域名解析失败',
+    'refused':      '连接被拒',
+    'timeout':      '连接超时',
+    'cert_expired': '证书过期',
+    'cert_invalid': '证书校验失败',
+    'tls':          'TLS 握手失败',
+}
+
+
+def err_tail():
+    """最近一次连接失败的成因片段（无成因返回空串）。
+
+    ★ 只在 code==0 时有值：HTTP 返回了响应码就不算连接失败，
+      `_curl` 会把 `_last_err_kind` 清成 ''，这里自然返回空串——
+      那种情况不该硬加成因，否则"HTTP 404"也会被标成"超时"，反而误导。
+    """
+    k = _last_err_kind
+    if not k:
+        return ''
+    hint = ERR_HINT.get(k)
+    return f'·【{k}】{hint}' if hint else f'·【{k}】'
+
+
+def err_lead(default='不可达'):
+    """按成因给出准确说法；认不出时用调用方自己的兜底措辞。"""
+    return ERR_LEAD.get(_last_err_kind, default)
+
 
 def check_auto_ignore_cert(api, *, timeout=TIMEOUT):
     """★S169：**仅用于「证书类失败」的复验**，不是日常测活入口。
@@ -122,7 +195,6 @@ def check_auto_ignore_cert(api, *, timeout=TIMEOUT):
       · 结果里强制带 `【跳过证书校验】` 前缀，看的人一眼知道这份证据的分量；
       · 结论**不会**因此变成 `通过` 进正常库——它只用于 `pardon` 之类的复验动作。
     """
-    import contextlib
     global _last_err_kind
     _saved = _curl
     _real_kinds = []
@@ -381,18 +453,11 @@ def check_vod(api, *, timeout=TIMEOUT):
         # ★S169：把失败类别带出来。原来只说"均超时/不可达"，黑名单无从分辨
         #   "证书过期"（续期即活）和"域名没了"（真死），一律按失败次数判死。
         _k = _last_err_kind
-        _hint = {
-            'cert_expired': '证书已过期（**续期即恢复，非站点失效**；建议跳过校验复验内容）',
-            'cert_invalid': '证书校验失败（可能是自签/CDN 错配；建议跳过校验复验内容）',
-            'tls': 'TLS 握手失败（同上，先排除证书再谈失效）',
-            'dns': 'DNS 无 A 记录（域名真没了）',
-            'timeout': '连接超时（可能在墙/在挂，不一定是死）',
-            'refused': '连接被拒（端口关了）',
-        }.get(_k, '')
-        _tail = f'·{_hint}' if _hint else ''
-        if _k in ('cert_expired', 'cert_invalid', 'tls'):
-            return '无法判定', f'均不可达（尝试{len(tried)}路）·【证书类】{_hint}'
-        return '无法判定', f'均超时/不可达（尝试{len(tried)}路）{_tail}'
+        _tail = err_tail()
+        if _k in CERT_KINDS:
+            return '无法判定', f'均不可达（尝试{len(tried)}路）·【证书类】{_tail}'
+        # ★S193：非证书类也说清是哪种不可达，别一律塌成"超时/不可达"
+        return '无法判定', f'均{err_lead("超时/不可达")}（尝试{len(tried)}路）{_tail}'
     # S142：XML 形态取到地址但分片拉不动 → 明确失败，别退化成"无vod_play_url"
     if xml_urls:
         return '失败', (f'XML 有{len(xml_urls)}条播放地址但均拉不动（尝试{len(tried)}路）'
@@ -414,7 +479,8 @@ def check_m3u8(url, *, timeout=TIMEOUT):
     """直播源真实测活：真拉 m3u8 → 真拉一个分片字节流。三态。"""
     code, body = _curl(url, timeout=timeout)
     if code == 0:
-        return '无法判定', 'm3u8 拉取超时/不可达'
+        # ★S193：别一律说"超时"——DNS 没了和超时，处置完全不同
+        return '无法判定', f'm3u8 拉取{err_lead("超时/不可达")}{err_tail()}'
     if code in (404, 410, 403, 451):
         return '失败', f'm3u8 HTTP {code}'
     if code not in (200, 301, 302, 303, 307, 308) or not body:
@@ -452,12 +518,57 @@ def check_m3u8(url, *, timeout=TIMEOUT):
                 continue
         break
     if scode == 0:
-        return '无法判定', f'分片拉取超时（{first[:60]}）'
+        return '无法判定', f'分片拉取{err_lead("超时")}（{first[:60]}）{err_tail()}'
     if scode in (200, 206) and len(sbody or '') > 0:
         return '通过', f'分片 {len(sbody)}B（{first[:60]}）'
     if scode in (404, 410, 403, 451):
         return '失败', f'分片 HTTP {scode}（{first[:60]}）'
     return '无法判定', f'分片 HTTP {scode}'
+
+
+def _page_aggregation_probe(base, parents, *, timeout=TIMEOUT):
+    """仅父级时补一刀：真拉一页父分类详情，看 pagecount/total 是否同步聚合。
+
+    ★ 移植自道长 spider-craft 实战判据：站点只暴露父分类时，客户端常把子分类
+      数据合并进父级展示；若 pagecount/total 没按合并后总量重算，就出现
+      「1 条数据配 697 页」（total=1、pagecount=697）——前端分页器显示 697 页，
+      翻过去全是空的/重复的。
+    返回说明串；拉不到返 ''（不把网络问题说成"聚合没问题"——M-R60）。
+    """
+    pid = None
+    for p in parents:
+        cand = None
+        if isinstance(p, dict):
+            cand = p.get('type_id') or p.get('id') or p.get('tid')
+        else:
+            cand = p                     # XML 分支解析出来的是 int
+        if cand is not None:
+            pid = cand
+            break
+    if pid is None:
+        return ''
+    for sep in ('?', '&'):
+        probe = f'{base}{sep}ac=detail&t={pid}&pg=1'
+        code, body = _curl(probe, timeout=timeout)
+        if code == 0 or code in (404, 410, 403, 451) or not body:
+            continue
+        m_pc = re.search(r'"?pagecount"?\s*[:=]\s*"?(\d+)', body)
+        m_to = re.search(r'"?total"?\s*[:=]\s*"?(\d+)', body)
+        if not (m_pc and m_to):
+            continue
+        pc, to = int(m_pc.group(1)), int(m_to.group(1))
+        m_li = re.search(r'"?limit"?\s*[:=]\s*"?(\d+)', body)
+        li = int(m_li.group(1)) if m_li else 0
+        if to <= 1 and pc > 5:
+            return (f'分页聚合异常：total={to} 却配 pagecount={pc}'
+                    f'——子分类合并后未同步聚合（前端「1 条数据配 {pc} 页」）')
+        if li:
+            expect = -(-to // li)        # ceil(total/limit)
+            if pc > max(expect * 3, expect + 10):
+                return (f'分页聚合存疑：total={to}/limit={li} 应收录约 {expect} 页，'
+                        f'实测 pagecount={pc}')
+        return f'分页聚合正常（total={to}·pagecount={pc}）'
+    return ''
 
 
 def check_class(api, *, timeout=TIMEOUT):
@@ -497,12 +608,18 @@ def check_class(api, *, timeout=TIMEOUT):
             if parents and children:
                 return '完整', f'父{len(parents)}/子{len(children)}（{probe}）', detail
             if parents and not children:
-                return '仅父级', f'仅父分类{len(parents)}个·无子分类（{probe}）→ 细分点开为空', detail
+                # ★ S194（移植道长判据）：仅父级时客户端惯常补救是合并子分类到父级，
+                #   但 pagecount/total 必须同步聚合，否则「1 条数据配 697 页」。
+                agg = _page_aggregation_probe(base, parents, timeout=timeout)
+                if agg:
+                    detail['page_agg'] = agg
+                return '仅父级', (f'仅父分类{len(parents)}个·无子分类（{probe}）→ 细分点开为空'
+                                  + (f'；{agg}' if agg else '')), detail
             if children and not parents:
                 return '仅子级', f'仅子分类{len(children)}个·无父分类（{probe}）→ 分类栏无归类', detail
             return '无分类', f'分类树为空（{probe}）', detail
     if any(c == 0 for _, c, _ in tried):
-        return '无法判定', f'分类接口均超时/不可达（尝试{len(tried)}路）', {}
+        return '无法判定', f'分类接口均{err_lead("超时/不可达")}（尝试{len(tried)}路）{err_tail()}', {}
     codes = [c for _, c, _ in tried]
     if codes and all(c in (404, 410, 403, 451) for c in codes):
         return '失败', f'分类接口 HTTP {codes[0]}（{len(tried)}路均 4xx）', {}

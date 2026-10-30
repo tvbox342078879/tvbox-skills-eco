@@ -1,3 +1,74 @@
+## 2026-10-25 v1.3.32
+- 由 skill-evolution upgrade 自动提升（1.3.31 → 1.3.32）
+- 依据 M-R111 提案：跨技能学习：借鉴 [T-J] 高危schema变更先在测试库演练（跨技能学习：字段级 schema 变更（枚举增删/改类型/重建字段）前 场景可借鉴）
+- 依据 M-R111 提案：跨技能学习：借鉴 [T-K] 批量写入大payload必分块（25条为界）（跨技能学习：批量写库 >25 条时 场景可借鉴）
+
+---
+
+## v1.3.31 — 报告改覆盖模式：从源头制止云端副本堆积
+
+### 起象：资料库顶层堆了 41 份同名文档
+用户原话：「没看到收件箱，整理下，乱七八糟」。实测（2026-10-20，`list-nodes --parent-node-id ""`）：
+
+| 标题 | 份数 | 体积跨度 |
+|---|---|---|
+| 生态1015_遗留问题监测报告 | 19 | 11.1KB → 42.7KB |
+| 生态遗留趋势留档（跨设备） | 14 | 2.5KB → 32.7KB |
+| 生态1016_遗留问题监测报告 | 8 | 43.5KB → 44.9KB |
+
+41 份 MD5 **各不相同**、体积逐个变大——不是复制粘贴的副本，是**同一份文档被反复
+"新建"堆积**。根因不在 `create_doc.py`（它本就支持覆盖），而在 `_upload_report()`：
+
+```python
+# 修前：无条件新建
+r = subprocess.run(['python3', script, '--title', title, '--content-file', path], ...)
+```
+
+而两处锚点文件（`trend_node.json` / `last_report_node.json`）**一直在写、从来没读**。
+`cmd_trend_upload` 的 docstring 甚至写着「node id 存 trend_node.json」——
+存了，但没人用。注释里那句「便于下次覆盖同节点」是**承诺了没兑现**。
+
+### 修
+`_upload_report(path, title, node_id=None)` 增加第三种参形态：
+
+```python
+if node_id:
+    cmd += ['--node-block-id', str(node_id), '--space-id', SPACE_ID,
+            '--confirm-overwrite']
+```
+
+三处调用点各自读自己的锚点：
+
+| 调用点 | 锚点 | 策略 |
+|---|---|---|
+| `cmd_trend_upload` | `trend_node.json: node_id` | 有则覆盖，永远只有一份 |
+| `report --upload`（报告正文） | `last_report_node.json: latest` | **同日重跑覆盖当天那份**；跨日新建 |
+| `report --upload`（趋势同步） | `trend_node.json: node_id` | 同趋势上传 |
+
+新增 `_read_anchor(fname, key)`：文件缺失/损坏 → 返回 `None` → 调用方按新建处理。
+**覆盖失败不降级为新建**（否则又变回堆积）。
+
+### 两个坑（都是实测撞出来的）
+1. **`create_doc.py` 有护栏**：全量覆盖必须显式传 `--confirm-overwrite`，否则报
+   `全量覆盖文档前必须取得用户明确确认`。我第一次改完就漏了这个参数，
+   实测 `ok=False`，覆盖率 0。护栏是对的——但说明「覆盖」不是传个 id 就完事。
+2. **报告锚点不能无条件覆盖**：`last_report_node.json` 若跨日还覆盖，就会把
+   昨天那份改成今天的内容。所以必须比 `title`（含日期戳），标题变了才另起一份。
+
+### 实测证据
+```
+覆盖前 32709B → 覆盖后 344B, node_id 保持 tHmr5meQ44y34ksSCD3Gfe ✅
+连续两次上传: 第1次 node=...CD3Gfe / 第2次 node=...CD3Gfe（同一节点）
+无锚点上传:   ok=True 新建 YlP6g2QLSx73BVQxpvYBu4（测试副本已入收件箱）
+```
+
+### 存量处置
+已堆积的 38 份历史版本（保留每组最新 1 份）移入顶层
+`🗑 历史待删（旧版本·确认后可整夹删）`，按标题分 3 个子夹。用户可整夹删；
+需要时重新生成放回即可。资料库顶层从 **67 → 15**。
+
+---
+
 ## v1.3.30 — M16 判据修：已结条目的历史叙述不是流程步骤
 
 ### 起象：终验判据④ 每轮红一次
@@ -888,4 +959,3 @@ dead_hosts = {h for h in dead_hosts if not _is_platform_host(h) and not _is_prox
 看的人以为已经守着，而守它的东西不存在。守护：信号源 34（命令执行器存在）。
 
 ---
-

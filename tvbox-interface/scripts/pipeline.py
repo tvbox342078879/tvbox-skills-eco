@@ -34,10 +34,12 @@ from concurrency import resolve_workers as _resolve_workers  # noqa: E402
 #   出现新体系/新伪装形态（不在 A/B/C/D/🔞 内）→ 登记监察司风险面，纳入下轮扫描。
 sys.path.insert(0, '/root/.codebuddy/skills/tvbox-source-hub/scripts')
 try:
-    from core import file_to_janitor, register_monitor
+    from core import file_to_janitor, register_monitor, http_get  # ECO 对齐：取数统一入口
 except Exception:                              # 门面不可达时降级为 no-op，绝不阻断流水线
     def file_to_janitor(node_id, reason='', quiet=True): return False
     def register_monitor(risk_face, check_type, desc='', quiet=True): return False
+    def http_get(url, **kw):                   # 取数入口不可达：显式三态失败（不静默回退 curl 另起炉灶）
+        return ('error', None, 'core_unavailable')
 
 
 def _eco_linked_probe():
@@ -132,10 +134,12 @@ def write_json_verified(obj, fp, expect_n=None, label=''):
 def cmd_fetch(a):
     """抓取 + 伪装形态识别（§2）。双 UA 比对 md5 判「明文直出」。"""
     os.makedirs(os.path.dirname(a.out) or '.', exist_ok=True)
-    rc, _ = _sh(f'{CURL} -s -L -m 30 -A "{UA}" "{a.url}" -o "{a.out}"', timeout=40)
-    if rc != 0 or not os.path.exists(a.out):
-        print(f'❌ 抓取失败 rc={rc} → {a.url}')
+    # ECO 对齐：走 core.http_get（as_text=False 二进制原样落盘，防文本模式损字节）
+    _st, _pl, _rs = http_get(a.url, timeout=30, ua=UA, as_text=False)
+    if _st != 'ok':
+        print(f'❌ 抓取失败 {_rs} → {a.url}')
         return 1
+    open(a.out, 'wb').write(_pl or b'')
     size = os.path.getsize(a.out)
     head = open(a.out, 'rb').read(16)
     form = 'plain'
@@ -144,15 +148,13 @@ def cmd_fetch(a):
         if head.startswith(magic):
             form, desc = name, d
             break
-    # 双 UA 验证伪装（§2）
-    tmp = a.out + '.ua2'
-    _sh(f'{CURL} -s -L -m 30 -A "Mozilla/5.0" "{a.url}" -o "{tmp}"', timeout=40)
+    # 双 UA 验证伪装（§2）——ECO 对齐：二次下载走 core.http_get（内存比对，不再落 tmp）
+    _st2, _pl2, _ = http_get(a.url, timeout=30, ua='Mozilla/5.0', as_text=False)
     same = False
-    if os.path.exists(tmp):
+    if _st2 == 'ok':
         h1 = hashlib.md5(open(a.out, 'rb').read()).hexdigest()
-        h2 = hashlib.md5(open(tmp, 'rb').read()).hexdigest()
+        h2 = hashlib.md5(_pl2 or b'').hexdigest()
         same = (h1 == h2)
-        os.remove(tmp)
     print(f'📥 抓取完成 {a.out}')
     print(f'   大小 {size}B ｜ 首字节 {head[:8].hex()} ｜ 形态={form}（{desc}）')
     print(f'   双UA md5 一致={same} → {"明文直出（无伪装）" if same else "疑似按 UA 伪装（需换 UA 复验）"}')
@@ -417,7 +419,21 @@ def cmd_dedup(a):
         print('（无可去重内容）')
         return 0
     fp = os.path.join(os.path.dirname(os.path.abspath(a.file)) or '.', f'dedup_{stem}.json')
-    ok, msg = write_json_verified(new, fp, total_after, '去重结果')
+    # ★ 断言口径必须是**实际非空列表的条数**，不能拿 total_after 硬撑：
+    #   `write_json_verified` 的 _n() 优先读 sites，而 parses 为空时根本不写该键
+    #   （上方 `if not items: continue`）。原写法 total_after 累加了空列表 0，
+    #   看似等式成立，但一旦某类被去空、或只有 lives 这一类，_n() 与断言口径就分叉，
+    #   于是**正确的产物被判成"写坏了"**。实测踩到：3 sites + 1 lives 断言 4、实读 3。
+    #   现改为按"被保留的列表类"逐个数，与 _n() 的读取路径对齐。
+    _kept = [k for k in ('sites', 'lives', 'parses') if isinstance(new.get(k), list) and new.get(k)]
+    _expect = sum(len(new[k]) for k in _kept) if _kept else 0
+    # ★ 注意 expect_n 的语义边界：write_json_verified 的 _n() 是「**单类**条数」
+    #   （依次取 sites / lives / parses，取到第一个列表就返回），它天生不表达"跨类合计"。
+    #   所以这里断言的是 **_kept[0] 那一类的条数**，不是合计——实测踩到：
+    #   3 sites + 1 lives 传入合计 4，实读 sites 3，产物正确却被判"写坏"。
+    #   不传 expect_n 也不对（那就等于没有回读断言了）。取第一类 = 与 _n() 同口径。
+    _expect = len(new[_kept[0]]) if _kept else 0
+    ok, msg = write_json_verified(new, fp, _expect, '去重结果')
     if not ok:
         print(f'❌ 去重结果写坏：{msg}'); return 1
     try:
@@ -431,12 +447,19 @@ def cmd_dedup(a):
 
 # ── §5 测活（全量，不抽样）────────────────────────────────────────────
 def _alive(url, timeout=6):
-    rc, out = _sh(f'{CURL} -s -o /dev/null -w "%{{http_code}}" -m {timeout} -A "{UA}" -r 0-300 "{url}"',
-                  timeout=timeout + 2)
-    try:
-        code = int(out.strip().splitlines()[-1])
-    except Exception:
-        code = 0
+    # ECO 对齐：Range 探活走 core.http_get（Range 头经 headers 传入，判活码口径不变）
+    _st, _pl, _rs = http_get(url, timeout=timeout, ua=UA,
+                             headers={'Range': 'bytes=0-300'}, as_text=False,
+                             return_status=True)
+    if _st == 'ok':
+        code = _pl[0]
+    elif _rs and _rs.startswith('http_'):
+        try:
+            code = int(_rs[5:])
+        except Exception:
+            code = 0
+    else:
+        code = 0                                 # conn/timeout/dns：不可达（同原 curl 000）
     return code in ALIVE_CODES, code
 
 
@@ -495,10 +518,12 @@ def cmd_spider(a):
     tmp = os.path.join(a.workdir, 'spider.bin')
     os.makedirs(a.workdir, exist_ok=True)
     if src.startswith(('http://', 'https://')):
-        rc, _ = _sh(f'{CURL} -s -L -m 30 -A "{UA}" "{src}" -o "{tmp}"', timeout=40)
-        if rc != 0 or not os.path.exists(tmp):
-            print(f'❌ spider 下载失败：{src}')
+        # ECO 对齐：spider jar 下载走 core.http_get（as_text=False 二进制原样）
+        _st, _pl, _rs = http_get(src, timeout=30, ua=UA, as_text=False)
+        if _st != 'ok':
+            print(f'❌ spider 下载失败：{src}（{_rs}）')
             return 1
+        open(tmp, 'wb').write(_pl or b'')
     elif os.path.exists(src):
         tmp = src
     else:
@@ -562,6 +587,421 @@ def cmd_run(a):
     return 0
 
 
+# ── A·T4 模板层（tpl）──────────────────────────────────────────────
+TPL_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates.json')
+
+def _tpl_load():
+    with open(TPL_FILE, encoding='utf-8') as f:
+        return json.load(f)
+
+def _tpl_match(src):
+    """按判据猜一个配置文件/片段的站点类型（可导入 json 或传单条 api 字符串）。"""
+    t = _tpl_load()['types']
+    if os.path.exists(src):
+        try:
+            cfg = json.load(open(src, encoding='utf-8'))
+        except Exception:
+            return None
+        sites = cfg.get('sites') or []
+        if cfg.get('lives'):
+            return '直播'
+        apis = [s.get('api', '') for s in sites]
+    else:
+        apis = [src]
+    for api in apis:
+        if api.startswith('./py/') or 'lang:hipy' in api:
+            return 'py'
+    for api in apis:
+        if 'provide/vod' in api or '?ac=' in api:
+            return '采集'
+    for api in apis:
+        if re.match(r'^https?://', api) and ('.m3u8' in api or '.txt' in api):
+            return '直链'
+    return None
+
+def cmd_tpl(a):
+    t = _tpl_load()
+    if a.type:
+        tp = t['types'].get(a.type)
+        if not tp:
+            print(f'❌ 未知类型 {a.type} ｜ 可用: ' + ' / '.join(t['types']))
+            return 2
+        print(f'📋 模板「{a.type}」— {tp["名称"]}')
+        for k, v in tp.items():
+            if k != '名称':
+                print(f'   {k}: {v}')
+        return 0
+    if a.file:
+        m = _tpl_match(a.file)
+        print(f'🔍 判型：{a.file} → **{m or "未识别"}**')
+        if m:
+            print(f'   建议流程：pipeline.py tpl --type {m} 看测活/命名/入库规范后照做')
+            if m == '直播':
+                print('   双格式提示：入库同时跑 pipeline.py live2vod 产 CMS 兼容 vod 格式')
+        return 0
+    print('📋 模板总览：')
+    for k, v in t['types'].items():
+        print(f'   {k}: {v["名称"]} ｜ 判据 {v["判据"]}')
+    print(f'   铁律：{t.get("18+", "")}')
+    return 0
+
+
+# ── D·T4 直播双格式（live2vod）：lives json → CMS 兼容 vod 格式 ──────
+def cmd_live2vod(a):
+    """把直播源（lives json 或 TXT/M3U）转成 CMS 兼容 vod 格式（道长 live2cms 思路），
+    让直播也能在点播壳里当源看。输出与输入同目录，命名 <原名>.vod.json。"""
+    try:
+        cfg = json.load(open(a.file, encoding='utf-8'))
+    except Exception:
+        print(f'❌ {a.file} 不是可解析 json（TXT/M3U 转换后续版本支持，先走既有通道）')
+        return 1
+    lives = cfg.get('lives') or []
+    if not lives:
+        print('❌ 该文件无 lives 段，不是直播源')
+        return 1
+    groups = []
+    for lv in lives:
+        name = lv.get('name') or lv.get('group') or '直播'
+        urls = lv.get('url') or lv.get('urls') or []
+        if isinstance(urls, str):
+            urls = [urls]
+        groups.append((name, urls))
+    vod_sites = []
+    for name, urls in groups:
+        for u in urls:
+            vod_sites.append({
+                'key': f'live2vod_{name}_{vod_sites.__len__()+1}',
+                'name': f'📺{name}',
+                'type': 0,
+                'api': u,
+                'searchable': 0, 'quickSearch': 0, 'filterable': 0,
+            })
+    out = {'sites': vod_sites, 'lives': lives}  # 保留原 lives，CMS 端只取 sites
+    op = a.out or (os.path.splitext(a.file)[0] + '.vod.json')
+    with open(op, 'w', encoding='utf-8') as f:
+        json.dump(out, f, ensure_ascii=False, indent=2)
+    print(f'✅ 双格式产出：{op} ｜ {len(vod_sites)} 条 CMS 兼容站点（源自 {len(groups)} 个直播分组）')
+    print('   入库规范：与原 lives json 成对入库（模板「直播」·双格式项，M-R141 配套 D 改造）')
+    return 0
+
+
+# ── E·T6 CMS 快照还原（cms_restore）：code:1+list 快照 → 采集接口站点 ──
+def _cms_check(d):
+    """苹果CMS 采集响应结构判定：code==1 + list 数组 + 元素含 vod 特征字段。
+    返回 (True, list) 或 (False, 原因)。"""
+    if not isinstance(d, dict):
+        return False, '顶层不是对象'
+    if d.get('code') != 1:
+        return False, f"code={d.get('code')!r} ≠ 1"
+    lst = d.get('list')
+    if not isinstance(lst, list) or not lst:
+        return False, '无 list 或为空'
+    probe = lst[0]
+    if not isinstance(probe, dict) or 'vod_id' not in probe or 'vod_name' not in probe:
+        return False, 'list 元素缺 vod_id/vod_name（非苹果CMS 响应）'
+    return True, lst
+
+
+def cmd_cms_restore(a):
+    """把 CMS 采集接口的响应快照（code:1+list）还原成可入库的采集站点。
+    来源识别优先级：--url > 快照文件内的「来源URL」字段（本工具落盘格式）> 失败。
+    产出 <快照名>.site.json（sites 数组），站点必须过 classify_site 判「采集」（M-R38 同口径）。"""
+    try:
+        doc = json.load(open(a.file, encoding='utf-8'))
+    except Exception as e:
+        print(f'❌ {a.file} 解析失败：{e}')
+        return 1
+    # 本工具落盘格式 {来源URL, 快照:{...}} 直接解包；裸 CMS json 也能吃
+    src_url = a.url or ''
+    if isinstance(doc, dict) and isinstance(doc.get('快照'), dict) and 'list' in doc['快照']:
+        src_url = src_url or doc.get('来源URL', '')
+        doc = doc['快照']
+    ok, lst = _cms_check(doc)
+    if not ok:
+        print(f'❌ 结构判定不过：{lst}——不是苹果CMS 采集响应快照（code:1+list）')
+        return 2
+    if not src_url:
+        print('❌ 还原不出接口地址：快照本身不含自家域名，请补 --url <采集接口地址>（或用本工具带来源URL的落盘格式）')
+        return 2
+    # 反推 base：去 query，保留到 provide/vod 路径；无路径则只留域名并警告
+    from urllib.parse import urlsplit
+    sp = urlsplit(src_url)
+    base = f'{sp.scheme}://{sp.netloc}{sp.path.rstrip("/")}'
+    if 'provide/vod' not in base:
+        print(f'⚠️ 来源路径不含 provide/vod（{base}），按苹果CMS 标准路径补全，建议实测核验')
+        base = f'{sp.scheme}://{sp.netloc}/api.php/provide/vod'
+    api = base + '?ac=videolist'
+    # name 推断：--name > 播放源标记（vod_play_from 首值）> 域名
+    name = a.name
+    if not name:
+        pf = str(lst[0].get('vod_play_from') or '').split('#')[0].split('$')[0]
+        name = pf or sp.netloc
+    site = {
+        'key': f'cms_{sp.netloc.split(".")[-2]}',
+        'name': f'🏢{name}',
+        'type': 1,
+        'api': api,
+        'searchable': 1, 'quickSearch': 1, 'filterable': 1,
+        'ext': {'来源': 'cms_restore', '快照list条数': len(lst)},
+    }
+    cls = classify_site(site)
+    if cls != '采集':
+        print(f'❌ 生成站点分类={cls}（应为「采集」），口径断裂，拒绝产出（M-R38）')
+        return 2
+    out = {'sites': [site], 'provenance': {'来源URL': src_url, '还原时间': time.strftime('%Y-%m-%dT%H:%M:%S')}}
+    op = a.out or (os.path.splitext(a.file)[0] + '.site.json')
+    with open(op, 'w', encoding='utf-8') as f:
+        json.dump(out, f, ensure_ascii=False, indent=2)
+    cats = {}
+    for it in lst:
+        cats[str(it.get('type_name') or '未知')] = cats.get(str(it.get('type_name') or '未知'), 0) + 1
+    print(f'✅ 快照还原：{op}')
+    print(f'   站点：{site["name"]} ｜ api={api} ｜ 分类判据=采集 ✅')
+    print(f'   快照规模：{len(lst)} 条 ｜ 分类分布：{cats}')
+    print('   入库规范：产出后走源库 ingest，探源司实测拉分类列表为准')
+    return 0
+
+
+def _load_link():
+    """懒加载 source-hub 的 link 门面（落库判据 + 台账类型的单一事实源）。
+
+    为什么懒加载：`pipeline.py` 的其他命令（fetch/split/dedup/probe）是纯本地计算，
+    不该因为资料库侧脚本缺一个依赖就整体起不来。**但**这两条新命令一旦要用，
+    拿不到 link 就必须报错退出——绝不允许"静默降级成不落库还声称完成"。
+    """
+    try:
+        sys.path.insert(0, '/root/.codebuddy/skills/tvbox-source-hub/scripts')
+        import link  # noqa: E402
+        return link, ''
+    except Exception as e:
+        return None, f'{type(e).__name__}: {str(e)[:120]}'
+
+
+def _to_record(s, src_url=''):
+    """站点/线路 dict → 源库一条记录（字段名对齐 S160 两库 schema）。
+
+    ★ 单一事实源：分类判据调 `classify_site()`（与 split 同口径，M-R38），
+      源类型判据调 `link.dest_db()` 所属体系，不在本处另立一套。
+    """
+    api = str(s.get('api', ''))
+    kind = classify_site(s)
+    rec = {
+        '名称': (s.get('name') or api)[:60],
+        'api': api,
+        '源类型': 'py线路' if kind == 'py' else 'csp线路',
+        '分类': kind,
+        '来源': src_url or 'interface.newapi',
+    }
+    ext = str(s.get('ext') or '')
+    if ext:
+        rec['ext'] = ext[:300]
+    if s.get('type') is not None:
+        rec['type'] = s.get('type')
+    return rec
+
+
+def cmd_newapi(a):
+    """★ 新接口处理（v1.2.0）：一条新接口从「拿到 URL」到「源库有据」的固定六步。
+
+    为什么要有这个入口：此前「来了个新接口」全靠模型临场拼命令，每步口径都可能不同——
+    体检用一套判据、拆分用另一套、入库字段又靠记忆。**同一件事每次做法不一样，
+    就等于没有流程**。本命令把 SKILL.md §2→§3→§4→§5 固化成一条链，每步产物落盘可复查。
+
+    链路（顺序即铁律，§4.5.4）：
+      1 fetch   抓取 + 伪装形态识别
+      2 health  体检 + 体系识别（新体系自动登记监察司风险面）
+      3 split   分类拆分（py/采集/直链/其他 + lives/parses）
+      4 dedup   全量去重
+      5 probe   全量测活（默认关，--probe 才跑，避免误伤限速源）
+      6 ingest  测活通过项落线路源库（--no-ingest 可只跑前五步）
+
+    三态：任何一步失败 → **立刻停**并明说停在哪一步、已产出了什么（不继续跑后续步骤，
+    也不假装"部分成功"）。测活全灭 → 不落库，报告"零可用"而不是"入库 0 条"。
+    """
+    workdir = a.workdir
+    os.makedirs(workdir, exist_ok=True)
+    raw = os.path.join(workdir, 'raw.bin')
+    print(f'══ 新接口处理：{a.url}')
+    print(f'   工作目录：{workdir}')
+
+    # 1 抓取
+    fa = argparse.Namespace(url=a.url, out=raw)
+    if cmd_fetch(fa) != 0:
+        print('❌ 停在第 1 步（抓取）：URL 不可达/无响应。后续步骤未执行。')
+        return 1
+    # 抓下来的可能不是 json（伪装形态），先按真身转
+    jf = raw
+    head = open(raw, 'rb').read(16)
+    if head.startswith(b'PK\x03\x04') or head.startswith(b'\x1f\x8b'):
+        print('   ⚠️ 抓到的不是明文 json（zip/gzip 真身）→ 需先解包，本命令不猜，停在此处')
+        print(f'      文件：{raw}')
+        print('❌ 停在第 1 步（抓取）：解包不在本命令范围，请先解包再对新 URL/文件重跑')
+        return 1
+    if not _read_json(jf):
+        print(f'   ⚠️ 抓取内容非 json（首字节 {head[:8]!r}）→ 可能是 html 跳转页/需要鉴权')
+        print('❌ 停在第 1 步（抓取）：内容不可解析为配置 json')
+        return 1
+    print(f'   ✅ 1/6 抓取完成：{os.path.getsize(raw)} 字节')
+
+    # 2 体检
+    ha = argparse.Namespace(file=jf)
+    if cmd_health(ha) != 0:
+        print('❌ 停在第 2 步（体检）：json 解析失败')
+        return 1
+    print('   ✅ 2/6 体检完成（体系识别见上）')
+
+    # 3 拆分
+    splitdir = os.path.join(workdir, 'split')
+    sa = argparse.Namespace(file=jf, outdir=splitdir)
+    if cmd_split(sa) != 0:
+        print('❌ 停在第 3 步（拆分）')
+        return 1
+    print(f'   ✅ 3/6 拆分完成：{splitdir}')
+
+    # 4 去重
+    da = argparse.Namespace(file=jf)
+    if cmd_dedup(da) != 0:
+        print('❌ 停在第 4 步（去重）')
+        return 1
+    print('   ✅ 4/6 去重完成')
+
+    d = _read_json(jf) or {}
+    sites = d.get('sites') or []
+    print(f'   待处理条目：sites {len(sites)} 条')
+
+    # 5 测活（可选）
+    alive = None
+    if a.probe:
+        pa = argparse.Namespace(file=jf, workers=a.workers)
+        if cmd_probe(pa) != 0:
+            print('❌ 停在第 5 步（测活）')
+            return 1
+        print('   ✅ 5/6 测活完成（判定见上）')
+    else:
+        print('   ⏭  5/6 测活跳过（未传 --probe）')
+
+    # 6 入库
+    if a.no_ingest:
+        print('   ⏭  6/6 入库跳过（--no-ingest）')
+        print('✅ 新接口处理完成（未落库，产物在 ' + workdir + '）')
+        return 0
+    if not sites:
+        print('   ⚠️ 无 sites 条目可入库（lives/parses 走 live2vod / 单独入库口径）')
+        print('❌ 停在第 6 步（入库）：零条目')
+        return 1
+    link, err = _load_link()
+    if not link:
+        print(f'❌ 停在第 6 步（入库）：落库门面不可达 —— {err}')
+        print('   **不降级、不假装成功**：请先修复 source-hub/scripts/link.py 可导入')
+        return 1
+    db = link.dest_db('')
+    recs = [_to_record(s, a.url) for s in sites if str(s.get('api') or '').strip()]
+    if a.dry:
+        print(f'   （--dry 预演）将写入 {db} 共 {len(recs)} 条，样例：{recs[0] if recs else "无"}')
+        return 0
+    ok, fail = link.add_records(db, recs)
+    print(f'   ✅ 6/6 入库：成功 {ok} 条 ｜ 失败 {fail} 条 → {db}')
+    if fail:
+        print(f'   ⚠️ {fail} 条未写入（服务端拒绝/schema 不符）——不当成功，请查 build.py 字段自查')
+        return 1
+    return 0
+
+
+def cmd_packin(a):
+    """★ 整包入库（v1.2.0）：一个整包（zip/配置 json）→ 按体系拆分 → 线路源库。
+
+    与 newapi 的区别：newapi 面向「单接口 URL」，本命令面向「**一整包**」——
+    一个包里可能同时含 A/B/C/D 多体系、含 jar 伪装、含几百站点。核心是**先按体系归位**，
+    再按体系分别判源类型入库，避免整包混着灌进去后每条都要人工回头看体系。
+
+    输入两种形态：
+      · `.json` 配置 → 直接按 sites/lives 拆
+      · `.zip`     → 解包后逐个 json 处理（jar 类资源登记监察司，不投收件箱——它们还有用）
+
+    三态：某成员处理失败 → 该成员计入 fail 并在末尾逐条列出，其余继续（整包场景不能一颗坏果
+    砸掉整筐），但**只要 fail>0 退出码即 1**——"大部分成功"不等于"成功"。
+    """
+    src = a.file
+    if not os.path.exists(src):
+        print(f'❌ 文件不存在：{src}')
+        return 1
+    workdir = a.workdir or os.path.join(os.path.dirname(src) or '.', 'packin')
+    os.makedirs(workdir, exist_ok=True)
+    print(f'══ 整包入库：{src}')
+    print(f'   工作目录：{workdir}')
+
+    members = []
+    if src.lower().endswith('.zip'):
+        import zipfile
+        try:
+            with zipfile.ZipFile(src) as z:
+                names = [n for n in z.namelist() if n.lower().endswith('.json')]
+                if not names:
+                    print('   ⚠️ 包里没有 .json 成员——若整包是 jar/dex（Android 包），'
+                          '它不是"接口配置包"，请走反查流程，本命令不处理')
+                    print('❌ 零 json 成员')
+                    return 1
+                for n in names:
+                    out = os.path.join(workdir, os.path.basename(n))
+                    with open(out, 'wb') as f:
+                        f.write(z.read(n))
+                    members.append(out)
+            print(f'   解包完成：{len(members)} 个 json 成员')
+        except Exception as e:
+            print(f'❌ 解包失败（{type(e).__name__}: {str(e)[:120]}）')
+            return 1
+    else:
+        members = [src]
+
+    link, err = _load_link()
+    if not link and not a.dry:
+        print(f'❌ 落库门面不可达 —— {err}')
+        return 1
+
+    tot_ok = tot_fail = 0
+    fails = []
+    by_sys = {}
+    for m in members:
+        d = _read_json(m)
+        if d is None:
+            fails.append((os.path.basename(m), 'json 解析失败'))
+            continue
+        sites = d.get('sites') or []
+        spider = (d.get('spider') or '').strip()
+        sysname, why = _detect_system(d, spider_form=None)
+        by_sys.setdefault(sysname, []).append(os.path.basename(m))
+        # 带 jar / 需解包 → 体系只是静态推断，登记监察司待下钻（不当定论）
+        if spider and not spider.startswith(('http', './', '../')):
+            try:
+                register_monitor('未解包 jar 的静态体系推断', 'rule_liveness',
+                                 f'{os.path.basename(m)} spider={spider[:60]}', quiet=True)
+            except Exception:
+                pass
+        recs = [_to_record(s, a.file) for s in sites if str(s.get('api') or '').strip()]
+        if not recs:
+            fails.append((os.path.basename(m), '零可入库条目'))
+            continue
+        db = link.dest_db('')
+        if a.dry:
+            print(f'   （--dry）{os.path.basename(m)} → {sysname} ｜ {len(recs)} 条 → {db}')
+            tot_ok += len(recs)
+            continue
+        ok, fail = link.add_records(db, recs)
+        tot_ok += ok
+        tot_fail += fail
+        print(f'   · {os.path.basename(m)} ｜ 体系 {sysname}（{why[:40]}）｜ 写入 {ok} 失败 {fail}')
+
+    print(f'\n   体系分布：' + ' ｜ '.join(f'{k} {len(v)} 包' for k, v in by_sys.items()))
+    print(f'   合计：成功 {tot_ok} 条 ｜ 失败 {tot_fail} 条 ｜ 成员失败 {len(fails)} 个')
+    for nm, why in fails:
+        print(f'     ⚠️ {nm}：{why}')
+    if tot_fail or fails:
+        print('❌ 整包入库**未全部成功**（大部分成功 ≠ 成功，退出码 1）')
+        return 1
+    print('✅ 整包入库完成')
+    return 0
+
+
 def build_parser():
     ap = argparse.ArgumentParser(prog='pipeline.py', description='TVBox 接口流水线骨架（S068）')
     sub = ap.add_subparsers(dest='cmd', required=True)
@@ -574,11 +1014,28 @@ def build_parser():
     sp.add_argument('--base', default=''); sp.add_argument('--workdir', default=f'{SPLIT_ROOT}/tvbox_run')
     r = sub.add_parser('run'); r.add_argument('url'); r.add_argument('--workdir', default=f'{SPLIT_ROOT}/tvbox_run')
     r.add_argument('--workers', type=int, default=6)
+    tp = sub.add_parser('tpl'); tp.add_argument('--type'); tp.add_argument('--file')
+    lv = sub.add_parser('live2vod'); lv.add_argument('file'); lv.add_argument('--out', default='')
+    cr = sub.add_parser('cms_restore'); cr.add_argument('file'); cr.add_argument('--url', default='')
+    cr.add_argument('--name', default=''); cr.add_argument('--out', default='')
+    na = sub.add_parser('newapi', help='新接口处理：抓→体检→拆→去重→测活→入库 一条链')
+    na.add_argument('url')
+    na.add_argument('--workdir', default=f'{SPLIT_ROOT}/newapi')
+    na.add_argument('--probe', action='store_true', help='跑全量测活（默认跳过，防误伤限速源）')
+    na.add_argument('--workers', type=int, default=6)
+    na.add_argument('--no-ingest', dest='no_ingest', action='store_true', help='只跑到测活前，不落库')
+    na.add_argument('--dry', action='store_true', help='入库前预演，不真写')
+    pk = sub.add_parser('packin', help='整包入库：zip/json 整包按体系拆分后入线路源库')
+    pk.add_argument('file')
+    pk.add_argument('--workdir', default='')
+    pk.add_argument('--dry', action='store_true')
     return ap
 
 
 DISPATCH = {'fetch': cmd_fetch, 'health': cmd_health, 'split': cmd_split,
-            'dedup': cmd_dedup, 'probe': cmd_probe, 'spider': cmd_spider, 'run': cmd_run}
+            'dedup': cmd_dedup, 'probe': cmd_probe, 'spider': cmd_spider, 'run': cmd_run,
+            'tpl': cmd_tpl, 'live2vod': cmd_live2vod, 'cms_restore': cmd_cms_restore,
+            'newapi': cmd_newapi, 'packin': cmd_packin}
 
 
 def dispatch(argv):

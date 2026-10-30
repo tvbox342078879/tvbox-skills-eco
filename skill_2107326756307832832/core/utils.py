@@ -9,7 +9,7 @@ import time
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
-from urllib.parse import urlparse, parse_qs, unquote, urlunparse, urlencode
+from urllib.parse import urlparse, parse_qs, urlunparse, urlencode
 
 
 # ---------------------------------------------------------------------------

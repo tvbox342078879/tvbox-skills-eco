@@ -18,7 +18,50 @@ py_runner/worker.py —— 单个 py spider 的沙箱真跑 worker（S116）。
 import importlib.util
 import json
 import sys
-import traceback
+
+# ── C7（T9）exec 白名单：AST 静态审查，exec 前拦高危能力 ─────────────
+# 目标：worker 只服务 py 源测活（真拉片单），源码不需要这些能力：
+#   禁模块：os/socket/subprocess/sys/shutil/ctypes/signal/resource/importlib
+#           （requests/json/re/time/urllib/xml/lxml 等正常源常用库全部放行）
+#   禁调用：__import__ / eval / exec / compile / open / input
+# 诚实边界：静态 AST 审计是纵深防御的一层，不是完整沙箱——getattr 链、
+#   内建属性逃逸等动态手法无法全防；隔离主要靠独立子进程 + run_all 超时。
+_BANNED_MODULES = {'os', 'socket', 'subprocess', 'sys', 'shutil', 'ctypes',
+                   'signal', 'resource', 'importlib', 'multiprocessing'}
+_BANNED_CALLS = {'__import__', 'eval', 'exec', 'compile', 'open', 'input'}
+
+
+def _audit_src(src):
+    """审 py 源码，命中白名单禁项返回拦截原因字符串，放行返回 None。"""
+    import ast
+    try:
+        tree = ast.parse(src)
+    except (SyntaxError, ValueError):
+        return None  # 语法问题交由后续 compile 自然暴露，不算安全拦截
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for al in node.names:
+                if al.name.split('.')[0] in _BANNED_MODULES:
+                    return f'import {al.name}'
+        elif isinstance(node, ast.ImportFrom):
+            if (node.module or '').split('.')[0] in _BANNED_MODULES:
+                return f'from {node.module} import ...'
+        elif isinstance(node, ast.Call):
+            f = node.func
+            name = (f.id if isinstance(f, ast.Name)
+                    else f.attr if isinstance(f, ast.Attribute) else None)
+            if name in _BANNED_CALLS:
+                return f'调用 {name}(...)'
+    return None
+
+
+def _set_rlimits():
+    """C7 资源上限：CPU 时间封顶（网络等待不算 CPU，不影响真拉片单）。"""
+    try:
+        import resource
+        resource.setrlimit(resource.RLIMIT_CPU, (60, 65))
+    except Exception:
+        pass  # 非 POSIX / 限额失败不阻断测活主流程
 
 
 def install_stubs():
@@ -96,7 +139,15 @@ def main():
         json.dump(result, open(out_path, 'w'))
         return
     try:
+        _set_rlimits()
         src = _read_src(py_file)
+        # C7（T9）：exec 前静态审计——命中禁项即拒绝执行，明确记因（不静默）
+        _ban = _audit_src(src)
+        if _ban:
+            result.update(verdict='失败',
+                          evidence=f'安全白名单拦截（T9）：{_ban}')
+            json.dump(result, open(out_path, 'w'))
+            return
         ns = {'__name__': 'spider_under_test', '__file__': py_file}
         exec(compile(src, py_file, 'exec'), ns)
 

@@ -128,7 +128,9 @@ def m_r92():
     等于一条永远通过的探针。这是把「探针」写成了「签名档」。现改为注入验证：
     合成一条超长行，判定器必须点名它；再跑真实总册，须已无超长行。
     """
-    mp = '/workspace/生态1015_TVBox生态全局规则.md'
+    # S201 同口径：/workspace 下的旧总册已归档，人读总册现由铁律坐标明细承担
+    # 人读总册现由 references/rules_铁律坐标明细.md 承担（权威源是 rules_registry.json）
+    mp = '/root/.codebuddy/skills/ecosys-conductor/references/rules_铁律坐标明细.md'
     if not os.path.exists(mp):
         print('  ⚠️ 总册不存在，无法判定（M-R60：不得折叠成通过）')
         return False
@@ -233,6 +235,27 @@ def m_r117():
     return hit and clean
 
 
+# ============ M-R205 定时任务严禁秒级（GATE）============
+def m_r205():
+    """scheduler-api.sh 的 validate_cron_seconds 须在 create/update 两条路径都调用，
+    且拒绝条件（秒位!=0 / 间隔<60）真实存在。结构探针：查真实载体在位，防「假门禁」。"""
+    import re as _re
+    sh = os.path.join(SKILL_ROOT, 'automation-task-manager', 'scripts', 'scheduler-api.sh')
+    if not os.path.exists(sh):
+        print('  ⚠️ scheduler-api.sh 不存在，无法判定（M-R60：不得折叠成通过）')
+        return False
+    src = open(sh, encoding='utf-8', errors='ignore').read()
+    has_fn = bool(_re.search(r'validate_cron_seconds\s*\(\)', src))
+    calls = len(_re.findall(r'validate_cron_seconds\b', src)) - (1 if has_fn else 0)
+    m = _re.search(r'validate_cron_seconds\s*\(\)\s*\{(.*?)\n\}', src, _re.S)
+    body = m.group(1) if m else ''
+    rejects = (('!=' in body) and ('0' in body)) or ('< 60' in body) or ('<60' in body)
+    print(f'  函数定义={has_fn} 调用处={calls} 含拒绝条件={rejects}')
+    hit = has_fn and calls >= 2 and rejects
+    clean = hit
+    return hit and clean
+
+
 PROBES = {
     'M-R79': m_r79,
     'M-R91': m_r91,
@@ -240,6 +263,7 @@ PROBES = {
     'M-R94': m_r94,
     'M-R95': m_r95,
     'M-R117': m_r117,
+    'M-R205': m_r205,
 }
 
 
@@ -252,14 +276,35 @@ def m_r118():
     """
     import json as _j
     reg = _j.load(open(os.path.join(COND, 'rules_registry.json'), encoding='utf-8'))
+
+    def _is_heavy(cmd):
+        """判这条探针命令是不是**把总闸门当单条探针**。
+
+        ★ S192 修：原判据 `base.split()[-1:] in (['verify'],['assess'])`
+          是拿**末词**当代理指标 —— 只抓得住 `conductor verify`，
+          抓不住 `python3 xxx/conductor.py verify`（真实写法，末词是子命令入口是路径），
+          却把 `session_map.py verify`（自己模块的子命令，几秒跑完，能定位到本规则）
+          误判成总闸门。方向恰好反了：真该抓的漏掉，不该抓的抓住。
+
+        正确判据：被执行的**程序本身是不是总闸门**。三种写法都要认：
+          `tvbox conductor verify` / `conductor verify`   → 裸入口，末词是子命令
+          `python3 .../conductor.py verify`              → 脚本路径
+        """
+        _base = cmd.split('|')[0].strip()
+        _t = _base.split()
+        if _t[:1] in (['python3'], ['python']):
+            _prog = _t[1] if len(_t) > 1 else ''
+            _sub = _t[2] if len(_t) > 2 else ''
+        else:
+            _prog = _t[-2] if len(_t) >= 2 else ''
+            _sub = _t[-1] if _t else ''
+        return os.path.basename(_prog) in ('conductor.py', 'conductor') \
+            and _sub in ('verify', 'assess')
+
     heavy_as_probe = []
     for r in reg['rules']:
         c = str(((r.get('probe') or {}).get('command')) or '')
-        if not c:
-            continue
-        # 总闸门当单条探针：整条命令就是 verify/assess（允许 tail/管道）
-        base = c.split('|')[0].strip()
-        if base.split()[-1:] in (['verify'], ['assess']) or base.endswith(' verify'):
+        if c and _is_heavy(c):
             heavy_as_probe.append(r['id'])
     # 执行器存在性（结构检查，**不递归调用**——S176 首版写成
     # `rules-probe --only M-R118` 让探针去跑自己，直接死循环超时）
@@ -270,9 +315,22 @@ def m_r118():
     p = subprocess.run([sys.executable, 'conductor.py', 'rules-probe', '--only', 'M-R119'],
                        cwd=COND, capture_output=True, text=True, timeout=120)
     ran = ('实跑' in (p.stdout or '')) and ('rc=0' in (p.stdout or ''))
+    # 注入自检（S192）：判据必须能双向区分，否则只是"换了个常数"。
+    #   应判重：conductor.py verify / assess（两种调用写法）
+    #   不应判重：别的模块自己的 verify 子命令（几秒跑完，不是总闸门）
+    samples = [
+        ('tvbox conductor verify', True),
+        ('python3 /root/.codebuddy/skills/ecosys-conductor/scripts/conductor.py verify', True),
+        ('python3 /root/.codebuddy/skills/ecosys-conductor/scripts/conductor.py assess', True),
+        ('python3 /root/.codebuddy/skills/ecosys-conductor/scripts/session_map.py verify', False),
+        ('python3 /root/.codebuddy/skills/ecosys-conductor/scripts/rule_probe.py M-R118', False),
+    ]
+
+    inj = sum(1 for cmd, want in samples if _is_heavy(cmd) == want)
     print(f'  总闸门当探针={len(heavy_as_probe)} 条 {heavy_as_probe[:5]}')
+    print(f'  判据注入自检={inj}/{len(samples)}')
     print(f'  执行器 rules-probe 在册={has_runner} ；能真跑一条拿 rc={ran}')
-    return has_runner and ran and not heavy_as_probe
+    return has_runner and ran and not heavy_as_probe and inj == len(samples)
 
 
 # ============ M-R119 探针命令须自定位 ============
@@ -482,11 +540,12 @@ def m_r128():
     import re
 
     SEVEN = [('一', '原因'), ('二', '过程'), ('三', '过程坑'), ('四', '解决方案'),
-             ('五', '后续带出的问题'), ('六', '后续问题解决过程'), ('七', '完工经验总结')]
+             ('五', '后续带出的问题'), ('六', '后续问题解决过程'), ('七', '完工经验总结'),
+             ('八', '过程暴露问题登记')]
 
     def audit(txt):
         """返回 (七段是否齐且顺序对, 实际解析到的段名列表, 缺失项)。"""
-        got = re.findall(r'^## ([一二三四五六七])、\s*(.+?)\s*$', txt, re.M)
+        got = re.findall(r'^## ([一二三四五六七八])、\s*(.+?)\s*$', txt, re.M)
         # 去重：模板里"代码块骨架"与"正文示例"同名段会各出现一次，按首次出现判顺序
         seen, order = set(), []
         for num, name in got:
@@ -536,7 +595,211 @@ def m_r128():
     return ok1 and ok2 and ok3 and ok4
 
 
+def m_r144():
+    """M-R144 新规则闭环三关：验①规则册含本规则及三关判据 ②threads 复盘闸黄牌判据在
+    ③本探针已注册 ④注入判红（坏报告必须被黄牌判据抓住）⑤开场摘要含 M-R144。"""
+    import re
+    reg_p = os.path.join(os.path.dirname(COND), 'scripts', 'rules_registry.json')
+    reg = open(reg_p, encoding='utf-8').read()
+    ok1 = 'M-R144' in reg and 'habit_brief' in reg and ('体检' in reg or '探针' in reg)
+
+    threads_p = os.path.join(os.path.dirname(COND), 'scripts', 'threads.py')
+    t = open(threads_p, encoding='utf-8').read()
+    ok2 = '登记 M-R' in t and '落点' in t   # 复盘闸黄牌判据字符串在
+
+    ok3 = PROBES.get('M-R144') is m_r144    # 本探针已注册
+
+    # ④ 注入判红：造一份「宣称登记新规则但无落点」的坏报告，判据必须打黄牌
+    bad_report = '## 一、原因\n## 二、过程\n## 三、过程坑\n## 四、解决方案\n' \
+                 '## 五、后续带出的问题\n## 六、后续问题解决过程\n## 七、完工经验总结\n' \
+                 '本轮登记 M-R145 xxx规则入册完成。'
+    good_report = bad_report + '落点：habit_brief 注入 + cmd_check 体检项 + rule_probe 探针。'
+    try:
+        sys.path.insert(0, os.path.dirname(threads_p))
+        import importlib
+        import threads as _th
+        importlib.reload(_th)
+        ok4 = bool(_th._m144_flag(bad_report)) and not _th._m144_flag(good_report)
+    except Exception as _e:
+        ok4 = f'无法判定（{_e}）——M-R60 如实报'
+
+    B = os.path.join(os.path.dirname(COND), 'references', 'user_habit_brief.md')
+    ok5 = os.path.exists(B) and 'M-R144' in open(B, encoding='utf-8').read()
+
+    print(f'  规则册含三关判据={ok1}')
+    print(f'  threads 复盘闸黄牌判据在={ok2}')
+    print(f'  本探针已注册={ok3}')
+    print(f'  注入坏报告被判黄牌={ok4}' + ('（判据写法变了，无法判定——M-R63 如实报）' if ok4 is None else ''))
+    print(f'  开场摘要含 M-R144={ok5}')
+    return bool(ok1 and ok2 and ok3 and ok4 and ok5)
+
+
+def m_r143():
+    """M-R143 产物区交付铁律：验①deliver_guard.py 存在 ②selftest 通过 ③当前产物区确有交付物（gate 真能拦/过）。"""
+    import subprocess
+    dg = '/root/.codebuddy/hooks/deliver_guard.py'
+    ok1 = os.path.exists(dg)
+    ok2 = ok3 = False
+    if ok1:
+        r = subprocess.run([sys.executable, dg, 'selftest'], capture_output=True, text=True, timeout=60)
+        ok2 = r.returncode == 0
+        r2 = subprocess.run([sys.executable, dg, 'check'], capture_output=True, text=True, timeout=60)
+        ok3 = r2.returncode == 0
+    print(f'  deliver_guard.py 存在={ok1}')
+    print(f'  selftest 通过={ok2}')
+    print(f'  产物区当前有交付物(可被拦/过)={ok3}')
+    return bool(ok1 and ok2)
+
+
+def m_r148():
+    """M-R148 完成态须凭可核实落点：验①闸门里"已借鉴"不再单独算完成
+    ②recur 类须核 resolved_note 落点 ③自测脚本存在且通过。"""
+    import subprocess
+    ev = os.path.join(SKILL_ROOT, 'skill-evolution', 'scripts', 'evolve.py')
+    if not os.path.exists(ev):
+        print('  ❌ evolve.py 不存在'); return False
+    src = open(ev, encoding='utf-8').read()
+    ok1 = "if _ptr_ok(ln)[0]:" in src and "T24" in src
+    ok2 = "_gate_moves" in src and "recur 提案无 resolved_note" in src
+    st = os.path.join(os.path.dirname(ev), 'selftest_fake_done.py')
+    ok3 = os.path.exists(st)
+    ok4 = False
+    if ok3:
+        r = subprocess.run([sys.executable, st], capture_output=True, text=True, timeout=60)
+        ok4 = r.returncode == 0
+    print(f'  "已借鉴"不再单算完成={ok1}')
+    print(f'  recur 须核 resolved_note={ok2}')
+    print(f'  自测脚本在={ok3} ｜ 自测通过={ok4}')
+    return bool(ok1 and ok2 and ok3 and ok4)
+
+
+def m_r106():
+    """M-R106 整域拉黑须按判据：验①blk.py 里 PLATFORM_HINT/PROXY_HINT 两个判据常量真实存在
+    ②hostcheck 子命令可跑 ③**双向**——公共平台域必报矛盾（hit）、私人站必静默（clean）。
+
+    ★ T28 现场：我先在注册表里登记了 probe.command，却没写这个实现，
+      `rule_probe.py M-R106` 直接回「无探针实现」——登记了命令不等于有探针。
+      这正是 M-R144「入册必须齐三关」要防的形态，本轮自证一次。
+    """
+    import subprocess
+    blk = os.path.join(SKILL_ROOT, 'tvbox-source-blacklist', 'scripts', 'blk.py')
+    if not os.path.exists(blk):
+        print('  ❌ blk.py 不存在'); return False
+    src = open(blk, encoding='utf-8').read()
+    ok1 = 'PLATFORM_HINT' in src and 'PROXY_HINT' in src and 'def is_platform_host' in src
+    ok2 = 'hostcheck' in src and 'def cmd_hostcheck' in src
+    # 双向：正例必须捕获
+    hit = clean = False
+    if ok2:
+        r = subprocess.run([sys.executable, blk, 'hostcheck', '--hosts',
+                            'raw.githubusercontent.com'], capture_output=True, text=True, timeout=60)
+        hit = r.returncode == 1 and '不得整域拉黑' in (r.stdout or '')
+        r2 = subprocess.run([sys.executable, blk, 'hostcheck', '--hosts',
+                             'a-private-media-site.test'], capture_output=True, text=True, timeout=60)
+        clean = r2.returncode == 0 and '无矛盾' in (r2.stdout or '')
+    print(f'  判据常量在位={ok1} ｜ hostcheck 可跑={ok2}')
+    print(f'  正例捕获(公共平台域报矛盾)={hit} ｜ 反例静默(私人站通过)={clean}')
+    return bool(ok1 and ok2 and hit and clean)
+
+
+PROBES['M-R106'] = m_r106
+
+PROBES['M-R148'] = m_r148
+
 PROBES['M-R128'] = m_r128
+PROBES['M-R144'] = m_r144
+PROBES['M-R143'] = m_r143
+
+
+def m_r108():
+    """M-R108 重复≥3次须固化——验①m108_check.py 在位且被 habit_brief 接入
+    ②**双向**：真实档案跑一次得 OK（当前无缺口），注入「5次+pending」必报红。
+
+    ★ T29 / P054：此前 probe.type=manual、carrier 写「无命令可按，靠 Stop/recap 核对」，
+      等于这条规则只有文档没有判据。M-R108 的核心门槛是「≥3 次」，
+      这个数字是可读、可比的，本来就能做成机器判据——之前没做不是做不到。
+    """
+    import json as _json
+    import subprocess
+    import tempfile
+    script = os.path.join(SKILL_ROOT, 'ecosys-conductor', 'scripts', 'm108_check.py')
+    if not os.path.exists(script):
+        print('  ❌ m108_check.py 不存在'); return False
+    hb = os.path.join(SKILL_ROOT, 'ecosys-conductor', 'scripts', 'habit_brief.py')
+    hsrc = open(hb, encoding='utf-8').read() if os.path.exists(hb) else ''
+    wired = 'm108_check.py' in hsrc
+    # 反向：真实档案应静默
+    r1 = subprocess.run([sys.executable, script], capture_output=True, text=True, timeout=240)
+    quiet = r1.returncode == 0
+    # 正向：注入 5 次 + pending，必报红
+    stand = os.path.join(SKILL_ROOT, 'ecosys-conductor', 'scripts',
+                         'user_standing_instructions.json')
+    caught = False
+    try:
+        d = _json.load(open(stand, encoding='utf-8'))
+        d['instructions'][0]['requested_count'] = 5
+        d['instructions'][0]['status'] = 'pending'
+        tmp = os.path.join(tempfile.mkdtemp(), 'user_standing_instructions.json')
+        _json.dump(d, open(tmp, 'w', encoding='utf-8'), ensure_ascii=False)
+        code = ("import importlib.util,sys;"
+                f"s=importlib.util.spec_from_file_location('m','{script}');"
+                "m=importlib.util.module_from_spec(s);s.loader.exec_module(m);"
+                f"st,red,tips,n=m.check_standing('{tmp}');"
+                "sys.exit(0 if st=='缺口' else 1)")
+        r2 = subprocess.run([sys.executable, '-c', code], capture_output=True, text=True, timeout=120)
+        caught = r2.returncode == 0
+    except Exception as e:
+        print(f'  ❌ 注入自测异常：{e}')
+    print(f'  脚本在位+已接体检={wired} ｜ 真实档案静默={quiet} ｜ 注入5次+pending必报红={caught}')
+    return bool(wired and quiet and caught)
+
+
+PROBES['M-R108'] = m_r108
+
+
+def m_r146():
+    """M-R146 回合收敛——验①turn_length_probe.py 在位且被 habit_brief 接入
+    ②**双向**：真实转录跑一次红档为 0（立规后无违规）；注入「15 条调用零回报」必报红。
+
+    ★ T31：原 probe.command 指向 p044_concurrency_probe.py 并称「回合链长度可见」，
+      但那个脚本只统计串行段、不统计回合——登记了探针 ≠ 有实现（与 M-R106 同族）。
+      本轮补真实现。口径用「立规日之后」，因为立规前 13 个红档属历史，
+      算进当轮会让这项永远红着（P044 的教训：永远红的指标会训练人无视它）。
+    """
+    import json as _json
+    import subprocess
+    import tempfile
+    script = os.path.join(SKILL_ROOT, 'ecosys-conductor', 'scripts', 'turn_length_probe.py')
+    if not os.path.exists(script):
+        print('  ❌ turn_length_probe.py 不存在'); return False
+    hb = os.path.join(SKILL_ROOT, 'ecosys-conductor', 'scripts', 'habit_brief.py')
+    hsrc = open(hb, encoding='utf-8').read() if os.path.exists(hb) else ''
+    wired = 'turn_length_probe.py' in hsrc
+    # 反向：真实转录（立规日后）应无红档
+    r1 = subprocess.run([sys.executable, script], capture_output=True, text=True, timeout=300)
+    quiet = r1.returncode == 0
+    # 正向：造一个 15 条调用零回报的转录，必报红
+    caught = False
+    try:
+        p = os.path.join(tempfile.mkdtemp(), 'inject.jsonl')
+        with open(p, 'w', encoding='utf-8') as f:
+            f.write(_json.dumps({'type': 'message', 'role': 'user',
+                                 'timestamp': 1791978274617}, ensure_ascii=False) + '\n')
+            for k in range(15):
+                f.write(_json.dumps({'type': 'function_call', 'name': 'Bash',
+                                     'arguments': '{}',
+                                     'providerData': {'messageId': f'm{k}'}},
+                                    ensure_ascii=False) + '\n')
+        r2 = subprocess.run([sys.executable, script, p, '--since', '0'],
+                            capture_output=True, text=True, timeout=120)
+        caught = r2.returncode == 1 and '长回合且零回报' in (r2.stdout or '')
+    except Exception as e:
+        print(f'  ❌ 注入自测异常：{e}')
+    print(f'  脚本在位+已接体检={wired} ｜ 真实转录静默={quiet} ｜ 注入15条零回报必报红={caught}')
+    return bool(wired and quiet and caught)
+
+
+PROBES['M-R146'] = m_r146
 
 
 if __name__ == '__main__':

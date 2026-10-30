@@ -47,6 +47,7 @@ COUNTERPARTY = '*'
 INITIAL_ACCOUNTS = [
     ('线路源库',     '资产·数据', '记录数', 'pNwZ9uBOTz6FzRuvu8nryI'),
     ('成品源库',     '资产·数据', '记录数', '8JBrhSwsJ3pnPYtoGLo9XV'),
+    ('播放页壳库',   '资产·数据', '记录数', 'hPF6AUmWmOQa26tOg8Wjb5'),   # S196 补登：壳库（抠链原料）
     ('失信库',       '资产·数据', '记录数', 'hGwE41OpJDOR8CW0sLUwRx'),
     ('生态登记库',   '资产·数据', '记录数', 'T4kODtANe7rSrtZTu4sIND'),
     ('经验池',       '资产·数据', '记录数', 'XTuuj8mKtqnZSolDdeDxkq'),
@@ -84,14 +85,18 @@ INITIAL_ACCOUNTS = [
     ('指标·调用成功',     '权益·指标', '事项数', None),
     ('指标·调用失败',     '权益·指标', '事项数', None),
     ('指标·调用无法判定', '权益·指标', '事项数', None),
+    # ★ S184：第四态。`call_bus` 加 partial 判定后 `_bump` 当场 KeyError——
+    #   这说明"加一个判定"在这套账里**至少要在三处落地**：判据 / 科目表 / 指标映射。
+    ('指标·调用部分成功', '权益·指标', '事项数', None),
     # ★ S165 补登：以下 4 户一直在总账里有余额，却**从未进过科目表**。
     #   实测 `ledger balance` 有 6 户"有余额但不显示"（见该命令的 ghost_accts 分支）——
     #   记账了却查不到，比没记账更危险：账上看着是平的，实际多出一笔没人认领的户头。
     ('版本·eco-ledger', '资产·版本', '版本号', None),
     ('演练·T1',         '暂记',      '记录数', None),   # selftest 留下的练习户，勿删（删了试算不平）
     ('演练·T2',         '暂记',      '记录数', None),
+    ('优质实测库', '资产·数据', '记录数', 'nyxfTYFAScxpf8ZTdk8Otx'),   # S196 enroll 补登
+    ('规则·维护', '损益·产能', '事项数', None),   # S196 enroll 补登
 ]
-
 # 资产·版本户：10 个自建技能（期初值由建账脚本从 SKILL.md 实读）
 SELF_BUILT = ['ecosys-conductor','legacy-watchdog','probe-hub','skill-evolution','tvbox-inspect',
               'tvbox-interface','tvbox-janitor','tvbox-source-blacklist','tvbox-source-hub','unfinished-audit', 'eco-ledger']
@@ -313,7 +318,8 @@ def post(entry):
 
 # ---------- 试算平衡（F06/F08） ----------
 def trial_balance():
-    """按币种分组试算：Σ|借-贷| 应=0（冲销按负额计入）。返回 (dict by 币种, ok_all)。"""
+    """按币种分组试算：Σ|借-贷| 应=0（冲销按负额计入）。返回 (dict by 币种, ok_all)。
+    本函数是 M-L04（复式记账守恒律）的执行体锚点：不平=账本损坏=最高优先级告警。"""
     if not LEDGER_READY:
         return {}, False
     rows, good = rows_of(DB_TOTAL)

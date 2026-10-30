@@ -57,7 +57,8 @@
   "automation_update 存在时不得回落到脚本，避免重复创建任务"
  ],
  "backlog": [
-  "[扩展点] 长期方向：MCP automation_update 完全替代脚本后，本技能的脚本通道可降级为兜底"
+  "[已清零 2026-10-20]（无 sid·标题匹配100%）并入 bb5eabc887e2（S184 A0 判重：同一件事『MCP automation_update 就绪前脚本通 ‖ 原条目：[扩展点] 长期方向：MCP automation_update 完全替代脚本后，本技能的脚本通道可降级为兜底",
+  "[清账司派单 2026-11-05] [M19] automation-task-manager 平衡性 80.6｜最弱=进化停滞(22.402325338511556) ｜ sid=1d5b8322f7ff ｜ 下一步 tvbox conductor issues ／ 先看 automation-task-manager 名下这条为何是红的，再决定修监测项还是修技能"
  ],
  "items": [],
  "self_check": [

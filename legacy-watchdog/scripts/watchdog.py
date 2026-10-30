@@ -19,7 +19,7 @@ legacy-watchdog（遗迹哨）—— 遗留问题**处置**层（S105 拆分后�
   python3 watchdog.py trend-upload                     # 趋势留档上云
   （监测类命令 scan/status/health/coverage/... 已迁至 tvbox inspect，旧命令仍可用——转发）
 """
-import os, sys, json, time, argparse, datetime, subprocess
+import os, sys, json, argparse, datetime
 from collections import Counter
 
 # ── 监测引擎（监察司）— 单一事实源，禁在此重复实现检查器 ──

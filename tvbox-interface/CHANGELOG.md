@@ -1,3 +1,26 @@
+## 2026-10-25 v1.3.7
+- 由 skill-evolution upgrade 自动提升（1.3.6 → 1.3.7）
+- 依据 M-R111 提案：跨技能学习：借鉴 [T-J] 高危schema变更先在测试库演练（跨技能学习：字段级 schema 变更（枚举增删/改类型/重建字段）前 场景可借鉴）
+- 依据 M-R111 提案：跨技能学习：借鉴 [T-K] 批量写入大payload必分块（25条为界）（跨技能学习：批量写库 >25 条时 场景可借鉴）
+- 依据 M-R111 提案：跨技能学习：借鉴 [T-L] 「等外部恢复」欠账必配判愈探针（跨技能学习：欠账属于「等待外部环境恢复」类时 场景可借鉴）
+
+---
+
+## v1.3.6 — 版本前进（skill-evolution upgrade 自动提升）
+- 由 skill-evolution upgrade 推进（条目已置顶部，符合倒序惯例）
+
+## v1.3.5 — cms_restore：CMS 快照还原成采集站点（T6/S193）
+
+新增子命令 `cms_restore <快照> [--url] [--name] [--out]`：把苹果CMS 采集接口的响应快照
+（code:1 + list）还原成可入库的采集站点 json。
+
+- 结构判定：code==1 + list 数组 + vod_id/vod_name 特征，不满足一律 rc=2 判红（宁红不带病产出）
+- 来源反推优先级：--url > 快照内「来源URL」字段 > 报错引导补参（快照本身不含自家域名，硬限制）
+- 生成站点必须过 classify_site 判「采集」，口径断裂拒绝产出（M-R38 同口径）
+- 实测：蓝资源/暴风双站还原 + api 终验 code=1 详情 20 条，还原即可用；自测探针 4/4
+
+
+
 ## v1.3.2 — 全量测活改走 run_bounded（S163）
 
 `cmd_alive` 里 `_TPE(max_workers=_w)` 改走 `run_bounded(tier=TIER_WEB, workers=_w)`。
@@ -232,3 +255,12 @@ health → A + 静态推断提示正常。配套文档：标准1015 体系文档
 - 实现位置 [T-E]：活体探针落地为两处：`pipeline` 受控单测 + `_eco_linked_probe` 门面探针（注入已知异常看是否捕获）
 - 证据文件 [T-E]：`scripts/pipeline.py`
 - 说明：本条代码在，判据此前只扫 `.py`+特定词形，换语言（`.sh`）、换词（md5/常量/自检）、换位置（对岸技能）就认不出，被误判成"只说不做"。此处如实登记真实位置，供 `_move_landed` 沿指针核实。
+
+## 2026-10-21 v1.3.3
+- 由 skill-evolution upgrade 自动提升（1.3.2 → 1.3.3）
+
+## 2026-10-21 v1.3.4
+- 由 skill-evolution upgrade 自动提升（1.3.3 → 1.3.4）
+
+## 2026-10-21 v1.3.5
+- 由 skill-evolution upgrade 自动提升（1.3.4 → 1.3.5）

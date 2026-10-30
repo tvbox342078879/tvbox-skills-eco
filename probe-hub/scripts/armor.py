@@ -21,9 +21,7 @@ import re
 import json
 import base64
 import hashlib
-import gzip
-import zlib
-from urllib.parse import quote, unquote, urljoin, urlparse
+from urllib.parse import quote, unquote, urljoin
 
 # ═══════════════════════════════════════════════════════════════════
 # 卷一：纯 Python AES-CBC 解密（无第三方依赖）

@@ -1,5 +1,4 @@
-import json,re,csv,io
-from urllib.parse import urlparse
+import json, csv, io
 from collections import Counter
 
 rows=json.load(open('/tmp/raw_rows.json',encoding='utf-8'))

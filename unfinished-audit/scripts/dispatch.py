@@ -78,6 +78,29 @@ def _assign(item, today=None):
     """
     today = today or _today()
     kind = item.get('kind') or 'unknown'
+    # ★★ S184（A0 实测踩到）：采集侧已经认定了「谁该修」——它比关键词更懂。
+    #   背景：`collect_inspect_findings` 从监察司红字派单，红字原文形如
+    #   `[M19] ecosys-conductor 平衡性 83.5｜最弱=质量短板`，负责人是 **ecosys-conductor**
+    #   （遗留指向的技能），监察司只是报信的。
+    #   但实测派出来 owner=**legacy-watchdog**：因为 kind 给了 'code'，
+    #   ROUTE_TABLE['code'] → legacy-watchdog。于是这条红字落到了"代码遗留巡检"名下，
+    #   而该技能**根本不改别的技能**（lanes：管"修具体缺陷"，不是"改技能质量"）。
+    #   更糟的是它看起来完全正常——owner/next/due 三字段齐全，无主自检全过，
+    #   只有人工比对 owner 才会发现派错了人。
+    #   口径（与 S182 的 `owner_fixed` 同源，但方向相反）：
+    #     · `owner_fixed` = 归属技能自己写的待办 → 关键词不许改判（S182）
+    #     · `owner_hint` = **发现方采到的"负责人指向"**（不是归属方自述）→ 优先采纳，
+    #       但只在**没有显式声明 kind** 时生效——人显式写了 kind 的，仍按人说的走
+    #       （M-R127：显式声明 > 任何推断，包括我新加的这条）。
+    _hint = (item.get('owner_hint') or '').strip()
+    if _hint and not item.get('kind_declared') and not item.get('owner_fixed'):
+        if os.path.isdir(os.path.join(SKILL_ROOT, _hint)):
+            item['owner'] = _hint
+            item['next'] = (item.get('next_fixed')
+                            or f'tvbox conductor issues ／ 先看 {_hint} 名下这条为何是红的，再决定修监测项还是修技能')
+            item['due'] = (today + datetime.timedelta(days=DUE_DAYS.get(kind, 14))).isoformat()
+            item['dispatched_by'] = f'owner_hint（发现方指认负责人={_hint}，关键词不许改判）'
+            return item
     owner, nxt = ROUTE_TABLE.get(kind, ROUTE_TABLE['unknown'])
     # ★★ S182：`owner_fixed` 是**采集侧认定"归属就是它"**的条目（目前是 backlog）。
     #   这类条目一个技能自己写在 flow.json 里的待办，"该谁做"没有歧义——
@@ -183,6 +206,40 @@ def reconcile_echo(db):
     return hint
 
 
+def _dedup_same_round(items):
+    """同轮采集结果里，同一 signature 只留一条；其余的证据并入 evidence_list。
+
+    ★ S193（B1）：**真 bug 修复**，不是防御性代码。
+
+      实测事故链（三处叠加 = 一条完整假绿）：
+        ① 云端 56 个 record 的「jar地址」字段都写着同一句「待补…」，
+           剥噪后 title 相同 → signature 相同 → 采集层产出 56 条同 signature；
+        ② sync() 的 `for it in items` 只 `seen.add(sig)`、**从不查重**，
+           于是同一个 sig 命中 56 次 `added.append` → 账本真落 56 条并列重复项；
+        ③ verify_ledger() 只查 `closed` 区的重复、**完全不查 items** → 报「✅ 无重复」。
+      结果：`close status` 说 11 条、`verify` 说 66 条。三个数对不上，而自检全绿。
+
+      为什么去重放在这里而不是 collect 层：采集层职责是"如实报我看见了几条"，
+      压成一条是**记账口径**，属总账层。放采集层会让"每个源各报几条"的自检失去依据。
+      为什么不并进 `old` 字典：`old` 是"上期账本"，同轮重复是"本期采集"的问题，
+      两者来源不同，混在一起将来排查时会分不清是哪一期出的问题。
+    """
+    out, by_sig = [], {}
+    for it in items:
+        sig = it.get('signature')
+        if sig in by_sig:
+            first = by_sig[sig]
+            ev = it.get('evidence')
+            if ev:
+                lst = first.setdefault('evidence_list', [])
+                if ev not in lst:
+                    lst.append(ev)
+            continue
+        by_sig[sig] = it
+        out.append(it)
+    return out
+
+
 def sync(items, today=None):
     """把采集结果并入总账。返回 dict：
     {added:[], kept:[], vanished:[], closed_pending:[]}
@@ -191,6 +248,17 @@ def sync(items, today=None):
       vanished 上期在册、本期采集不到，**且未被显式收口** → 告警（M-R82）
     """
     today = (today or _today()).isoformat()
+    # ★ S193（C2）：**入账前先做同轮去重**——这是真 bug 修复，不是防御性代码。
+    #
+    #   实测事故链（三处叠加 = 一条完整假绿）：
+    #     ① 云端 56 个 record 命中同一句话 → 采集层产出 56 条同 signature；
+    #     ② sync() 的 `for it in items` 只 `seen.add(sig)`、**从不查重**，
+    #        于是同一个 sig 命中 56 次 `added.append` → 账本真落 56 条并列重复项；
+    #     ③ verify_ledger() 只查 `closed` 区的重复，**完全不查 items** → 报「✅ 无重复」。
+    #   结果：`close status` 说 12 条、`report` 打印 56 行、`verify` 说全绿。三个数对不上。
+    #
+    #   详细推演与为什么不放在 collect 层，见 _dedup_same_round 的注释。
+    items = _dedup_same_round(items)
     db = _load_ledger()
     old = {it['signature']: it for it in db.get('items', [])}
     # ★ S163 修（真实缺陷，实测复现）：**已结区必须参与去重**。
@@ -203,6 +271,20 @@ def sync(items, today=None):
     #   已结区**去重**，没补**采集侧的去重依据**——堵了半边。
     #   口径：已结即已结。除非显式重开（另设 reopen），采集不得把 done/wontfix 拉回 open。
     closed_sigs = {c.get('signature') for c in (db.get('closed') or []) if c.get('signature')}
+    # ★★★ S184（身份不再含期次之后，必须补的配套）：
+    #   `inspect_findings` 的身份已改为「monitor + 剥观测值的项目文本」，**不含期次**。
+    #   理由是期次每期都变，含进去等于"每期都是新账"（账本无限增殖，实测 26→29→31→32）。
+    #   但这样一来，"收口过就永不再报"的老问题会重新出现——`closed_sigs` 会把同一件事
+    #   以后每一期都挡掉，红字还红着、账上却永远干净。
+    #
+    #   解法：把"是不是同一件事"（身份）与"这一期还红不红"（期次）分开：
+    #     · 身份相同 + 本期**又观测到** ⇒ 它是"复发"，要把已结那条**重新打开**；
+    #     · 身份相同 + 本期没观测到   ⇒ 保持已结，不复活（这是正确语义：真的没再红）。
+    #   判"本期又观测到"用的是 `from_period`（采集侧写进去的期次）。
+    #   为什么不用"本期日期"：扫描一天可能跑多次，用日期会把同一天的多期混成一期。
+    closed_by_sig = {c.get('signature'): c for c in (db.get('closed') or []) if c.get('signature')}
+    reopened = []
+    reopened_sigs = set()
     seen = set()
     added, kept = [], []
     for it in items:
@@ -210,6 +292,30 @@ def sync(items, today=None):
         sig = it['signature']
         seen.add(sig)
         if sig in closed_sigs:
+            # 已结项回魂判定：只有"带期次的源"（目前是 inspect_findings）才有这一说
+            oldc = closed_by_sig.get(sig) or {}
+            _p_new = it.get('from_period')
+            _p_old = oldc.get('from_period')
+            if _p_new and _p_old and _p_new != _p_old:
+                # 上一期结过、这一期**又红了** → 复发，重新开账
+                it.update({'status': 'open', 'first_seen': today, 'last_seen': today})
+                it['reopened_from'] = oldc.get('closed_at') or ''
+                it['note'] = (f"复发：{_p_old} 已收口，{_p_new} 又观测到同一项红字"
+                              + (f"｜原收口证据：{str(oldc.get('close_evidence'))[:60]}"
+                                 if oldc.get('close_evidence') else ''))
+                added.append(it)
+                reopened.append(it['sid'])
+                # ★★ S184（实测：每轮都报"新增 1 + 复发重开 1"，账面不动但日志永远响）：
+                #   **重开之后必须把已结区那条撤掉**。
+                #   否则下一轮它又一次命中 `closed_sigs`，又一次被"复发"拉出来——
+                #   同一件事每轮都演一遍"结过又开"，账面条数不动（所以看着像幂等），
+                #   但 `added` 恒为 1、`reopened` 恒为 1，**日志永远在报同一件事**。
+                #   这就是"看起来稳定、实际在空转"：数字对得上，信号是假的。
+                #   一条账同一时刻只能在"未结"或"已结"其中一边——这是账的基本约束。
+                closed_sigs.discard(sig)
+                closed_by_sig.pop(sig, None)
+                reopened_sigs.add(sig)
+                continue
             # 已结项回魂：源还在，但它已经收口了 → 跳过，不重开
             continue
         if sig in old:
@@ -219,6 +325,10 @@ def sync(items, today=None):
             o['owner'] = it['owner']       # 分诊规则改了也要跟
             o['next'] = it['next']
             o['title'] = it['title']
+            # ★ 期次与观测值随本期刷新——它们是"这一期的读数"，不是身份
+            for _k in ('from_period', 'from_monitor', 'evidence'):
+                if it.get(_k):
+                    o[_k] = it[_k]
             kept.append(o)
         else:
             it.update({'status': 'open', 'first_seen': today, 'last_seen': today})
@@ -233,6 +343,13 @@ def sync(items, today=None):
     carry = [o for o in old.values() if o['signature'] not in keep_ids and o.get('status') == 'open']
     db['items'] = sorted(kept + added + carry,
                          key=lambda x: (x.get('due', ''), x.get('owner', '')))
+    # ★ S184：复发重开的那些，已结区那条要真删掉（上面已从 closed_sigs 里摘了，
+    #   这里是落盘那一步——两处都要做，因为 `closed` 是写进 json 的实体）。
+    #   删的时候留一条 `_reopened_to` 指针，方便回溯"上次结的是什么证据、
+    #   为什么又开了"——不留痕的话，复盘时会以为这条从来没结过。
+    if reopened:
+        db['closed'] = [c for c in (db.get('closed') or [])
+                        if c.get('signature') not in set(reopened_sigs)]
     _save_ledger(db)
 
     # 派单**真送达**（S136）：只写在自己账本里叫「记下来了」，不叫「派出去了」。
@@ -249,7 +366,8 @@ def sync(items, today=None):
         except Exception as e:
             fail.append(f"{it.get('sid')}({type(e).__name__})")
     return {'added': added, 'kept': kept, 'vanished': vanished,
-            'dispatched': dispatched, 'dispatch_fail': fail}
+            'dispatched': dispatched, 'dispatch_fail': fail,
+            'reopened': reopened}
 
 def close_item(sid_or_sig, evidence, status='done', note=''):
     """显式收口：状态置 done/wontfix/defer，**必须带证据**。
@@ -565,6 +683,27 @@ def verify_ledger():
     dup = {k: v for k, v in _seen.items() if v > 1}
     for k, v in dup.items():
         problems.append(f'已结区重复 {k} ×{v}（同一欠账被收口多次，证据可能已不是最后一次）')
+
+    # ★ S193（B2）：**未结区同样必须查重**——原实现 `for c in db.get('closed', [])`
+    #   只遍历已结区，items 里的重复**一条都查不出来**。
+    #   这是假绿的直接成因：账本里 56 条同 signature 的 jar 欠账并排摆着，
+    #   `verify` 照样打印「✅ 全绿：无无主项、无逾期、无重复」。
+    #   "没报重复"和"真的没重复"是两回事——判据覆盖不到，等于这条规则没装。
+    #
+    #   为什么与已结区分开统计而不合并：两处的**修复动作不同**——
+    #   已结区重复要去留最新一条证据；未结区重复要合并成一条并保留证据清单。
+    #   混成一条告警，看的人不知道该用哪种方式修。
+    _seen_open = {}
+    for it in db.get('items', []):
+        if it.get('status') not in ('open', 'doing', 'defer'):
+            continue
+        sig = it.get('signature') or it.get('sid')
+        _seen_open[sig] = _seen_open.get(sig, 0) + 1
+    dup_open = {k: v for k, v in _seen_open.items() if v > 1}
+    for k, v in dup_open.items():
+        problems.append(
+            f'未结区重复 {k} ×{v}（同一欠账落了多条；账目数比实际多 {v - 1} 条，'
+            f'跑一次 close 由同轮去重合并）')
 
     # 会话承诺（S136）：**超期未收口 = 硬问题判红**，不只是告警。
     # 为什么比普通欠账更严：承诺只活在上下文里，一旦没落账就彻底消失，

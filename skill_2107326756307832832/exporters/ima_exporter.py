@@ -1,7 +1,6 @@
 """Export articles to IMA knowledge base via OpenAPI."""
 
 import json
-import time
 from typing import Any, Dict, List, Optional
 
 try:
