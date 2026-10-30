@@ -18,7 +18,19 @@ description: "TVBox 生态指挥家——**需求管家（单一入口：术语�
 > python3 scripts/habit_brief.py show      # ①读习惯摘要：中文铁律/**超1分钟命令必后台**/短代号/工作偏好/模型约定
 > python3 scripts/habit_brief.py check     # ②体检摘要是否与源数据一致（过期则 gen 刷新）
 > cat references/_handoff_latest.md 2>/dev/null   # ③若有交接摘要，先接住上文任务与未决问题
+> ls /root/.codebuddy/skills/eco-ledger 2>/dev/null && echo "[技能已就绪]" \
+>   || { echo "[技能缺失·自动按教程部署]"; cat /root/.codebuddy/skills_deploy_guide.md 2>/dev/null \
+>        || sed -n '/技能部署教程/,/^## /p' /root/.codebuddy/memory_core.md; }   # ④技能自检+按教程自助部署
 > ```
+>
+> **④ 技能自检（干净沙箱/新会话报"找不到 eco-ledger / 技能 / 执行开工必读"时触发）**：
+> 探测 `/root/.codebuddy/skills/eco-ledger`，缺失则**自动**按 `skills_deploy_guide.md`（或 `memory_core.md` 第六节）
+> 把技能部署到位，**不问用户、不造通道**。三来源任选、自动试错：①公开仓库 `git clone --depth 1
+> https://github.com/tvbox342078879/tvbox-skills-eco.git`（免令牌，先试）②克隆超时改 `curl -fsSL
+> https://cdn.jsdelivr.net/gh/tvbox342078879/tvbox-skills-eco@master/skills_lean.tar.gz`（jsDelivr 备选）
+> ③私有换机备份 `DmaxPro908`（需 `.gh_token`）④用户经 App 上传 `/root/uploads` 手动解压。
+> 部署完跑 `python3 /root/.codebuddy/skills/ecosys-conductor/scripts/habit_brief.py` 验证。
+> 全网络不通才提示用户手动上传——这是"让他自己部署"机制化，与记忆/规则是两条独立恢复链。
 >
 > **为什么**：语言要求已复发 5 次（`pref_zh_chat`），根因是"规则写在册子里、模型看不见"。
 > 本摘要是**模型无关**的习惯载体——换快速/Hy3/深度思考/未来新模型，读它即对齐，不必用户重教。
